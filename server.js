@@ -169,4 +169,122 @@ app.get('/api/lookup', async (req, res) => {
         address: addr,
         line_items: (o.line_items||[]).map(li => ({
           id: li.id, title: li.title, variant_title: li.variant_title,
-          variant_
+          variant_id: li.variant_id, product_id: li.product_id,
+          quantity: li.quantity, price: li.price,
+          image_url: productData[li.product_id]?.image || null,
+        }))
+      }
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── FEATURED PRODUCTS (upsell) — MUST be before /:product_id ──
+app.get('/api/products/featured', async (req, res) => {
+  try {
+    const data = await shopifyREST('GET', 'products.json?fields=id,title,images,variants,options&limit=8');
+    res.json({ products: (data.products||[]).map(p => ({
+      id: p.id, title: p.title,
+      image: p.images?.[0]?.src||null,
+      price: p.variants?.[0]?.price||'0',
+      compare_at_price: p.variants?.[0]?.compare_at_price||null,
+    }))});
+  } catch(e) { res.status(500).json({ products: [] }); }
+});
+
+// ── SEARCH PRODUCTS — MUST be before /:product_id ──
+app.get('/api/products/search', async (req, res) => {
+  const { q } = req.query;
+  if (!q) return res.json({ products: [] });
+  try {
+    const data = await shopifyREST('GET', `products.json?title=${encodeURIComponent(q)}&fields=id,title,images,variants,options&limit=8`);
+    res.json({ products: (data.products||[]).map(p => ({
+      id: p.id, title: p.title,
+      image: p.images?.[0]?.src||null,
+      price: p.variants?.[0]?.price||'0',
+      options: p.options||[],
+      variants: (p.variants||[]).map(v=>({ id: v.id, title: v.title, option1: v.option1, option2: v.option2, option3: v.option3, available: v.inventory_quantity > 0 }))
+    }))});
+  } catch(e) { res.status(500).json({ products: [] }); }
+});
+
+// ── GET PRODUCT VARIANTS ──
+app.get('/api/products/:product_id', async (req, res) => {
+  try {
+    const data = await shopifyREST('GET', `products/${req.params.product_id}.json?fields=id,title,images,options,variants`);
+    const p = data.product;
+    if (!p) return res.status(404).json({ error: 'Not found' });
+    res.json({
+      id: p.id, title: p.title,
+      image: p.images?.[0]?.src||null,
+      options: p.options||[],
+      variants: (p.variants||[]).map(v=>({ id: v.id, title: v.title, option1: v.option1, option2: v.option2, option3: v.option3, price: v.price, available: (v.inventory_quantity||1) > 0 }))
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── SUBMIT REQUEST ──
+app.post('/api/returns/request', async (req, res) => {
+  const { order_id, order_number, items, refund_method, customer_note, address } = req.body;
+  if (!order_id || !items?.length) return res.status(400).json({ error: 'Missing required fields' });
+  try {
+    const returns = items.filter(i=>i.action==='return');
+    const exchanges = items.filter(i=>i.action==='exchange');
+    const hasBoth = returns.length>0 && exchanges.length>0;
+    const hasExchange = exchanges.length>0;
+    const hasReturn = returns.length>0;
+
+    const itemLines = items.map(i => {
+      let line = `[${i.action.toUpperCase()}] ${i.title} x${i.qty||1}`;
+      if (i.reason) line += ` | Reason: ${i.reason}`;
+      if (i.action==='exchange') {
+        if (i.exchange_variant_title) line += ` | Exchange for: ${i.exchange_variant_title}`;
+        if (i.exchange_product_title) line += ` | New Product: ${i.exchange_product_title}`;
+      }
+      return line;
+    }).join('\n');
+
+    const tag = hasBoth ? 'mixed-requested' : hasExchange ? 'exchange-requested' : 'return-requested';
+
+    const note = `${hasBoth?'MIXED':''}${hasReturn&&!hasBoth?'RETURN':''}${hasExchange&&!hasBoth?'EXCHANGE':''} REQUEST #${order_number}
+Items:
+${itemLines}
+${hasReturn?`Refund Method: ${refund_method||'Store Credit'}`:''}
+Customer Note: ${customer_note||'None'}
+${address?`Pickup: ${address.address1}, ${address.city}`:''}
+Submitted: ${new Date().toISOString()}`;
+
+    const updateData = await shopifyREST('PUT', `orders/${order_id}.json`, {
+      order: { id: order_id, tags: tag, note }
+    });
+
+    if (updateData.order) {
+      res.json({ success: true, type: hasBoth?'mixed':hasExchange?'exchange':'return' });
+    } else {
+      res.status(400).json({ error: 'Failed to update order', details: updateData });
+    }
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── APPROVE / REJECT ──
+app.post('/api/returns/:order_id/approve', async (req, res) => {
+  const { order_id } = req.params;
+  const { type } = req.body;
+  try {
+    const tag = type==='exchange'?'exchange-approved':type==='mixed'?'mixed-approved':'return-approved';
+    await shopifyREST('PUT', `orders/${order_id}.json`, { order: { id: order_id, tags: tag } });
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/returns/:order_id/reject', async (req, res) => {
+  const { order_id } = req.params;
+  const { type } = req.body;
+  try {
+    const tag = type==='exchange'?'exchange-rejected':type==='mixed'?'mixed-rejected':'return-rejected';
+    await shopifyREST('PUT', `orders/${order_id}.json`, { order: { id: order_id, tags: tag } });
+    res.json({ success: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Running on ${PORT} | Connected: ${!!ACCESS_TOKEN}`));
