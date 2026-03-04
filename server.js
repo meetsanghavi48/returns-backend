@@ -95,7 +95,7 @@ async function shopifyAPI(endpoint) {
 
 app.get('/api/orders', async (req, res) => {
   try {
-    const data = await shopifyAPI('orders.json?status=any&limit=50&fields=id,order_number,email,created_at,financial_status,fulfillment_status,total_price,currency,line_items');
+    const data = await shopifyAPI('orders.json?status=any&limit=50&fields=id,order_number,created_at,financial_status,fulfillment_status,total_price,currency,line_items');
     res.json(data);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
