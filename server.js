@@ -3,8 +3,15 @@ const cors = require('cors');
 const fetch = require('node-fetch');
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization','X-Shopify-Access-Token']
+}));
 app.use(express.json());
+
+// Handle preflight requests
+app.options('*', cors());
 
 const SHOPIFY_API_KEY    = process.env.SHOPIFY_API_KEY    || 'c1542c4ed17151e558edc3f37ceb9fd2';
 const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET || '';
@@ -39,6 +46,13 @@ async function graphql(query) {
 }
 
 // ── HEALTH ──
+// Allow embedding in Shopify Admin iframe
+app.use((req, res, next) => {
+  res.setHeader('Content-Security-Policy', "frame-ancestors 'self' https://*.myshopify.com https://admin.shopify.com");
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  next();
+});
+
 app.get('/', (req, res) => res.json({
   status: 'Returns Manager Backend',
   connected: !!ACCESS_TOKEN,
