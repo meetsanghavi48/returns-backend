@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Return Request Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#faf9f6;--white:#ffffff;--border:#e8e4dc;--text:#1a1814;--muted:#8a8070;--accent:#c84b31;--accent2:#e8956d;--success:#2d7a4f;--radius:14px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -20%,rgba(200,75,49,.06) 0%,transparent 60%);pointer-events:none}
+
+/* Header */
+header{padding:24px 32px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:rgba(250,249,246,.9);backdrop-filter:blur(8px);position:sticky;top:0;z-index:100}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:10px;display:flex;align-items:center;justify-content:center;color:white;font-size:16px}
+.brand-name{font-family:'Playfair Display',serif;font-size:18px;font-weight:600;color:var(--text)}
+.brand-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.help-link{font-size:13px;color:var(--muted);text-decoration:none;border:1px solid var(--border);padding:7px 14px;border-radius:8px;transition:all .15s}
+.help-link:hover{color:var(--text);border-color:var(--text)}
+
+/* Main */
+.container{max-width:600px;margin:0 auto;padding:40px 20px}
+
+/* Steps indicator */
+.steps{display:flex;align-items:center;gap:0;margin-bottom:36px}
+.step{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500;color:var(--muted)}
+.step.active{color:var(--accent)}
+.step.done{color:var(--success)}
+.step-num{width:26px;height:26px;border-radius:50%;border:2px solid currentColor;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;transition:all .3s}
+.step.active .step-num{background:var(--accent);border-color:var(--accent);color:white}
+.step.done .step-num{background:var(--success);border-color:var(--success);color:white}
+.step-line{flex:1;height:1px;background:var(--border);margin:0 8px}
+.step-line.done{background:var(--success)}
+
+/* Cards */
+.card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:28px;margin-bottom:20px;box-shadow:0 2px 12px rgba(0,0,0,.04)}
+.card-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:600;margin-bottom:6px}
+.card-sub{font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.6}
+
+/* Form elements */
+.form-group{margin-bottom:18px}
+label{display:block;font-size:12px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+input[type=text],input[type=email],textarea,select{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:9px;padding:11px 14px;font-family:'Outfit',sans-serif;font-size:14px;color:var(--text);outline:none;transition:border-color .2s}
+input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+textarea{resize:vertical;min-height:80px}
+
+/* Big order number input */
+.order-input-wrap{position:relative}
+.order-prefix{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:18px;font-weight:600;color:var(--muted);font-family:'Playfair Display',serif}
+.order-input-big{font-size:20px!important;padding:14px 14px 14px 34px!important;font-family:'Playfair Display',serif!important;font-weight:600!important;letter-spacing:1px}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 24px;border-radius:9px;font-family:'Outfit',sans-serif;font-weight:600;font-size:14px;cursor:pointer;transition:all .2s;border:none}
+.btn-primary{background:var(--accent);color:white;width:100%}
+.btn-primary:hover{background:#b03d26;transform:translateY(-1px);box-shadow:0 4px 16px rgba(200,75,49,.3)}
+.btn-primary:disabled{background:#ccc;transform:none;box-shadow:none;cursor:not-allowed}
+.btn-outline{background:transparent;color:var(--text);border:1.5px solid var(--border);padding:10px 20px}
+.btn-outline:hover{border-color:var(--text)}
+.btn-sm{padding:7px 14px;font-size:12px}
+
+/* Order found card */
+.order-found{background:linear-gradient(135deg,rgba(200,75,49,.05),rgba(232,149,109,.05));border:1.5px solid rgba(200,75,49,.2);border-radius:var(--radius);padding:20px;margin-bottom:20px}
+.order-found-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.order-num-big{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:var(--accent)}
+.order-meta{display:flex;gap:16px;flex-wrap:wrap}
+.meta-item{font-size:12px;color:var(--muted)}
+.meta-item strong{color:var(--text);font-weight:600}
+
+/* Items */
+.items-list{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+.item-card{display:flex;align-items:center;gap:14px;padding:14px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:all .2s;user-select:none}
+.item-card:hover{border-color:var(--accent)}
+.item-card.selected{border-color:var(--accent);background:rgba(200,75,49,.04)}
+.item-checkbox{width:20px;height:20px;border:2px solid var(--border);border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s}
+.item-card.selected .item-checkbox{background:var(--accent);border-color:var(--accent);color:white}
+.item-info{flex:1}
+.item-name{font-weight:500;font-size:14px}
+.item-qty{font-size:12px;color:var(--muted);margin-top:2px}
+.item-price{font-size:14px;font-weight:600;color:var(--accent)}
+
+/* Reason pills */
+.reason-pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.reason-pill{padding:7px 14px;border:1.5px solid var(--border);border-radius:20px;font-size:13px;cursor:pointer;transition:all .2s;background:var(--bg)}
+.reason-pill:hover{border-color:var(--accent)}
+.reason-pill.selected{background:var(--accent);border-color:var(--accent);color:white}
+
+/* Refund options */
+.refund-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px}
+.refund-option{padding:14px;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:all .2s;background:var(--bg)}
+.refund-option:hover{border-color:var(--accent)}
+.refund-option.selected{border-color:var(--accent);background:rgba(200,75,49,.04)}
+.refund-icon{font-size:22px;margin-bottom:6px}
+.refund-label{font-size:13px;font-weight:600;margin-bottom:2px}
+.refund-desc{font-size:11px;color:var(--muted)}
+
+/* Status badge */
+.status-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.status-badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
+.badge-paid,.badge-fulfilled{background:rgba(45,122,79,.1);color:var(--success)}
+.badge-pending,.badge-unfulfilled{background:rgba(200,75,49,.1);color:var(--accent)}
+
+/* Success screen */
+.success-screen{text-align:center;padding:40px 20px}
+.success-icon{width:72px;height:72px;background:rgba(45,122,79,.1);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 20px}
+.success-title{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;margin-bottom:10px}
+.success-sub{color:var(--muted);font-size:14px;line-height:1.7;max-width:400px;margin:0 auto 28px}
+.ref-box{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:16px;display:inline-block;margin-bottom:20px}
+.ref-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px}
+.ref-num{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--accent)}
+
+/* Error / loading */
+.alert{padding:12px 16px;border-radius:9px;font-size:13px;margin-bottom:16px}
+.alert-error{background:rgba(200,75,49,.08);border:1px solid rgba(200,75,49,.2);color:var(--accent)}
+.alert-info{background:rgba(45,122,79,.08);border:1px solid rgba(45,122,79,.2);color:var(--success)}
+.loading{display:inline-block;width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.already-submitted{background:rgba(45,122,79,.06);border:1.5px solid rgba(45,122,79,.2);border-radius:var(--radius);padding:24px;text-align:center}
+.already-submitted .icon{font-size:36px;margin-bottom:12px}
+.already-submitted h3{font-family:'Playfair Display',serif;font-size:18px;margin-bottom:6px}
+.already-submitted p{color:var(--muted);font-size:13px}
+
+footer{text-align:center;padding:32px 20px;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:20px}
+
+/* Animations */
+.fade-in{animation:fadeIn .35s ease forwards}
+@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-icon">↩</div>
+    <div>
+      <div class="brand-name">Returns Portal</div>
+      <div class="brand-sub">Easy, hassle-free returns</div>
+    </div>
+  </div>
+  <a href="#" class="help-link">Need help?</a>
+</header>
+
+<div class="container">
+
+  <!-- STEPS -->
+  <div class="steps" id="steps">
+    <div class="step active" id="step1-ind"><div class="step-num">1</div><span>Find Order</span></div>
+    <div class="step-line" id="line1"></div>
+    <div class="step" id="step2-ind"><div class="step-num">2</div><span>Select Items</span></div>
+    <div class="step-line" id="line2"></div>
+    <div class="step" id="step3-ind"><div class="step-num">3</div><span>Return Details</span></div>
+    <div class="step-line" id="line3"></div>
+    <div class="step" id="step4-ind"><div class="step-num">4</div><span>Confirm</span></div>
+  </div>
+
+  <!-- SCREEN 1: FIND ORDER -->
+  <div id="screen-1" class="fade-in">
+    <div class="card">
+      <div class="card-title">Start Your Return</div>
+      <div class="card-sub">Enter your order number to get started. You can find it in your order confirmation email.</div>
+      <div id="lookup-error"></div>
+      <div class="form-group">
+        <label>Order Number</label>
+        <div class="order-input-wrap">
+          <span class="order-prefix">#</span>
+          <input type="text" class="order-input-big" id="order-number-input" placeholder="1001" oninput="this.value=this.value.replace(/[^0-9]/,'')" onkeydown="if(event.key==='Enter')lookupOrder()"/>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="lookup-btn" onclick="lookupOrder()">
+        Find My Order →
+      </button>
+    </div>
+    <div style="text-align:center;font-size:12px;color:var(--muted);margin-top:16px">
+      🔒 Your data is secure. We only use your order information to process returns.
+    </div>
+  </div>
+
+  <!-- SCREEN 2: SELECT ITEMS -->
+  <div id="screen-2" style="display:none" class="fade-in">
+    <div id="order-summary"></div>
+    <div class="card">
+      <div class="card-title">Select Items to Return</div>
+      <div class="card-sub">Choose the items you'd like to return. You can select one or multiple items.</div>
+      <div class="items-list" id="items-list"></div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-outline" onclick="goBack(1)">← Back</button>
+        <button class="btn btn-primary" id="items-next-btn" onclick="goToStep3()" style="flex:1" disabled>Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN 3: RETURN DETAILS -->
+  <div id="screen-3" style="display:none" class="fade-in">
+    <div class="card">
+      <div class="card-title">Return Details</div>
+      <div class="card-sub">Help us understand why you're returning and how you'd like your refund.</div>
+
+      <div class="form-group">
+        <label>Reason for Return</label>
+        <div class="reason-pills">
+          <div class="reason-pill" onclick="selectReason(this,'Wrong Size')">Wrong Size</div>
+          <div class="reason-pill" onclick="selectReason(this,'Defective / Damaged')">Defective / Damaged</div>
+          <div class="reason-pill" onclick="selectReason(this,'Not as Described')">Not as Described</div>
+          <div class="reason-pill" onclick="selectReason(this,'Wrong Item Received')">Wrong Item Received</div>
+          <div class="reason-pill" onclick="selectReason(this,'Changed My Mind')">Changed My Mind</div>
+          <div class="reason-pill" onclick="selectReason(this,'Quality Issue')">Quality Issue</div>
+          <div class="reason-pill" onclick="selectReason(this,'Other')">Other</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Preferred Refund Method</label>
+        <div class="refund-options">
+          <div class="refund-option selected" onclick="selectRefund(this,'Original Payment')">
+            <div class="refund-icon">💳</div>
+            <div class="refund-label">Original Payment</div>
+            <div class="refund-desc">Back to your card/UPI</div>
+          </div>
+          <div class="refund-option" onclick="selectRefund(this,'Store Credit')">
+            <div class="refund-icon">🎁</div>
+            <div class="refund-label">Store Credit</div>
+            <div class="refund-desc">Use on next purchase</div>
+          </div>
+          <div class="refund-option" onclick="selectRefund(this,'Exchange')">
+            <div class="refund-icon">🔄</div>
+            <div class="refund-label">Exchange</div>
+            <div class="refund-desc">Different size or color</div>
+          </div>
+          <div class="refund-option" onclick="selectRefund(this,'Gift Card')">
+            <div class="refund-icon">🏷️</div>
+            <div class="refund-label">Gift Card</div>
+            <div class="refund-desc">Redeemable anytime</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Additional Notes (Optional)</label>
+        <textarea id="customer-note" placeholder="Any additional details about your return..."></textarea>
+      </div>
+
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-outline" onclick="goBack(2)">← Back</button>
+        <button class="btn btn-primary" id="details-next-btn" onclick="goToStep4()" style="flex:1" disabled>Review →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN 4: CONFIRM -->
+  <div id="screen-4" style="display:none" class="fade-in">
+    <div class="card">
+      <div class="card-title">Review & Confirm</div>
+      <div class="card-sub">Please review your return details before submitting.</div>
+      <div id="review-content"></div>
+      <div id="submit-error"></div>
+      <div style="display:flex;gap:10px;margin-top:20px">
+        <button class="btn btn-outline" onclick="goBack(3)">← Back</button>
+        <button class="btn btn-primary" id="submit-btn" onclick="submitReturn()" style="flex:1">Submit Return Request ↩</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN 5: SUCCESS -->
+  <div id="screen-5" style="display:none" class="fade-in">
+    <div class="card">
+      <div class="success-screen">
+        <div class="success-icon">✓</div>
+        <div class="success-title">Return Submitted!</div>
+        <div class="success-sub">Your return request has been received. Our team will review it and get back to you within 1-2 business days.</div>
+        <div class="ref-box">
+          <div class="ref-label">Return Reference</div>
+          <div class="ref-num" id="ref-number">RET-0000</div>
+        </div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:24px">Keep this reference number for your records.</div>
+        <button class="btn btn-outline" onclick="startOver()">← Submit Another Return</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Powered by Returns Manager · Secure & Encrypted
+</footer>
+
+<script>
+const BACKEND = 'https://returns-backend.onrender.com';
+let currentOrder = null;
+let selectedItems = [];
+let selectedReason = '';
+let selectedRefundMethod = 'Original Payment';
+
+// ── STEP 1: LOOKUP ──
+async function lookupOrder() {
+  const num = document.getElementById('order-number-input').value.trim();
+  if (!num) return showError('lookup-error', 'Please enter your order number');
+  const btn = document.getElementById('lookup-btn');
+  btn.innerHTML = '<span class="loading"></span> Looking up...';
+  btn.disabled = true;
+  clearError('lookup-error');
+  try {
+    const res = await fetch(`${BACKEND}/api/lookup?order_number=${num}`);
+    const data = await res.json();
+    if (data.found) {
+      currentOrder = data.order;
+      if (data.order.has_return) {
+        showAlreadySubmitted(data.order);
+      } else {
+        showScreen(2);
+        renderOrderSummary();
+        renderItems();
+        setStep(2);
+      }
+    } else {
+      showError('lookup-error', 'Order not found. Please check your order number and try again.');
+    }
+  } catch(e) {
+    showError('lookup-error', 'Connection error. Please try again in a moment.');
+  }
+  btn.innerHTML = 'Find My Order →';
+  btn.disabled = false;
+}
+
+function showAlreadySubmitted(order) {
+  const statusMap = { pending:'⏳ Under Review', approved:'✅ Approved', rejected:'❌ Rejected' };
+  document.getElementById('screen-1').innerHTML = `
+    <div class="already-submitted fade-in">
+      <div class="icon">${order.return_status === 'approved' ? '✅' : order.return_status === 'rejected' ? '❌' : '⏳'}</div>
+      <h3>Return Already Submitted</h3>
+      <p>A return request for order #${order.order_number} has already been submitted.</p>
+      <p style="margin-top:8px"><strong>Status: ${statusMap[order.return_status] || 'Pending Review'}</strong></p>
+      <button class="btn btn-outline btn-sm" style="margin-top:16px" onclick="startOver()">Submit for Different Order</button>
+    </div>`;
+}
+
+// ── ORDER SUMMARY ──
+function renderOrderSummary() {
+  const o = currentOrder;
+  const date = new Date(o.created_at).toLocaleDateString('en-IN', {day:'numeric', month:'long', year:'numeric'});
+  document.getElementById('order-summary').innerHTML = `
+    <div class="order-found fade-in">
+      <div class="order-found-header">
+        <div class="order-num-big">#${o.order_number}</div>
+        <span class="status-badge badge-${o.financial_status}">${cap(o.financial_status)}</span>
+      </div>
+      <div class="order-meta">
+        <div class="meta-item">📅 <strong>${date}</strong></div>
+        <div class="meta-item">💰 <strong>${o.currency} ${parseFloat(o.total_price).toLocaleString('en-IN',{maximumFractionDigits:2})}</strong></div>
+        <div class="meta-item">📦 <strong>${cap(o.fulfillment_status || 'Unfulfilled')}</strong></div>
+      </div>
+    </div>`;
+}
+
+// ── ITEMS ──
+function renderItems() {
+  const list = document.getElementById('items-list');
+  list.innerHTML = (currentOrder.line_items || []).map((item, i) => `
+    <div class="item-card" id="item-${i}" onclick="toggleItem(${i})">
+      <div class="item-checkbox" id="check-${i}">✓</div>
+      <div class="item-info">
+        <div class="item-name">${item.title}${item.variant_title ? ' — '+item.variant_title : ''}</div>
+        <div class="item-qty">Quantity: ${item.quantity}</div>
+      </div>
+    </div>`).join('');
+}
+
+function toggleItem(i) {
+  const card = document.getElementById('item-'+i);
+  const idx = selectedItems.indexOf(i);
+  if (idx > -1) { selectedItems.splice(idx, 1); card.classList.remove('selected'); }
+  else { selectedItems.push(i); card.classList.add('selected'); }
+  document.getElementById('items-next-btn').disabled = selectedItems.length === 0;
+}
+
+function goToStep3() {
+  if (selectedItems.length === 0) return;
+  showScreen(3); setStep(3);
+}
+
+// ── REASON & REFUND ──
+function selectReason(el, reason) {
+  document.querySelectorAll('.reason-pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedReason = reason;
+  document.getElementById('details-next-btn').disabled = false;
+}
+
+function selectRefund(el, method) {
+  document.querySelectorAll('.refund-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedRefundMethod = method;
+}
+
+function goToStep4() {
+  if (!selectedReason) return;
+  showScreen(4); setStep(4);
+  renderReview();
+}
+
+// ── REVIEW ──
+function renderReview() {
+  const items = selectedItems.map(i => currentOrder.line_items[i]);
+  document.getElementById('review-content').innerHTML = `
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)">Order</div>
+      <div style="padding:14px 16px;font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--accent)">#${currentOrder.order_number}</div>
+      <div style="padding:0 16px 14px;font-size:12px;color:var(--muted)">${new Date(currentOrder.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}</div>
+    </div>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)">Items Being Returned</div>
+      ${items.map(item => `<div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:13px"><span>${item.title}</span><span style="color:var(--muted)">×${item.quantity}</span></div>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Reason</div>
+        <div style="font-size:14px;font-weight:500">${selectedReason}</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Refund Method</div>
+        <div style="font-size:14px;font-weight:500">${selectedRefundMethod}</div>
+      </div>
+    </div>`;
+}
+
+// ── SUBMIT ──
+async function submitReturn() {
+  const btn = document.getElementById('submit-btn');
+  btn.innerHTML = '<span class="loading"></span> Submitting...';
+  btn.disabled = true;
+  clearError('submit-error');
+  const items = selectedItems.map(i => currentOrder.line_items[i]);
+  const note = document.getElementById('customer-note')?.value || '';
+  try {
+    const res = await fetch(`${BACKEND}/api/returns/request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        order_id: currentOrder.id,
+        order_number: currentOrder.order_number,
+        items,
+        reason: selectedReason,
+        refund_method: selectedRefundMethod,
+        customer_note: note
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showScreen(5); setStep(5);
+      document.getElementById('ref-number').textContent = 'RET-' + currentOrder.order_number + '-' + Date.now().toString().slice(-4);
+    } else {
+      showError('submit-error', data.error || 'Failed to submit. Please try again.');
+      btn.innerHTML = 'Submit Return Request ↩';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    showError('submit-error', 'Connection error. Please try again.');
+    btn.innerHTML = 'Submit Return Request ↩';
+    btn.disabled = false;
+  }
+}
+
+// ── UTILS ──
+function showScreen(n) {
+  for (let i = 1; i <= 5; i++) {
+    const el = document.getElementById('screen-'+i);
+    if (el) { el.style.display = i === n ? 'block' : 'none'; if (i === n) el.classList.add('fade-in'); }
+  }
+}
+
+function setStep(n) {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById('step'+i+'-ind');
+    const line = document.getElementById('line'+i);
+    if (!el) continue;
+    el.className = 'step ' + (i < n ? 'done' : i === n ? 'active' : '');
+    if (line) line.className = 'step-line ' + (i < n ? 'done' : '');
+  }
+}
+
+function goBack(to) { showScreen(to); setStep(to); }
+function startOver() { location.reload(); }
+function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = `<div class="alert alert-error">${msg}</div>`;
+}
+function clearError(id) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = '';
+}
+</script>
+</body>
+</html>
