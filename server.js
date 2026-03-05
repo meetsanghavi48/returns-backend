@@ -260,7 +260,8 @@ app.get('/api/lookup',async(req,res)=>{
   const{order_number,contact}=req.query;
   if(!order_number)return res.status(400).json({error:'Missing order_number'});
   try{
-    const data=await shopifyREST('GET',`orders.json?name=%23${order_number}&status=any&fields=id,order_number,created_at,financial_status,fulfillment_status,total_price,currency,line_items,tags,note,email,phone,customer,shipping_address,billing_address`);
+    const cleanNum=String(order_number).replace(/^#+/,'').trim(); // strip leading # if customer included it
+    const data=await shopifyREST('GET',`orders.json?name=%23${cleanNum}&status=any&fields=id,order_number,created_at,financial_status,fulfillment_status,total_price,currency,line_items,tags,note,email,phone,customer,shipping_address,billing_address`);
     if(!data.orders?.length)return res.json({found:false});
     const o=data.orders[0];
     // Contact verify

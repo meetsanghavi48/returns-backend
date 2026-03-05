@@ -211,6 +211,7 @@ const S = {
   diffProd: null,
   // Payment
   is_cod: false,
+  contactError: '',
   // Error/loading
   loading: false,
   error: ''
@@ -295,6 +296,10 @@ function renderLookup() {
 // ════════════════════════════════════════════
 function renderOrder() {
   const o = S.order;
+  // Customer PII — now available from custom app
+  const custName  = o.customer_name  || '';
+  const custEmail = o.customer_email || '';
+  const custPhone = o.customer_phone || '';
   const days = o.days_remaining||0;
   const urgent = days <= 3;
   const fmtDate = d => new Date(d).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
@@ -824,23 +829,55 @@ function bindEvents() {
 }
 
 async function doLookup() {
-  const orderNum = document.getElementById('inp-order')?.value?.trim();
+  const orderNum = (document.getElementById('inp-order')?.value||'').trim().replace(/^#+/,''); // accept #1001 or 1001
   const contact  = document.getElementById('inp-contact')?.value?.trim();
-  if (!orderNum) { S.error='Please enter your order number'; render(); return; }
-  S.orderNum=orderNum; S.contact=contact; S.error=''; S.loading=true; render();
+
+  // Validate order number
+  if (!orderNum) { S.error='Please enter your order number'; S.contactError=''; render(); return; }
+
+  // Validate contact — REQUIRED since we're on a real store
+  if (!contact) {
+    S.error='';
+    S.contactError='Please enter your mobile number or email to verify your identity';
+    render(); return;
+  }
+  // Basic format check
+  const isPhone = /^[6-9]\d{9}$/.test(contact.replace(/[\s+\-]/g,''));
+  const isEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(contact);
+  if (!isPhone && !isEmail) {
+    S.error='';
+    S.contactError='Enter a valid 10-digit mobile number or email address';
+    render(); return;
+  }
+
+  S.orderNum=orderNum; S.contact=contact; S.error=''; S.contactError=''; S.loading=true; render();
   try {
-    const res = await fetch(`${BACKEND}/api/lookup?order_number=${encodeURIComponent(orderNum)}&contact=${encodeURIComponent(contact||'')}`).then(r=>r.json());
+    const res = await fetch(`${BACKEND}/api/lookup?order_number=${encodeURIComponent(orderNum)}&contact=${encodeURIComponent(contact)}`).then(r=>r.json());
     S.loading=false;
-    if (!res.found) { S.error=res.mismatch?'Email/phone does not match our records':'Order not found. Please check your order number.'; render(); return; }
+    if (!res.found) {
+      if (res.mismatch) {
+        S.contactError = isPhone
+          ? 'Mobile number does not match this order. Try the email used at checkout.'
+          : 'Email does not match this order. Try the mobile number used at checkout.';
+        S.error='';
+      } else {
+        S.error='Order not found. Check your order number (no # needed).';
+        S.contactError='';
+      }
+      render(); return;
+    }
     S.order = res.order;
     S.is_cod = res.order.is_cod || false;
-    window._returnWindowDays = 30;
+    window._returnWindowDays = res.order.days_remaining !== undefined
+      ? (res.order.days_remaining + (30 - res.order.days_remaining)) : 30;
     S.address = res.order.address;
-    if (res.order.has_return) { S.screen='already'; }
-    else if (!res.order.within_window) { S.screen='order'; }
-    else { S.screen='order'; }
+    S.screen = res.order.has_return ? 'already' : 'order';
     render();
-  } catch(e) { S.loading=false; S.error='Network error. Please try again.'; render(); }
+  } catch(e) {
+    S.loading=false;
+    S.error='Network error. Please try again.';
+    render();
+  }
 }
 
 function toggleCheck(idx) {
