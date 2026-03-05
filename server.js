@@ -92,12 +92,17 @@ app.get('/api/orders', async (req, res) => {
       currency: o.totalPriceSet.shopMoney.currencyCode,
       tags: o.tags, note: o.note||'', email: '', customer: null,
       line_items: o.lineItems.edges.map(({ node: li }) => ({ title: li.title, quantity: li.quantity, price: '0' })),
-      request_type: (o.tags.includes('exchange-requested')||o.tags.includes('exchange-approved')||o.tags.includes('exchange-rejected')) ? 'exchange' : 'return',
-      return_status: (o.tags.includes('return-approved')||o.tags.includes('exchange-approved')) ? 'approved'
-        : (o.tags.includes('return-rejected')||o.tags.includes('exchange-rejected')) ? 'rejected'
+      request_type: (o.tags.some(t=>['exchange-requested','exchange-approved','exchange-rejected'].includes(t))) ? 'exchange'
+        : (o.tags.some(t=>['mixed-requested','mixed-approved','mixed-rejected'].includes(t))) ? 'mixed' : 'return',
+      return_status: o.tags.some(t=>['return-approved','exchange-approved','mixed-approved'].includes(t)) ? 'approved'
+        : o.tags.some(t=>['return-rejected','exchange-rejected','mixed-rejected'].includes(t)) ? 'rejected'
         : o.tags.includes('return-requested') ? 'pending'
-        : o.tags.includes('exchange-requested') ? 'exchange-pending' : null
+        : o.tags.includes('exchange-requested') ? 'exchange-pending'
+        : o.tags.includes('mixed-requested') ? 'pending' : null
     }));
+    const withRequests = orders.filter(o=>o.return_status);
+    console.log(`Orders: ${orders.length} total, ${withRequests.length} with return/exchange requests`);
+    if(withRequests.length) console.log('Requests:', withRequests.map(o=>`#${o.order_number}(${o.return_status})`).join(', '));
     res.json({ orders });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
