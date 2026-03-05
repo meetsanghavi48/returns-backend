@@ -76,7 +76,6 @@ app.get('/api/orders', async (req, res) => {
           id name createdAt tags note
           displayFinancialStatus displayFulfillmentStatus
           totalPriceSet { shopMoney { amount currencyCode } }
-          customer { firstName lastName email phone }
           lineItems(first: 20) { edges { node { 
             title quantity originalUnitPriceSet { shopMoney { amount } }
             variant { image { url } }
@@ -95,8 +94,8 @@ app.get('/api/orders', async (req, res) => {
       total_price: o.totalPriceSet.shopMoney.amount,
       currency: o.totalPriceSet.shopMoney.currencyCode,
       tags: o.tags, note: o.note||'', email: '', customer: null,
-      customer_name: o.customer ? `${o.customer.firstName||''} ${o.customer.lastName||''}`.trim() : 'Guest',
-      customer_email: o.customer?.email || '',
+      customer_name: 'Guest',
+      customer_email: '',
       line_items: o.lineItems.edges.map(({ node: li }) => ({ 
         title: li.title, quantity: li.quantity,
         price: li.originalUnitPriceSet?.shopMoney?.amount || '0',
