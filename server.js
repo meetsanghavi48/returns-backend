@@ -304,3 +304,308 @@ app.post('/api/returns/:order_id/reject', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Running on ${PORT} | Connected: ${!!ACCESS_TOKEN}`));
+
+// ═══════════════════════════════════════════════════════════
+// ── DELHIVERY CONFIG ──
+// ═══════════════════════════════════════════════════════════
+let DELHIVERY_TOKEN    = process.env.DELHIVERY_TOKEN    || '';
+let DELHIVERY_WAREHOUSE= process.env.DELHIVERY_WAREHOUSE|| ''; // exact warehouse name in Delhivery
+let DELHIVERY_MODE     = process.env.DELHIVERY_MODE     || 'staging'; // 'staging' or 'production'
+
+function delhiveryBase() {
+  return DELHIVERY_MODE === 'production'
+    ? 'https://track.delhivery.com'
+    : 'https://staging-express.delhivery.com';
+}
+
+async function delhiveryAPI(method, path, body, isForm) {
+  if (!DELHIVERY_TOKEN) throw new Error('Delhivery token not configured');
+  const url = delhiveryBase() + path;
+  const headers = { 'Authorization': `Token ${DELHIVERY_TOKEN}` };
+  const opts = { method: method || 'GET', headers };
+  if (body) {
+    if (isForm) {
+      headers['Content-Type'] = 'application/x-www-form-urlencoded';
+      opts.body = `format=json&data=${encodeURIComponent(JSON.stringify(body))}`;
+    } else {
+      headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(body);
+    }
+  }
+  const r = await fetch(url, opts);
+  const text = await r.text();
+  try { return JSON.parse(text); } catch(e) { return { raw: text }; }
+}
+
+// ── SAVE DELHIVERY CONFIG ──
+app.post('/api/delhivery/config', (req, res) => {
+  const { token, warehouse, mode } = req.body;
+  if (token) DELHIVERY_TOKEN = token;
+  if (warehouse) DELHIVERY_WAREHOUSE = warehouse;
+  if (mode) DELHIVERY_MODE = mode;
+  res.json({ success: true, configured: !!DELHIVERY_TOKEN, warehouse: DELHIVERY_WAREHOUSE, mode: DELHIVERY_MODE });
+});
+
+app.get('/api/delhivery/config', (req, res) => {
+  res.json({ configured: !!DELHIVERY_TOKEN, warehouse: DELHIVERY_WAREHOUSE, mode: DELHIVERY_MODE });
+});
+
+// ── PINCODE SERVICEABILITY ──
+app.get('/api/delhivery/serviceability/:pincode', async (req, res) => {
+  try {
+    const data = await delhiveryAPI('GET', `/c/api/pin-codes/json/?filter_codes=${req.params.pincode}`);
+    const pin = data?.delivery_codes?.[0];
+    res.json({
+      serviceable: !!pin,
+      cod: pin?.['cod']?.toLowerCase() === 'y',
+      prepaid: pin?.['pre-paid']?.toLowerCase() === 'y',
+      pickup: pin?.pickup?.toLowerCase() === 'y',
+      pincode: req.params.pincode
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── FETCH WAYBILL ──
+app.get('/api/delhivery/waybill', async (req, res) => {
+  try {
+    const clientName = req.query.client || '';
+    const data = await delhiveryAPI('GET', `/waybill/api/bulk/json/?cl=${encodeURIComponent(clientName)}&count=1`);
+    res.json({ waybill: data?.waybill_list?.[0] || null, raw: data });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── TRACK SHIPMENT ──
+app.get('/api/delhivery/track/:waybill', async (req, res) => {
+  try {
+    const data = await delhiveryAPI('GET', `/api/v1/packages/?waybill=${req.params.waybill}`);
+    const pkg = data?.ShipmentData?.[0]?.Shipment;
+    if (!pkg) return res.json({ found: false, raw: data });
+    res.json({
+      found: true,
+      waybill: pkg.AWB,
+      status: pkg.Status?.Status,
+      status_detail: pkg.Status?.Instructions,
+      status_date: pkg.Status?.StatusDateTime,
+      expected_date: pkg.ExpectedDeliveryDate,
+      origin: pkg.Origin,
+      destination: pkg.Destination,
+      scans: (pkg.Scans || []).map(s => ({
+        status: s.ScanDetail?.Scan,
+        detail: s.ScanDetail?.Instructions,
+        location: s.ScanDetail?.ScannedLocation,
+        date: s.ScanDetail?.ScanDateTime
+      }))
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── CREATE REVERSE PICKUP (RVP) in Delhivery ──
+app.post('/api/delhivery/create-pickup', async (req, res) => {
+  const {
+    order_id, order_number,
+    customer_name, customer_phone, customer_address, customer_city,
+    customer_state, customer_pincode,
+    products_desc, total_amount, quantity, weight,
+    return_address  // optional override
+  } = req.body;
+
+  if (!DELHIVERY_TOKEN) return res.status(400).json({ error: 'Delhivery not configured. Add token first.' });
+  if (!customer_pincode) return res.status(400).json({ error: 'Customer pincode required' });
+
+  const rvpOrderId = `RVP-${order_number}-${Date.now().toString().slice(-6)}`;
+  const payload = {
+    pickup_location: { name: DELHIVERY_WAREHOUSE },
+    shipments: [{
+      name: customer_name || 'Customer',
+      add: customer_address || '',
+      pin: String(customer_pincode),
+      city: customer_city || '',
+      state: customer_state || '',
+      country: 'India',
+      phone: String(customer_phone || '').replace(/\D/g, '').slice(-10),
+      order: rvpOrderId,
+      payment_mode: 'Pickup',
+      products_desc: products_desc || 'Return Shipment',
+      hsn_code: '62034200',
+      cod_amount: '0',
+      order_date: new Date().toISOString().split('T')[0],
+      total_amount: String(total_amount || '0'),
+      seller_name: DELHIVERY_WAREHOUSE,
+      seller_inv: `INV-${order_number}`,
+      quantity: parseInt(quantity) || 1,
+      weight: parseFloat(weight) || 0.5,
+      shipment_length: 15,
+      shipment_width: 12,
+      shipment_height: 10,
+      // Return to warehouse (delivery destination for RVP)
+      ...(return_address ? {
+        return_name: return_address.name,
+        return_add: return_address.address,
+        return_pin: String(return_address.pincode),
+        return_city: return_address.city,
+        return_state: return_address.state,
+        return_phone: String(return_address.phone || ''),
+        return_country: 'India'
+      } : {})
+    }]
+  };
+
+  try {
+    const data = await delhiveryAPI('POST', '/api/cmu/create.json', payload, true);
+    const pkg = data?.packages?.[0];
+    const waybill = pkg?.waybill || data?.waybill;
+    const success = !!(waybill || pkg?.status === 'Success' || data?.success);
+
+    // Save AWB to Shopify order note
+    if (success && waybill) {
+      const currentOrder = await shopifyREST('GET', `orders/${order_id}.json?fields=note`);
+      const existingNote = currentOrder?.order?.note || '';
+      const newNote = existingNote + `\n\nDELHIVERY RVP\nAWB: ${waybill}\nRVP Order: ${rvpOrderId}\nCreated: ${new Date().toISOString()}`;
+      await shopifyREST('PUT', `orders/${order_id}.json`, {
+        order: { id: order_id, note: newNote, tags: 'pickup-scheduled' }
+      });
+    }
+
+    res.json({ success, waybill, rvp_order_id: rvpOrderId, raw: data });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── CREATE SHOPIFY REFUND ──
+app.post('/api/shopify/refund/:order_id', async (req, res) => {
+  const { order_id } = req.params;
+  const { line_items, refund_method, note } = req.body;
+  // refund_method: 'store_credit' | 'original'
+  try {
+    // 1. Calculate refund
+    const calcPayload = {
+      refund: {
+        shipping: { full_refund: false },
+        refund_line_items: (line_items || []).map(li => ({
+          line_item_id: li.id,
+          quantity: li.quantity || 1,
+          restock_type: 'return'
+        }))
+      }
+    };
+    const calc = await shopifyREST('POST', `orders/${order_id}/refunds/calculate.json`, calcPayload);
+    const transactions = calc?.refund?.transactions || [];
+
+    // 2. Create the actual refund
+    const refundPayload = {
+      refund: {
+        notify: true,
+        note: note || 'Return approved via Returns Portal',
+        shipping: { full_refund: false },
+        refund_line_items: (line_items || []).map(li => ({
+          line_item_id: li.id,
+          quantity: li.quantity || 1,
+          restock_type: 'return'
+        })),
+        transactions: refund_method === 'store_credit'
+          ? [] // No transaction = store credit (manual)
+          : transactions.map(t => ({
+              parent_id: t.parent_id,
+              amount: t.amount,
+              kind: 'refund',
+              gateway: t.gateway
+            }))
+      }
+    };
+
+    const result = await shopifyREST('POST', `orders/${order_id}/refunds.json`, refundPayload);
+    if (result?.refund?.id) {
+      // Tag the order
+      await shopifyREST('PUT', `orders/${order_id}.json`, {
+        order: { id: order_id, tags: 'return-refunded' }
+      });
+      res.json({ success: true, refund_id: result.refund.id, amount: result.refund.transactions?.[0]?.amount });
+    } else {
+      res.status(400).json({ error: 'Refund failed', details: result });
+    }
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── CREATE SHOPIFY EXCHANGE ORDER ──
+app.post('/api/shopify/exchange/:order_id', async (req, res) => {
+  const { order_id } = req.params;
+  const { exchange_items, customer_address, order_number } = req.body;
+  // exchange_items: [{variant_id, quantity, price, title}]
+  try {
+    // Get original order for customer/address details
+    const orig = await shopifyREST('GET', `orders/${order_id}.json?fields=id,email,shipping_address,billing_address,customer`);
+    const o = orig?.order;
+    if (!o) return res.status(400).json({ error: 'Original order not found' });
+
+    const addr = customer_address || o.shipping_address || o.billing_address;
+
+    // Build draft order for exchange
+    const draftPayload = {
+      draft_order: {
+        line_items: (exchange_items || []).map(item => ({
+          variant_id: item.variant_id,
+          quantity: item.quantity || 1,
+          price: item.price || '0',
+          title: item.title || 'Exchange Item',
+          applied_discount: {
+            description: 'Exchange discount',
+            value_type: 'percentage',
+            value: '100',
+            amount: item.price || '0',
+            title: 'Exchange'
+          }
+        })),
+        customer: o.customer ? { id: o.customer.id } : undefined,
+        shipping_address: addr,
+        billing_address: o.billing_address || addr,
+        email: o.email,
+        note: `Exchange order for #${order_number || order_id}`,
+        tags: 'exchange-order',
+        send_invoice: false
+      }
+    };
+
+    // Create draft order
+    const draft = await shopifyREST('POST', 'draft_orders.json', draftPayload);
+    const draftId = draft?.draft_order?.id;
+    if (!draftId) return res.status(400).json({ error: 'Failed to create draft order', details: draft });
+
+    // Complete the draft order (creates actual order)
+    const completed = await shopifyREST('PUT', `draft_orders/${draftId}/complete.json`);
+    const newOrderId = completed?.draft_order?.order_id;
+
+    // Tag original order
+    await shopifyREST('PUT', `orders/${order_id}.json`, {
+      order: { id: order_id, tags: 'exchange-fulfilled' }
+    });
+
+    res.json({
+      success: true,
+      new_order_id: newOrderId,
+      draft_order_id: draftId,
+      new_order_name: completed?.draft_order?.name
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── GET ORDER DETAILS FOR DELHIVERY (full address + line items) ──
+app.get('/api/orders/:order_id/details', async (req, res) => {
+  try {
+    const data = await shopifyREST('GET',
+      `orders/${req.params.order_id}.json?fields=id,order_number,shipping_address,billing_address,line_items,note,tags,total_price`
+    );
+    const o = data?.order;
+    if (!o) return res.status(404).json({ error: 'Not found' });
+    res.json({
+      id: o.id,
+      order_number: o.order_number,
+      address: o.shipping_address || o.billing_address,
+      line_items: (o.line_items || []).map(li => ({
+        id: li.id, title: li.title, variant_id: li.variant_id,
+        quantity: li.quantity, price: li.price
+      })),
+      total_price: o.total_price,
+      note: o.note,
+      tags: o.tags
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
