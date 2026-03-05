@@ -755,7 +755,9 @@ function renderDetailPanel(o){
       </div>
     </div>`);
 
-  if(parsed.refund&&parsed.refund!=='None') R+=rc(`${rt('Refund Method')}<div style="font-size:13px;color:#111">${escHtml(parsed.refund)}</div><div style="font-size:11px;color:#9ca3af;margin-top:3px">${parsed.refund.toLowerCase().includes('credit')?'Store credit issued':'Refund to original payment'}</div>`);
+  const refundDisplay={'store_credit':'Store Credit','original':'Original Payment','upsell':'Shop with Credit','exchange':'Exchange'};
+  const refundLabel=refundDisplay[parsed.refund]||parsed.refund||'';
+  if(refundLabel&&refundLabel!=='None') R+=rc(`${rt('Refund Method')}<div style="font-size:13px;font-weight:600;color:#111">${escHtml(refundLabel)}</div><div style="font-size:11px;color:#9ca3af;margin-top:3px">${refundLabel.toLowerCase().includes('credit')?'Store credit issued':'Refund to original payment'}</div>`);
 
   if(parsed.customerNote&&parsed.customerNote!=='None') R+=rc(`${rt('Customer Note')}<div style="font-size:13px;color:#374151;line-height:1.6;font-style:italic">"${escHtml(parsed.customerNote)}"</div>`);
 
@@ -766,30 +768,63 @@ function renderDetailPanel(o){
     <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span style="color:#6b7280">Type</span><span>${isExchange&&isReturn?'↩🔄 Mixed':isExchange?'🔄 Exchange':'↩ Return'}</span></div>
     `,'0');
 
+  // Multiple requests for this order
+  const orderRequests=o.requests||[];
+  if(orderRequests.length>1){
+    let reqHtml=orderRequests.map((r,i)=>`
+      <div style="padding:10px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:8px;background:${r.status==='approved'?'#f0fdf4':r.status==='rejected'?'#fef2f2':'#fffbeb'}">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:11px;font-weight:700;color:#374151">Request ${i+1}</span>
+          <span style="font-size:10px;padding:1px 7px;border-radius:8px;background:${r.status==='approved'?'#dcfce7':r.status==='rejected'?'#fee2e2':'#fef9c3'};color:${r.status==='approved'?'#16a34a':r.status==='rejected'?'#dc2626':'#92400e'};font-weight:700">${r.status||'pending'}</span>
+        </div>
+        <div style="font-size:11px;color:#6b7280">${r.req_id||''}</div>
+        ${r.awb?`<div style="font-size:11px;color:#0369a1;margin-top:3px">AWB: <strong>${escHtml(r.awb)}</strong> <button onclick="trackAWB('${escHtml(r.awb)}')" style="background:none;border:none;color:#0369a1;cursor:pointer;font-size:11px;text-decoration:underline">Track</button></div>`:''}
+        <div style="font-size:11px;color:#6b7280;margin-top:3px">${(r.items||[]).length} items — ${new Date(r.submitted_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</div>
+      </div>`).join('');
+    R+=rc(`${rt('All Requests ('+orderRequests.length+')')}<div>${reqHtml}</div>`);
+  }
+  
   document.getElementById('dp-right').innerHTML=R;
 }
 
 async function loadCustomerAddr(orderId){
   const el=document.getElementById('addr-display-'+orderId);
-  if(!el)return;
-  el.textContent='Loading...';
-  const data=await fetch(BACKEND+'/api/orders/'+orderId+'/details').then(r=>r.json()).catch(()=>null);
-  if(!data?.address){el.textContent='Address not available';return;}
-  const a=data.address;
-  el.innerHTML=[a.name,a.address1,a.address2,`${a.city||''} ${a.province||''} ${a.zip||''}`,a.country,a.phone].filter(Boolean).map(escHtml).join('<br>');
-  const ord=ALL_ORDERS.find(x=>String(x.id)===String(orderId));
-  if(ord)ord._addr=a;
+  if(!el){console.error('[loadAddr] Element not found: addr-display-'+orderId);return;}
+  el.innerHTML='<span style="color:#6b7280">⏳ Loading address…</span>';
+  try{
+    const data=await fetch(BACKEND+'/api/orders/'+orderId+'/details').then(r=>r.json());
+    console.log('[loadAddr] Response:',JSON.stringify(data).slice(0,300));
+    if(!data?.address){el.innerHTML='<span style="color:#dc2626">Address not found on order</span>';return;}
+    const a=data.address;
+    // Show full name + address
+    const name=a.name||data.customer_name||'';
+    const lines=[name,a.address1,a.address2,[a.city,a.province,a.zip].filter(Boolean).join(' '),a.country,a.phone||data.phone].filter(Boolean);
+    el.innerHTML=lines.map(escHtml).join('<br>');
+    // Store on order for pickup creation
+    const ord=ALL_ORDERS.find(x=>String(x.id)===String(orderId));
+    if(ord){ord._addr=a;ord._addr.name=name;ord._addr.phone=a.phone||data.phone||'';}
+    if(selectedOrder&&String(selectedOrder.id)===String(orderId)){selectedOrder._addr=a;}
+  }catch(e){
+    console.error('[loadAddr] Error:',e);
+    el.innerHTML='<span style="color:#dc2626">Error: '+escHtml(e.message)+'</span>';
+  }
 }
 
 // ── DELHIVERY PICKUP ──
 async function createDelhiveryPickup(orderId){
   const el=document.getElementById('del-status-'+orderId);
-  if(el)el.textContent='⏳ Creating pickup…';
+  if(el)el.textContent='⏳ Fetching address…';
   const order=ALL_ORDERS.find(o=>String(o.id)===String(orderId));
-  const addr=order?._addr;
-  const details=await fetch(BACKEND+'/api/orders/'+orderId+'/details').then(r=>r.json()).catch(()=>null);
-  const a=details?.address||addr;
-  if(!a?.zip){showToast('Load customer address first','error');if(el)el.textContent='Address required';return;}
+  // Always fetch fresh details (don't rely on cached _addr)
+  const details=await fetch(BACKEND+'/api/orders/'+orderId+'/details').then(r=>r.json()).catch(e=>{console.error('[pickup fetch]',e);return null;});
+  console.log('[pickup] details:',JSON.stringify(details).slice(0,300));
+  const a=details?.address||order?._addr;
+  if(!a){showToast('Could not load customer address','error');if(el)el.textContent='✗ Address not found';return;}
+  if(!a.zip&&!a.pincode){showToast('Customer has no pincode — cannot create pickup','error');if(el)el.textContent='✗ No pincode on address';return;}
+  if(el)el.textContent='⏳ Creating Delhivery pickup…';
+  // Also refresh address display
+  const addrEl=document.getElementById('addr-display-'+orderId);
+  if(addrEl&&addrEl.textContent.includes('Load address')){const name=a.name||details?.customer_name||'';const lines=[name,a.address1,a.address2,[a.city,a.province,a.zip].filter(Boolean).join(' '),a.country,a.phone||details?.phone].filter(Boolean);addrEl.innerHTML=lines.map(escHtml).join('<br>');}
   const payload={
     order_id:orderId, order_number:order?.order_number||orderId,
     customer_name:a.name||order?.customer_name||'Customer',
@@ -836,35 +871,110 @@ async function trackAWB(waybill){
 // ── SHOPIFY ACTIONS ──
 async function createShopifyRefund(orderId){
   const el=document.getElementById('refund-status-'+orderId);
-  if(el){el.textContent='⏳ Creating refund…';}
-  const order=ALL_ORDERS.find(o=>String(o.id)===String(orderId));
-  const details=await fetch(BACKEND+'/api/orders/'+orderId+'/details').then(r=>r.json()).catch(()=>null);
-  const lineItems=(details?.line_items||order?.line_items||[]).map(li=>({id:li.id,quantity:li.quantity||1}));
-  const res=await fetch(BACKEND+'/api/shopify/refund/'+orderId,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({line_items:lineItems,refund_method:'original',note:'Approved return — Returns Manager'})}).then(r=>r.json()).catch(e=>({error:e.message}));
-  if(res.success){if(el)el.innerHTML=`✓ Refunded ₹${res.amount||''}`;showToast('✅ Refund created!','success');}
-  else{if(el)el.textContent='✗ '+(res.error||'Failed');showToast('Refund error: '+(res.error||''),'error');}
+  if(el)el.textContent='⏳ Creating refund…';
+  // Backend fetches fresh line items from REST — no need to pass them
+  const res=await fetch(BACKEND+'/api/shopify/refund/'+orderId,{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({refund_method:'original',note:'Approved return — Returns Manager'})
+  }).then(r=>r.json()).catch(e=>({error:e.message}));
+  console.log('[refund result]',res);
+  if(res.success){
+    if(el)el.innerHTML=`✓ Refund created — ₹${res.amount||''}`;
+    showToast('✅ Refund of ₹'+res.amount+' created!','success');
+    // Update order tag in memory
+    const ord=ALL_ORDERS.find(o=>String(o.id)===String(orderId));
+    if(ord&&ord.tags&&!ord.tags.includes('return-refunded'))ord.tags.push('return-refunded');
+    renderDetailPanel(ord||selectedOrder);
+  }else{
+    if(el)el.innerHTML='<span style="color:#dc2626">✗ '+escHtml(res.error||'Failed')+'</span>';
+    showToast('Refund error: '+(res.error||'Unknown'),'error');
+    console.error('[refund error]',res);
+  }
 }
 
 async function issueStoreCredit(orderId){
   const order=ALL_ORDERS.find(o=>String(o.id)===String(orderId));
-  const amount=parseFloat(order?.total_price||0).toFixed(2);
+  // Refund only the return items value, not full order
+  const returnTotal=parseFloat(order?.total_price||0);
   const el=document.getElementById('credit-status-'+orderId);
-  if(el)el.textContent='⏳ Issuing credit…';
-  const res=await fetch(BACKEND+'/api/shopify/store-credit/'+orderId,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount,apply_bonus:true,note:'Store credit from Returns Manager'})}).then(r=>r.json()).catch(e=>({error:e.message}));
-  if(res.success){if(el)el.innerHTML=`✓ Gift Card: <strong>${escHtml(res.code)}</strong> (₹${res.amount})`;showToast('🎁 Store credit issued! Code: '+res.code,'success');}
-  else{if(el)el.textContent='✗ '+(res.error||'Failed');showToast('Credit error: '+(res.error||''),'error');}
+  if(el)el.textContent='⏳ Issuing store credit…';
+  const res=await fetch(BACKEND+'/api/shopify/store-credit/'+orderId,{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({amount:returnTotal.toFixed(2),apply_bonus:true,customer_email:order?.customer_email||'',note:'Store credit — Returns Manager'})
+  }).then(r=>r.json()).catch(e=>({error:e.message}));
+  console.log('[store credit result]',res);
+  if(res.success){
+    const method=res.method==='gift_card'?'Shopify Gift Card':'Manual Credit';
+    if(el)el.innerHTML=`✓ ${method}: <strong>${escHtml(res.code)}</strong> (₹${res.amount})${res.method!=='gift_card'?' — code in order note':''}`;
+    showToast('🎁 Credit code: '+res.code+' (₹'+res.amount+')','success');
+  }else{
+    if(el)el.innerHTML='<span style="color:#dc2626">✗ '+escHtml(res.error||'Failed')+'</span>';
+    showToast('Credit error: '+(res.error||''),'error');
+  }
 }
 
 async function createExchangeOrder(orderId){
   const el=document.getElementById('exchange-status-'+orderId);
+  if(el)el.textContent='⏳ Parsing exchange items…';
+  const order=ALL_ORDERS.find(o=>String(o.id)===String(orderId));
+  const note=order?.note||'';
+  
+  // Parse exchange variant IDs from order note (stored as "ExchVarID: XXXX")
+  const exchItems=[];
+  const lines=note.split('\n');
+  for(const line of lines){
+    if(!line.includes('[EXCHANGE]'))continue;
+    // Extract variant ID
+    const varMatch=line.match(/ExchVarID:\s*(\d+)/);
+    const qtyMatch=line.match(/x(\d+)/);
+    const priceMatch=line.match(/PriceDiff:\s*[+]?([\d.]+)/);
+    const titleMatch=line.match(/Exchange for:\s*([^|]+)/)||line.match(/New Product:\s*([^|]+)/);
+    if(varMatch){
+      exchItems.push({
+        variant_id:varMatch[1],
+        quantity:parseInt(qtyMatch?.[1])||1,
+        price:'0',
+        title:titleMatch?titleMatch[1].trim():''
+      });
+    }
+  }
+  
+  // Fallback: check in-memory requests
+  if(!exchItems.length){
+    const reqs=order?.requests||[];
+    for(const req of reqs){
+      for(const item of (req.items||[])){
+        if(item.action==='exchange'&&item.exchange_variant_id){
+          exchItems.push({variant_id:String(item.exchange_variant_id),quantity:item.qty||1,price:item.price||'0',title:item.exchange_variant_title||item.exchange_product_title||''});
+        }
+      }
+    }
+  }
+  
+  console.log('[exchange] Items to create:',exchItems);
+  if(!exchItems.length){
+    if(el)el.innerHTML='<span style="color:#dc2626">✗ No exchange variant IDs found. Customer must select exchange variant in portal.</span>';
+    showToast('No exchange variant IDs in request','error');return;
+  }
+  
   if(el)el.textContent='⏳ Creating exchange order…';
   const details=await fetch(BACKEND+'/api/orders/'+orderId+'/details').then(r=>r.json()).catch(()=>null);
-  const order=ALL_ORDERS.find(o=>String(o.id)===String(orderId));
-  const parsed=parseNote(order?.note);
-  const exchItems=(details?.line_items||[]).map(li=>({variant_id:li.variant_id,quantity:li.quantity||1,price:li.price||'0',title:li.title}));
-  const res=await fetch(BACKEND+'/api/shopify/exchange/'+orderId,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({exchange_items:exchItems,order_number:order?.order_number})}).then(r=>r.json()).catch(e=>({error:e.message}));
-  if(res.success){if(el)el.innerHTML=`✓ Exchange Order: <strong>${escHtml(res.new_order_name||'')}</strong>`;showToast('✅ Exchange order created: '+(res.new_order_name||''),'success');}
-  else{if(el)el.textContent='✗ '+(res.error||'Failed');showToast('Exchange error: '+(res.error||''),'error');}
+  const res=await fetch(BACKEND+'/api/shopify/exchange/'+orderId,{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({exchange_items:exchItems,order_number:order?.order_number,customer_address:details?.address})
+  }).then(r=>r.json()).catch(e=>({error:e.message}));
+  
+  console.log('[exchange result]',res);
+  if(res.success){
+    if(el)el.innerHTML=`✓ Exchange Order <strong>${escHtml(res.new_order_name||'')}</strong> created`;
+    showToast('✅ Exchange order '+res.new_order_name+' created!','success');
+    const ord=ALL_ORDERS.find(o=>String(o.id)===String(orderId));
+    if(ord&&ord.tags&&!ord.tags.includes('exchange-fulfilled'))ord.tags.push('exchange-fulfilled');
+  }else{
+    if(el)el.innerHTML='<span style="color:#dc2626">✗ '+escHtml(res.error||'Failed')+'</span>';
+    showToast('Exchange error: '+(res.error||''),'error');
+    console.error('[exchange error]',res);
+  }
 }
 
 // ── ANALYTICS ──
