@@ -736,6 +736,8 @@ function renderDetailPanel(o){
   }
 
   document.getElementById('dp-left').innerHTML=L;
+  // Auto-load address (REST works on all Shopify plans)
+  setTimeout(()=>loadCustomerAddr(o.id),100);
 
   // ── RIGHT COLUMN ──
   const rc=(inner,mb='12px')=>`<div class="dp-card" style="margin-bottom:${mb}">${inner}</div>`;
@@ -751,7 +753,7 @@ function renderDetailPanel(o){
     <div style="border-top:1px solid #f3f4f6;padding-top:10px">
       <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px">Delivery address</div>
       <div id="addr-display-${escAttr(o.id)}" style="font-size:12px;color:#6b7280;line-height:1.8">
-        <button onclick="loadCustomerAddr('${escAttr(o.id)}')" style="font-size:12px;color:#1d4ed8;background:none;border:none;cursor:pointer;text-decoration:underline">Load address →</button>
+        <span style="color:#9ca3af">Loading…</span>
       </div>
     </div>`);
 
@@ -787,27 +789,28 @@ function renderDetailPanel(o){
   document.getElementById('dp-right').innerHTML=R;
 }
 
+// Load customer address + name from REST (works on Basic plan, no PII restriction)
 async function loadCustomerAddr(orderId){
   const el=document.getElementById('addr-display-'+orderId);
-  if(!el){console.error('[loadAddr] Element not found: addr-display-'+orderId);return;}
-  el.innerHTML='<span style="color:#6b7280">⏳ Loading address…</span>';
+  if(!el)return;
+  el.innerHTML='<span style="color:#6b7280">⏳ Loading…</span>';
   try{
     const data=await fetch(BACKEND+'/api/orders/'+orderId+'/details').then(r=>r.json());
-    console.log('[loadAddr] Response:',JSON.stringify(data).slice(0,300));
-    if(!data?.address){el.innerHTML='<span style="color:#dc2626">Address not found on order</span>';return;}
+    if(data.error){el.innerHTML='<span style="color:#dc2626">✗ '+escHtml(data.error)+'</span>';return;}
     const a=data.address;
-    // Show full name + address
-    const name=a.name||data.customer_name||'';
-    const lines=[name,a.address1,a.address2,[a.city,a.province,a.zip].filter(Boolean).join(' '),a.country,a.phone||data.phone].filter(Boolean);
-    el.innerHTML=lines.map(escHtml).join('<br>');
-    // Store on order for pickup creation
+    if(!a){el.innerHTML='<span style="color:#9ca3af">No shipping address on order</span>';return;}
+    const name=a.name||'';
+    const phone=a.phone||data.phone||'';
+    const addrLines=[name,a.address1,a.address2,[a.city,a.province,a.zip].filter(Boolean).join(' '),a.country,phone].filter(Boolean);
+    el.innerHTML=addrLines.map(escHtml).join('<br>');
+    // Update order in memory so pickup creation works without re-fetching
     const ord=ALL_ORDERS.find(x=>String(x.id)===String(orderId));
-    if(ord){ord._addr=a;ord._addr.name=name;ord._addr.phone=a.phone||data.phone||'';}
-    if(selectedOrder&&String(selectedOrder.id)===String(orderId)){selectedOrder._addr=a;}
-  }catch(e){
-    console.error('[loadAddr] Error:',e);
-    el.innerHTML='<span style="color:#dc2626">Error: '+escHtml(e.message)+'</span>';
-  }
+    if(ord){ord._addr={...a,name,phone};ord.customer_name=ord.customer_name||name;}
+    if(selectedOrder&&String(selectedOrder.id)===String(orderId)){selectedOrder._addr={...a,name,phone};}
+    // Update customer name display if it was empty
+    const nameEl=document.querySelector(`#dp-right [data-cname="${CSS.escape(orderId)}"]`);
+    if(nameEl&&!nameEl.textContent.trim())nameEl.textContent=name;
+  }catch(e){el.innerHTML='<span style="color:#dc2626">Error: '+escHtml(e.message)+'</span>';}
 }
 
 // ── DELHIVERY PICKUP ──

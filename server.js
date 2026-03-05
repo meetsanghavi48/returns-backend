@@ -180,7 +180,6 @@ app.get('/api/orders',async(req,res)=>{
           id name createdAt tags note
           displayFinancialStatus displayFulfillmentStatus
           totalPriceSet{shopMoney{amount currencyCode}}
-          customer{displayName email phone}
           lineItems(first:20){edges{node{
             id title quantity
             originalUnitPriceSet{shopMoney{amount}}
@@ -215,9 +214,10 @@ app.get('/api/orders',async(req,res)=>{
         total_price:o.totalPriceSet.shopMoney.amount,
         currency:o.totalPriceSet.shopMoney.currencyCode,
         tags:allTags, note:o.note||'',
-        customer_name:o.customer?.displayName||'Guest',
-        customer_email:o.customer?.email||'',
-        customer_phone:o.customer?.phone||'',
+        // Names fetched from REST /api/orders/:id/details (no PII restriction on Basic plan)
+        customer_name:'',
+        customer_email:'',
+        customer_phone:'',
         line_items:o.lineItems.edges.map(({node:li})=>({
           // Use numeric ID for refund API
           id:gidToId(li.id),
@@ -294,7 +294,8 @@ app.get('/api/lookup',async(req,res)=>{
         days_remaining:Math.max(0,RETURN_WINDOW_DAYS-Math.floor(daysDiff)),
         address:o.shipping_address||o.billing_address||null,
         store_credit_bonus:STORE_CREDIT_BONUS,
-        customer_name:o.customer?.first_name?`${o.customer.first_name} ${o.customer.last_name||''}`.trim():'Guest',
+        // Use shipping_address name (available on all plans via REST)
+        customer_name:(o.shipping_address?.name||o.billing_address?.name||'Guest'),
         // existing requests
         requests:RETURN_REQUESTS[String(o.id)]||[],
         line_items:(o.line_items||[]).map(li=>({
@@ -453,7 +454,7 @@ app.post('/api/returns/:order_id/reject',async(req,res)=>{
 // ════════════════════════════════════════════
 app.get('/api/orders/:order_id/details',async(req,res)=>{
   try{
-    const d=await shopifyREST('GET',`orders/${req.params.order_id}.json?fields=id,order_number,email,phone,customer,shipping_address,billing_address,line_items,note,tags,total_price,financial_status`);
+    const d=await shopifyREST('GET',`orders/${req.params.order_id}.json?fields=id,order_number,email,phone,shipping_address,billing_address,line_items,note,tags,total_price,financial_status`);
     const o=d?.order;
     if(!o)return res.status(404).json({error:'Not found — check order ID'});
     // Build full address with customer name
@@ -467,7 +468,7 @@ app.get('/api/orders/:order_id/details',async(req,res)=>{
       id:o.id, order_number:o.order_number,
       email:o.email||'',
       phone:o.phone||o.shipping_address?.phone||'',
-      customer_name:o.customer?`${o.customer.first_name||''} ${o.customer.last_name||''}`.trim():rawAddr?.name||'Guest',
+      customer_name:rawAddr?.name||'Guest', // shipping_address.name available on all plans
       address:addr,
       line_items:(o.line_items||[]).map(li=>({
         id:li.id, title:li.title,
