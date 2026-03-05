@@ -149,7 +149,9 @@ app.get('/api/lookup', async (req, res) => {
 
     // Return status
     const tags = o.tags || '';
-    const hasReturn = tags.includes('return-requested')||tags.includes('return-approved')||tags.includes('return-rejected')||tags.includes('exchange-requested')||tags.includes('exchange-approved')||tags.includes('exchange-rejected')||tags.includes('mixed-requested');
+    console.log(`Order #${o.order_number} tags: "${tags}"`);
+    const returnTags = ['return-requested','return-approved','return-rejected','exchange-requested','exchange-approved','exchange-rejected','mixed-requested'];
+    const hasReturn = returnTags.some(t => tags.split(',').map(s=>s.trim()).includes(t));
     const returnStatus = tags.includes('return-approved')||tags.includes('exchange-approved') ? 'approved'
       : tags.includes('return-rejected')||tags.includes('exchange-rejected') ? 'rejected'
       : tags.includes('return-requested') ? 'pending'
