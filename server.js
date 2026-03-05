@@ -286,8 +286,13 @@ app.post('/api/returns/:order_id/approve', async (req, res) => {
   const { order_id } = req.params;
   const { type } = req.body;
   try {
-    const tag = type==='exchange'?'exchange-approved':type==='mixed'?'mixed-approved':'return-approved';
-    await shopifyREST('PUT', `orders/${order_id}.json`, { order: { id: order_id, tags: tag } });
+    const approvedTag = type==='exchange'?'exchange-approved':type==='mixed'?'mixed-approved':'return-approved';
+    const removeTag   = type==='exchange'?'exchange-requested':type==='mixed'?'mixed-requested':'return-requested';
+    // Fetch current tags, swap requested → approved
+    const orderData = await shopifyREST('GET', `orders/${order_id}.json?fields=tags`);
+    const existingTags = (orderData?.order?.tags||'').split(',').map(t=>t.trim()).filter(t=>t && t!==removeTag);
+    existingTags.push(approvedTag);
+    await shopifyREST('PUT', `orders/${order_id}.json`, { order: { id: order_id, tags: existingTags.join(', ') } });
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -296,8 +301,12 @@ app.post('/api/returns/:order_id/reject', async (req, res) => {
   const { order_id } = req.params;
   const { type } = req.body;
   try {
-    const tag = type==='exchange'?'exchange-rejected':type==='mixed'?'mixed-rejected':'return-rejected';
-    await shopifyREST('PUT', `orders/${order_id}.json`, { order: { id: order_id, tags: tag } });
+    const rejectedTag = type==='exchange'?'exchange-rejected':type==='mixed'?'mixed-rejected':'return-rejected';
+    const removeTag   = type==='exchange'?'exchange-requested':type==='mixed'?'mixed-requested':'return-requested';
+    const orderData = await shopifyREST('GET', `orders/${order_id}.json?fields=tags`);
+    const existingTags = (orderData?.order?.tags||'').split(',').map(t=>t.trim()).filter(t=>t && t!==removeTag);
+    existingTags.push(rejectedTag);
+    await shopifyREST('PUT', `orders/${order_id}.json`, { order: { id: order_id, tags: existingTags.join(', ') } });
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
