@@ -140,6 +140,11 @@ tbody tr:last-child td{border-bottom:none}
 .inp-wrap.col2{grid-column:span 2}
 
 /* ═══ RULES ENGINE ═══ */
+
+/* ═══ AUTOMATION BUILDER ═══ */
+#auto-builder-view .dp-card{background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px}
+.cond-row-AND{text-align:center;margin:-4px 0 4px;z-index:1;position:relative}
+.cond-AND-badge{background:var(--card);border:1.5px solid #818CF8;color:#6366F1;padding:2px 12px;border-radius:20px;font-size:10px;font-weight:800;letter-spacing:.4px}
 .rule-card{background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:10px;transition:.15s}
 .rule-card:hover{border-color:#9CA3AF}
 .rule-card.disabled{opacity:.55}
@@ -246,7 +251,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
   <a class="sb-item" id="nav-audit" onclick="showPage('audit')"><span class="icon">📜</span> Audit Trail</a>
 
   <div class="sb-group">Automation</div>
-  <a class="sb-item" id="nav-rules" onclick="showPage('rules')"><span class="icon">⚡</span> Rules Engine</a>
+  <a class="sb-item" id="nav-rules" onclick="showPage('rules')"><span class="icon">⚡</span> Automation</a>
   <a class="sb-item" id="nav-logistics" onclick="showPage('logistics')"><span class="icon">🚚</span> Logistics</a>
 
   <div class="sb-group">Settings</div>
@@ -359,13 +364,155 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
     </div>
   </div>
 
-  <!-- ═══ RULES ENGINE ═══ -->
+  <!-- ═══ AUTOMATION (Rules Engine) ═══ -->
   <div class="pg-wrap pg-hidden" id="pg-rules">
-    <div class="pg-header">
-      <div><div class="pg-title">⚡ Rules Engine</div><div class="pg-sub">Automate approvals, refunds, exchanges. First matching rule wins.</div></div>
-      <button class="btn btn-primary" onclick="openRuleModal()">+ New Rule</button>
+    <!-- LIST VIEW -->
+    <div id="auto-list-view">
+      <div class="pg-header">
+        <div><div class="pg-title">⚡ Automation Rules</div><div class="pg-sub">Automate approvals, refunds, exchanges, pickups. First matching rule wins unless marked otherwise.</div></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline" onclick="showTemplates()">📋 Use Template</button>
+          <button class="btn btn-primary" onclick="openBuilder()">+ New Rule</button>
+        </div>
+      </div>
+      <!-- Category tabs -->
+      <div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap">
+        <button class="filter-pill on" id="cat-all" onclick="filterCategory('all',this)">All Rules</button>
+        <button class="filter-pill" id="cat-on_submit" onclick="filterCategory('on_submit',this)">📥 On Submit</button>
+        <button class="filter-pill" id="cat-on_carrier" onclick="filterCategory('on_carrier',this)">🚚 On Carrier Event</button>
+        <button class="filter-pill" id="cat-on_approve" onclick="filterCategory('on_approve',this)">✅ On Approval</button>
+        <button class="filter-pill" id="cat-on_inspect" onclick="filterCategory('on_inspect',this)">🔍 On Inspection</button>
+      </div>
+      <div id="rules-list"><div class="empty"><div class="empty-ico">⚡</div><div class="empty-title">Loading…</div></div></div>
     </div>
-    <div id="rules-list"><div class="empty"><div class="empty-ico">⚡</div><div class="empty-title">Loading…</div></div></div>
+
+    <!-- BUILDER VIEW (full page) -->
+    <div id="auto-builder-view" style="display:none">
+      <div class="pg-header" style="margin-bottom:6px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <button class="dp-back" onclick="closeBuilder()">← Back</button>
+          <div><div class="pg-title" id="builder-title">New Automation Rule</div><div class="pg-sub">Set conditions and the action to perform</div></div>
+        </div>
+        <button class="btn btn-primary" onclick="saveRule()">💾 Save Rule</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 340px;gap:18px;align-items:start">
+        <!-- LEFT: builder -->
+        <div>
+          <!-- Name + Priority -->
+          <div class="dp-card">
+            <div class="dp-section">RULE DETAILS</div>
+            <div class="inp-wrap"><label class="inp-lbl">Rule Name <span style="color:var(--red)">*</span></label>
+              <input class="inp-field" id="rm-name" placeholder="e.g. Auto-approve size issues"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="inp-wrap"><label class="inp-lbl">Category</label>
+                <select class="inp-field" id="rm-category">
+                  <option value="on_submit">📥 On Request Submit</option>
+                  <option value="on_carrier">🚚 On Carrier Event</option>
+                  <option value="on_approve">✅ On Approval</option>
+                  <option value="on_inspect">🔍 On Inspection</option>
+                </select></div>
+              <div class="inp-wrap"><label class="inp-lbl">Priority (1 = first)</label>
+                <input class="inp-field" id="rm-priority" type="number" min="1" value="1"></div>
+            </div>
+          </div>
+
+          <!-- Conditions -->
+          <div class="dp-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <div class="dp-section" style="margin:0">CONDITIONS</div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:12px;color:var(--muted)">Match</span>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px;font-weight:600">
+                  <input type="radio" name="matchmode" id="rm-matchmode-all" value="all" checked onchange="document.getElementById('rm-matchmode').value='all';renderMatchBadge()">
+                  <span id="badge-all" style="padding:3px 10px;border-radius:6px;background:var(--primary-bg);color:var(--primary)">ALL</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px;font-weight:600">
+                  <input type="radio" name="matchmode" id="rm-matchmode-any" value="any" onchange="document.getElementById('rm-matchmode').value='any';renderMatchBadge()">
+                  <span id="badge-any" style="padding:3px 10px;border-radius:6px;background:var(--bg);color:var(--muted)">ANY</span>
+                </label>
+                <input type="hidden" id="rm-matchmode" value="all">
+              </div>
+            </div>
+            <div id="rm-conditions-wrap"></div>
+            <button class="btn btn-outline btn-sm" style="margin-top:4px;width:100%" onclick="addCondition()">＋ Add condition</button>
+          </div>
+
+          <!-- Action -->
+          <div class="dp-card">
+            <div class="dp-section">THEN — ACTION</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="inp-wrap" style="grid-column:span 2">
+                <label class="inp-lbl">Choose action <span style="color:var(--red)">*</span></label>
+                <select class="inp-field" id="rm-action" onchange="renderActionParams()">
+                  <optgroup label="Approval">
+                    <option value="auto_approve">✅ Approve the request</option>
+                    <option value="auto_reject">❌ Reject the request</option>
+                    <option value="flag_review">🚩 Flag for manual review</option>
+                  </optgroup>
+                  <optgroup label="Refund & Credit">
+                    <option value="keep_it">📦 Keep It (refund without return)</option>
+                    <option value="auto_refund">💰 Issue refund to original payment</option>
+                    <option value="issue_store_credit">🎁 Issue store credit</option>
+                  </optgroup>
+                  <optgroup label="Exchange & Logistics">
+                    <option value="auto_exchange">🔄 Create exchange order</option>
+                    <option value="schedule_pickup">🚚 Schedule Delhivery reverse pickup</option>
+                  </optgroup>
+                  <optgroup label="Workflow">
+                    <option value="mark_received">📦 Mark as received at warehouse</option>
+                    <option value="add_tag">🏷️ Add tag to order</option>
+                  </optgroup>
+                </select>
+              </div>
+            </div>
+            <div id="rm-action-params"></div>
+          </div>
+        </div>
+
+        <!-- RIGHT: info panel -->
+        <div>
+          <div class="dp-card" style="background:var(--primary-light);border-color:#BBF7D0">
+            <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--primary)">💡 How rules work</div>
+            <div style="font-size:12px;color:#166534;line-height:1.8">
+              • Rules run top-down by priority<br>
+              • <strong>On Submit</strong>: fires when customer submits request<br>
+              • <strong>On Carrier Event</strong>: fires when Delhivery updates AWB<br>
+              • <strong>On Approval</strong>: fires when you approve a request<br>
+              • <strong>On Inspection</strong>: fires when item marked as inspected<br>
+              • <strong>Match ALL</strong>: every condition must be true<br>
+              • <strong>Match ANY</strong>: at least one condition must be true
+            </div>
+          </div>
+          <div class="dp-card">
+            <div style="font-size:13px;font-weight:700;margin-bottom:10px">📋 Available conditions</div>
+            <div style="font-size:12px;color:var(--muted);line-height:2">
+              <strong style="color:var(--text)">Request type</strong> — return / exchange / mixed<br>
+              <strong style="color:var(--text)">Return reason</strong> — text the customer selected<br>
+              <strong style="color:var(--text)">Request stage</strong> — pending / approved / received…<br>
+              <strong style="color:var(--text)">Carrier event</strong> — pickup / in_transit / delivered<br>
+              <strong style="color:var(--text)">Order value</strong> — total order amount (₹)<br>
+              <strong style="color:var(--text)">Product price</strong> — price of returned item (₹)<br>
+              <strong style="color:var(--text)">Payment method</strong> — COD or Prepaid<br>
+              <strong style="color:var(--text)">Refund method</strong> — what customer chose<br>
+              <strong style="color:var(--text)">Return count</strong> — how many times customer returned<br>
+              <strong style="color:var(--text)">Days since order</strong> — age of the order
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEMPLATES MODAL -->
+    <div id="templates-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:800;align-items:center;justify-content:center">
+      <div style="background:var(--card);border-radius:14px;width:min(860px,95vw);max-height:88vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.15)">
+        <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--card);z-index:1">
+          <div><div style="font-size:18px;font-weight:800">📋 Automation Templates</div><div style="font-size:12px;color:var(--muted);margin-top:2px">Pre-built rules for common scenarios — click to add</div></div>
+          <button onclick="hideTemplates()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">✕</button>
+        </div>
+        <div id="templates-grid" style="padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:12px"></div>
+      </div>
+    </div>
   </div>
 
   <!-- ═══ LOGISTICS ═══ -->
@@ -463,32 +610,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
 
 <!-- ═══════════════ MODALS ═══════════════ -->
 
-<!-- Rule Modal -->
-<div class="modal-bg" id="rule-modal">
-  <div class="modal">
-    <div class="modal-h"><span class="modal-title" id="rm-title">New Rule</span><button class="modal-x" onclick="closeRuleModal()">✕</button></div>
-    <div class="modal-body">
-      <div class="inp-wrap"><label class="inp-lbl">Rule Name</label><input class="inp-field" id="rm-name" placeholder="e.g. Auto-approve size issues"></div>
-      <div class="inp-wrap"><label class="inp-lbl">Priority (1 = highest)</label><input class="inp-field" id="rm-priority" type="number" min="1" value="1" style="width:100px"></div>
-      <div style="margin-bottom:14px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><label class="inp-lbl" style="margin:0">IF Conditions (ALL must match)</label><button class="btn btn-outline btn-sm" onclick="addCondition()">+ Add</button></div>
-        <div id="rm-conditions"></div>
-      </div>
-      <div class="inp-wrap"><label class="inp-lbl">THEN Action</label>
-        <select class="inp-field" id="rm-action">
-          <option value="auto_approve">✅ Auto-Approve Request</option>
-          <option value="keep_it">📦 Keep It (Refund Without Return)</option>
-          <option value="flag_review">🚩 Flag for Manual Review</option>
-          <option value="auto_reject">❌ Auto-Reject</option>
-          <option value="auto_exchange">🔄 Auto Create Exchange (on pickup)</option>
-          <option value="auto_refund">💰 Auto Refund (on pickup/delivery)</option>
-        </select>
-      </div>
-      <div class="inp-wrap"><label class="inp-lbl">Customer Message (optional)</label><input class="inp-field" id="rm-message" placeholder="Message shown to customer when rule fires"></div>
-    </div>
-    <div class="modal-foot"><button class="btn btn-outline" onclick="closeRuleModal()">Cancel</button><button class="btn btn-primary" onclick="saveRule()">Save Rule</button></div>
-  </div>
-</div>
+<!-- Rule builder is now inline page -->
 
 <!-- Address Edit Modal -->
 <div class="modal-bg" id="addr-modal">
@@ -962,9 +1084,14 @@ function renderDetailPanel(o){
 
   // Customer card
   R+=card(`${sec('CUSTOMER')}
-    <div id="dp-customer-name" style="font-size:16px;font-weight:800;margin-bottom:2px">${esc(o.customer_name||'—')}</div>
-    ${o.customer_email?`<div style="font-size:12px;color:var(--muted);margin-bottom:2px">✉ ${esc(o.customer_email)}</div>`:''}
-    ${o.customer_phone?`<div style="font-size:12px;color:var(--muted);margin-bottom:10px">📞 ${esc(o.customer_phone)}</div>`:''}
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#16A34A,#22c55e);display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;font-weight:700;flex-shrink:0">${o.customer_name?esc(o.customer_name.charAt(0).toUpperCase()):'?'}</div>
+      <div><div id="dp-customer-name" style="font-size:15px;font-weight:800">${esc(o.customer_name||'—')}</div>
+      ${o.customer_id?`<div style="font-size:11px;color:var(--muted2)">Customer ID: ${esc(String(o.customer_id))}</div>`:''}
+      </div>
+    </div>
+    <div id="dp-customer-email" style="font-size:12px;color:var(--muted);margin-bottom:4px;display:${o.customer_email?'block':'none'}">${o.customer_email?'✉ '+esc(o.customer_email):''}</div>
+    <div id="dp-customer-phone" style="font-size:12px;color:var(--muted);margin-bottom:10px;display:${o.customer_phone?'block':'none'}">${o.customer_phone?'📞 '+esc(o.customer_phone):''}</div>
     <hr>
     <div style="font-size:12px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;margin-top:10px">Delivery Address</div>
     <div id="addr-display-${esc(o.id)}" style="font-size:13px;color:var(--text);line-height:1.9">
@@ -983,12 +1110,17 @@ function renderDetailPanel(o){
     <div class="dp-row"><span class="lbl">Order</span><span class="val" style="color:var(--blue)">#${esc(o.order_number)}</span></div>
     <div class="dp-row"><span class="lbl">Amount</span><span class="val">₹${parseFloat(o.total_price||0).toLocaleString('en-IN',{maximumFractionDigits:2})}</span></div>
     <div class="dp-row"><span class="lbl">Payment</span><span><span class="pill ${o.financial_status||'pending'}">${cap(o.financial_status||'—')}</span></span></div>
+    <div class="dp-row"><span class="lbl">Payment</span><span class="val">${o.payment_gateway?esc(o.payment_gateway.replace(/_/g,' ').replace(/\w/g,x=>x.toUpperCase())):'—'}${(o.payment_gateway||'').toLowerCase().includes('cod')||(o.payment_gateway||'')==='manual'?'<span style="font-size:9px;background:#FEF3C7;color:#D97706;padding:1px 6px;border-radius:4px;margin-left:6px;font-weight:700">COD</span>':''}</span></div>
     <div class="dp-row"><span class="lbl">Type</span><span class="val">${isExchange&&isReturn?'↩🔄 Mixed':isExchange?'🔄 Exchange':'↩ Return'}</span></div>
     `,'0');
 
   document.getElementById('dp-right').innerHTML=R;
-  // Auto-load address
+  // Auto-load address & customer info (now PII-enabled)
   setTimeout(()=>loadCustomerAddr(o.id),80);
+  // Populate name/email/phone immediately from GraphQL data if available
+  if(o.customer_name){const el=document.getElementById('dp-customer-name');if(el&&el.textContent==='—')el.textContent=o.customer_name;}
+  if(o.customer_email){const el=document.getElementById('dp-customer-email');if(el)el.textContent='✉ '+o.customer_email;if(el)el.style.display='block';}
+  if(o.customer_phone){const el=document.getElementById('dp-customer-phone');if(el)el.textContent='📞 '+o.customer_phone;if(el)el.style.display='block';}
 }
 
 // ── ADDRESS ──
@@ -1001,13 +1133,23 @@ async function loadCustomerAddr(orderId){
     const data=await fetch(BACKEND+'/api/orders/'+orderId+'/details').then(r=>r.json());
     if(data.error||!data.address){el.innerHTML='<span style="color:var(--muted2)">No address on order</span>';return;}
     const a=data.address;
+    // Populate name
     const nameEl=document.getElementById('dp-customer-name');
-    if(nameEl&&nameEl.textContent==='—'&&a.name)nameEl.textContent=a.name;
+    if(nameEl&&(nameEl.textContent==='—'||!nameEl.textContent.trim())&&data.customer_name)nameEl.textContent=data.customer_name;
+    // Populate email
+    if(data.customer_email){
+      const emailEl=document.getElementById('dp-customer-email');
+      if(emailEl){emailEl.textContent='✉ '+data.customer_email;emailEl.style.display='block';}
+    }
+    // Populate phone
+    if(data.customer_phone){
+      const phoneEl=document.getElementById('dp-customer-phone');
+      if(phoneEl){phoneEl.textContent='📞 '+data.customer_phone;phoneEl.style.display='block';}
+    }
     cachedAddr[orderId]=a;
-    // Also update order in memory
     const ord=ALL_ORDERS.find(x=>String(x.id)===String(orderId));
-    if(ord)ord._addr=a;
-    if(selectedOrder&&String(selectedOrder.id)===String(orderId))selectedOrder._addr=a;
+    if(ord){ord._addr=a;if(data.customer_name)ord.customer_name=data.customer_name;if(data.customer_email)ord.customer_email=data.customer_email;if(data.customer_phone)ord.customer_phone=data.customer_phone;}
+    if(selectedOrder&&String(selectedOrder.id)===String(orderId)){selectedOrder._addr=a;if(data.customer_name)selectedOrder.customer_name=data.customer_name;}
     renderAddr(el,a);
   }catch(e){el.innerHTML='<span style="color:var(--red)">Error loading address</span>';}
 }
@@ -1184,69 +1326,53 @@ function renderAudit(logs){
 function filterAudit(q){if(!q){renderAudit(AUDIT_DATA);return;}const lq=q.toLowerCase();renderAudit(AUDIT_DATA.filter(l=>l.order_id.toLowerCase().includes(lq)||l.action.toLowerCase().includes(lq)||l.details.toLowerCase().includes(lq)));}
 
 // ── RULES ──
+let CATEGORY_FILTER='all';
 async function loadRules(){
   try{const data=await fetch(BACKEND+'/api/rules').then(r=>r.json());RULES_DATA=data.rules||[];renderRules(RULES_DATA);}catch(e){}
 }
+function filterCategory(cat,el){
+  CATEGORY_FILTER=cat;
+  document.querySelectorAll('[id^="cat-"]').forEach(b=>b.classList.remove('on'));
+  if(el)el.classList.add('on');
+  renderRules(RULES_DATA);
+}
 function renderRules(rules){
-  if(!rules.length){document.getElementById('rules-list').innerHTML='<div class="empty"><div class="empty-ico">⚡</div><div class="empty-title">No rules. Create your first automation.</div></div>';return;}
-  const fieldLabels={return_reason:'Return Reason',product_price:'Product Price',order_value:'Order Value',shipping_cost:'Shipping Cost',customer_return_count:'Return Count',request_type:'Request Type',item_category:'Item Category',carrier_event:'Carrier Event'};
-  const condOps={lt:'<',gt:'>',eq:'=',neq:'≠',contains:'contains',gte:'≥',lte:'≤'};
-  const actionPill={auto_approve:'ap-approve',keep_it:'ap-keep',flag_review:'ap-flag',auto_reject:'ap-reject',auto_exchange:'ap-exchange',auto_refund:'ap-refund'};
-  document.getElementById('rules-list').innerHTML=rules.sort((a,b)=>a.priority-b.priority).map(r=>`
-    <div class="rule-card ${r.enabled?'':'disabled'}">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-        <span style="font-size:11px;background:var(--bg);border:1px solid var(--border);padding:2px 8px;border-radius:6px;color:var(--muted);">#${r.priority}</span>
-        <span style="font-size:14px;font-weight:700;flex:1">${esc(r.name)}</span>
-        <label class="toggle"><input type="checkbox" ${r.enabled?'checked':''} onchange="toggleRule('${esc(r.id)}',this.checked)"><div class="tog-slider"></div></label>
-        <button class="btn btn-outline btn-sm" onclick="openRuleModal('${esc(r.id)}')">Edit</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteRule('${esc(r.id)}')">Delete</button>
+  const filtered=CATEGORY_FILTER==='all'?rules:rules.filter(r=>(r.category||'on_submit')===CATEGORY_FILTER);
+  if(!filtered.length){document.getElementById('rules-list').innerHTML='<div class="empty"><div class="empty-ico">⚡</div><div class="empty-title">No rules in this category. Create one or use a template.</div></div>';return;}
+  const FIELD_LABELS={return_reason:'Return Reason',request_type:'Request Type',request_stage:'Request Stage',carrier_event:'Carrier Event',order_value:'Order Value',product_price:'Product Price',payment_method:'Payment Method',refund_method:'Refund Method Requested',customer_return_count:'Customer Return Count',days_since_order:'Days Since Order',order_tags:'Order Tags',item_count:'Item Count'};
+  const OP_LABELS={eq:'is',neq:'is not',contains:'contains',lt:'<',gt:'>',gte:'≥',lte:'≤'};
+  const ACTION_LABELS={auto_approve:'✅ Approve request',auto_reject:'❌ Reject request',flag_review:'🚩 Flag for review',keep_it:'📦 Keep It (refund without return)',auto_refund:'💰 Issue refund',issue_store_credit:'🎁 Issue store credit',auto_exchange:'🔄 Create exchange order',schedule_pickup:'🚚 Schedule pickup',mark_received:'📦 Mark as received',add_tag:'🏷️ Add tag'};
+  const CAT_LABELS={on_submit:'📥 On Submit',on_carrier:'🚚 On Carrier',on_approve:'✅ On Approval',on_inspect:'🔍 On Inspection'};
+  const ACTION_COLORS={auto_approve:'ap-approve',auto_reject:'ap-reject',flag_review:'ap-flag',keep_it:'ap-keep',auto_refund:'ap-refund',issue_store_credit:'ap-approve',auto_exchange:'ap-exchange',schedule_pickup:'ap-keep',mark_received:'ap-keep',add_tag:'ap-flag'};
+  document.getElementById('rules-list').innerHTML=filtered.sort((a,b)=>a.priority-b.priority).map(r=>`
+    <div class="rule-card ${r.enabled?'':'disabled'}" id="rulecard-${esc(r.id)}">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+          <span style="font-size:10px;background:var(--bg);border:1px solid var(--border);padding:2px 7px;border-radius:5px;color:var(--muted);font-weight:700;flex-shrink:0">#${r.priority}</span>
+          <span style="font-size:10px;padding:2px 8px;border-radius:5px;background:#EFF6FF;color:var(--blue);font-weight:600;flex-shrink:0">${CAT_LABELS[r.category||'on_submit']||r.category}</span>
+          <span style="font-size:14px;font-weight:700;truncate">${esc(r.name)}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <label class="toggle"><input type="checkbox" ${r.enabled?'checked':''} onchange="toggleRule('${esc(r.id)}',this.checked)"><div class="tog-slider"></div></label>
+          <button class="btn btn-outline btn-sm" onclick="openBuilder('${esc(r.id)}')">✏️ Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteRule('${esc(r.id)}')">🗑</button>
+        </div>
       </div>
-      <div style="margin-bottom:8px">
-        <span style="font-size:10px;font-weight:700;color:var(--muted2);text-transform:uppercase;margin-right:6px">IF</span>
-        ${r.conditions.map((c,i)=>`${i>0?'<span style="font-size:10px;font-weight:700;color:var(--muted2);margin:0 4px">AND</span>':''}<span class="cond-tag">${esc(fieldLabels[c.field]||c.field)} <strong>${esc(condOps[c.op]||c.op)}</strong> "${esc(c.value)}"</span>`).join('')}
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:10px;font-weight:700;color:var(--muted2);text-transform:uppercase;margin-right:2px">THEN</span>
-        <span class="action-pill ${actionPill[r.action]||'ap-flag'}">${esc(r.action.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()))}</span>
-        ${r.action_params?.message?`<span style="font-size:12px;color:var(--muted)">"${esc(r.action_params.message)}"</span>`:''}
+      <div style="margin-top:10px;padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+        <div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+          <span style="font-size:10px;font-weight:800;color:#6366F1;text-transform:uppercase;letter-spacing:.6px;background:#EEF2FF;padding:2px 8px;border-radius:4px">IF</span>
+          <span style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase">${(r.match_mode||'all').toUpperCase()}</span>
+          ${r.conditions.map(cond=>`<span class="cond-tag"><strong>${esc(FIELD_LABELS[cond.field]||cond.field)}</strong> ${esc(OP_LABELS[cond.op]||cond.op)} "<em>${esc(cond.value)}</em>"</span>`).join('')}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:10px;font-weight:800;color:#16A34A;text-transform:uppercase;letter-spacing:.6px;background:#DCFCE7;padding:2px 8px;border-radius:4px">THEN</span>
+          <span class="action-pill ${ACTION_COLORS[r.action]||'ap-flag'}">${esc(ACTION_LABELS[r.action]||r.action)}</span>
+          ${r.action_params?.message?`<span style="font-size:11px;color:var(--muted);font-style:italic">"${esc(r.action_params.message.slice(0,60))}${r.action_params.message.length>60?'…':''}"</span>`:''}
+        </div>
       </div>
     </div>`).join('');
 }
 
-let editRuleIdLocal=null,tempConds=[];
-function openRuleModal(ruleId){
-  editRuleIdLocal=ruleId||null;
-  const rule=ruleId?RULES_DATA.find(r=>r.id===ruleId):null;
-  document.getElementById('rm-title').textContent=rule?'Edit Rule':'New Rule';
-  document.getElementById('rm-name').value=rule?.name||'';
-  document.getElementById('rm-priority').value=rule?.priority||RULES_DATA.length+1;
-  document.getElementById('rm-action').value=rule?.action||'auto_approve';
-  document.getElementById('rm-message').value=rule?.action_params?.message||'';
-  tempConds=rule?.conditions?[...rule.conditions]:[{field:'return_reason',op:'contains',value:''}];
-  renderConditions();
-  document.getElementById('rule-modal').classList.add('open');
-}
-function closeRuleModal(){document.getElementById('rule-modal').classList.remove('open');}
-function renderConditions(){
-  const fields=[['return_reason','Return Reason'],['product_price','Product Price (₹)'],['order_value','Order Value (₹)'],['shipping_cost','Shipping Cost (₹)'],['customer_return_count','Return Count'],['request_type','Request Type'],['carrier_event','Carrier Event']];
-  const ops=[['eq','= equals'],['neq','≠ not'],['contains','contains'],['lt','< less than'],['gt','> greater than'],['gte','≥ gte'],['lte','≤ lte']];
-  document.getElementById('rm-conditions').innerHTML=tempConds.map((c,i)=>`<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
-    <select class="inp-field" style="flex:1;font-size:12px" onchange="tempConds[${i}].field=this.value">${fields.map(([v,l])=>`<option value="${v}"${c.field===v?' selected':''}>${l}</option>`).join('')}</select>
-    <select class="inp-field" style="width:130px;font-size:12px" onchange="tempConds[${i}].op=this.value">${ops.map(([v,l])=>`<option value="${v}"${c.op===v?' selected':''}>${l}</option>`).join('')}</select>
-    <input class="inp-field" style="flex:1;font-size:12px" placeholder="value" value="${esc(c.value||'')}" oninput="tempConds[${i}].value=this.value">
-    ${i>0?`<button onclick="tempConds.splice(${i},1);renderConditions()" style="background:var(--red-bg);border:1px solid #FECACA;color:var(--red);border-radius:7px;padding:5px 9px;cursor:pointer">✕</button>`:'<div style="width:34px"></div>'}
-  </div>`).join('');
-}
-function addCondition(){tempConds.push({field:'return_reason',op:'contains',value:''});renderConditions();}
-async function saveRule(){
-  const name=document.getElementById('rm-name').value.trim();
-  if(!name){showToast('Rule name required','error');return;}
-  const rule={name,priority:parseInt(document.getElementById('rm-priority').value)||1,conditions:tempConds.filter(c=>c.value),action:document.getElementById('rm-action').value,action_params:{message:document.getElementById('rm-message').value}};
-  if(!rule.conditions.length){showToast('Add at least one condition','error');return;}
-  if(editRuleIdLocal)await fetch(BACKEND+'/api/rules/'+editRuleIdLocal,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rule)}).then(r=>r.json());
-  else await fetch(BACKEND+'/api/rules',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rule)}).then(r=>r.json());
-  showToast('✅ Rule saved','success');closeRuleModal();loadRules();
-}
 async function toggleRule(id,enabled){await fetch(BACKEND+'/api/rules/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled})}).then(r=>r.json());showToast(enabled?'Rule enabled':'Rule disabled','ok');loadRules();}
 async function deleteRule(id){if(!confirm('Delete this rule?'))return;await fetch(BACKEND+'/api/rules/'+id,{method:'DELETE'}).then(r=>r.json());showToast('Rule deleted','ok');loadRules();}
 

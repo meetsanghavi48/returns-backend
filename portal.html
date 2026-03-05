@@ -200,7 +200,7 @@ const S = {
   // Refund fork
   refundMethod: null,      // 'store_credit'|'original'|'upsell'|'exchange'
   // Logistics
-  logistics: 'self_ship',  // 'self_ship'|'drop_off'
+  logistics: 'pickup',  // 'pickup'|'self_ship'
   selfShipTracking: '',
   address: null,
   // Products
@@ -209,6 +209,8 @@ const S = {
   searchResults: [],
   diffProdSearch: '',
   diffProd: null,
+  // Payment
+  is_cod: false,
   // Error/loading
   loading: false,
   error: ''
@@ -346,6 +348,18 @@ function renderOrder() {
   <div class="logo">↩ Returns Portal</div>
   ${steps(1)}
   ${windowBar}
+  ${(custName||custEmail||custPhone)?`<div class="card" style="display:flex;align-items:center;gap:14px;padding:14px 18px">
+    <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#C84B31,#E97D5A);display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;font-weight:700;flex-shrink:0">${custName?escHtml(custName.charAt(0).toUpperCase()):'👤'}</div>
+    <div style="flex:1;min-width:0">
+      ${custName?`<div style="font-size:15px;font-weight:700;color:var(--text)">${escHtml(custName)}</div>`:''}
+      ${custEmail?`<div style="font-size:12px;color:var(--muted);margin-top:1px">✉ ${escHtml(custEmail)}</div>`:''}
+      ${custPhone?`<div style="font-size:12px;color:var(--muted)">📞 ${escHtml(custPhone)}</div>`:''}
+    </div>
+    <div style="text-align:right;flex-shrink:0">
+      <div style="font-size:11px;color:var(--muted2)">Order</div>
+      <div style="font-size:14px;font-weight:700;color:var(--text)">#${escHtml(String(o.order_number||''))}</div>
+    </div>
+  </div>`:''}
   <div class="card">
     <div class="card-title">Order #${o.order_number}</div>
     <div class="card-sub">Select items you want to return or exchange</div>
@@ -600,24 +614,31 @@ function renderLogistics() {
   </div>
   ${hasReturns?`<div class="card">
     <div class="card-title" style="font-size:16px;margin-bottom:12px">📦 How will you ship it back?</div>
+    <div class="logistics-opt ${S.logistics==='pickup'?'selected':''}" onclick="S.logistics='pickup';render()">
+      <span style="font-size:24px;margin-top:2px">🚚</span>
+      <div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:3px">Reverse Pickup <span style="font-size:10px;background:#DCFCE7;color:#16A34A;padding:2px 7px;border-radius:6px;font-weight:700;margin-left:4px">RECOMMENDED</span></div>
+        <div style="font-size:12px;color:var(--muted)">Delhivery will pick up from your address. We'll schedule it automatically after approval.</div>
+      </div>
+    </div>
     <div class="logistics-opt ${S.logistics==='self_ship'?'selected':''}" onclick="S.logistics='self_ship';render()">
       <span style="font-size:24px;margin-top:2px">📬</span>
       <div><div style="font-size:14px;font-weight:600;margin-bottom:3px">Self-Ship</div>
-      <div style="font-size:12px;color:var(--muted)">Ship via any courier to our warehouse. Enter AWB after shipping.</div></div>
-    </div>
-    <div class="logistics-opt ${S.logistics==='drop_off'?'selected':''}" onclick="S.logistics='drop_off';render()">
-      <span style="font-size:24px;margin-top:2px">🏪</span>
-      <div><div style="font-size:14px;font-weight:600;margin-bottom:3px">Drop-off at Hub</div>
-      <div style="font-size:12px;color:var(--muted)">Bring item to nearest Delhivery hub. No packaging needed.</div></div>
+      <div style="font-size:12px;color:var(--muted)">Ship via any courier to our warehouse. Enter your AWB/tracking number.</div></div>
     </div>
     ${S.logistics==='self_ship'?`
     <div style="margin-top:12px;padding:14px;background:#f9fafb;border-radius:8px;border:1px solid var(--border)">
-      <div style="font-size:12px;font-weight:600;margin-bottom:6px">Ship to our warehouse:</div>
-      <div style="font-size:13px;line-height:1.8;color:var(--text)">${window._warehouseAddr||'Warehouse address will be confirmed in email'}</div>
+      <div style="font-size:12px;font-weight:600;margin-bottom:6px">📦 Ship to our warehouse:</div>
+      <div style="font-size:13px;line-height:1.8;color:var(--text)">\${window._warehouseAddr||'Warehouse address will be confirmed in email'}</div>
       <div style="margin-top:10px">
-        <label class="label">Enter AWB/Tracking number after shipping</label>
-        <input class="inp" id="inp-awb" placeholder="Tracking number (enter after shipping)" value="${S.selfShipTracking||''}">
+        <label class="label">Enter AWB / Tracking number</label>
+        <input class="inp" id="inp-awb" placeholder="e.g. 1234567890" value="\${S.selfShipTracking||''}">
       </div>
+    </div>`:''}
+    ${S.logistics==='pickup'?`
+    <div style="margin-top:12px;padding:14px;background:#EFF6FF;border-radius:8px;border:1px solid #BFDBFE">
+      <div style="font-size:12px;font-weight:600;color:#1D4ED8;margin-bottom:4px">🚚 How Reverse Pickup works</div>
+      <div style="font-size:12px;color:#3B82F6;line-height:1.8">1. Submit your request below<br>2. We'll schedule a Delhivery pickup from your address<br>3. Keep your item packed and ready — courier will arrive in 1–3 days</div>
     </div>`:''}
   </div>`:''}
   <div class="card">
@@ -665,9 +686,9 @@ function renderSuccess() {
       ${S.autoAction==='keep_it'?`<span style="color:var(--success);font-weight:600">${S.keepItMsg||'Please keep/donate the item. Refund issued!'}</span>`:'We\'ll review it and get back to you shortly.'}
       ${S.autoApproved?'<br><span style="color:var(--success);font-weight:600">✓ Auto-approved by our system!</span>':''}
     </div>
-    ${S.logistics==='self_ship'?`<div style="background:#f9fafb;border-radius:10px;padding:14px;margin-bottom:16px;text-align:left">
+    ${(S.logistics==='self_ship'||S.logistics==='pickup')?`<div style="background:#f9fafb;border-radius:10px;padding:14px;margin-bottom:16px;text-align:left">
       <div style="font-size:13px;font-weight:600;margin-bottom:6px">📬 Next steps:</div>
-      <div style="font-size:12px;color:var(--muted);line-height:1.9">1. Package your item(s) securely<br>2. Ship to our warehouse address (sent to your email)<br>3. Enter your AWB tracking number in the portal</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.9">\${S.logistics==='pickup'?'1. Keep your item packaged and ready<br>2. Our courier (Delhivery) will contact you to schedule pickup<br>3. Track status here or on the Delhivery app':'1. Package your item(s) securely<br>2. Ship to our warehouse address (sent to your email)<br>3. Enter your AWB tracking number in the portal'}</div>
     </div>`:''}
     <button class="btn btn-black" onclick="S.screen='track';S.trackOrderNum=S.order?.order_number;render()">Track Status →</button>
     <button class="btn btn-outline" style="margin-top:10px" onclick="S.screen='lookup';render()">New Request</button>
@@ -812,6 +833,7 @@ async function doLookup() {
     S.loading=false;
     if (!res.found) { S.error=res.mismatch?'Email/phone does not match our records':'Order not found. Please check your order number.'; render(); return; }
     S.order = res.order;
+    S.is_cod = res.order.is_cod || false;
     window._returnWindowDays = 30;
     S.address = res.order.address;
     if (res.order.has_return) { S.screen='already'; }
