@@ -198,6 +198,29 @@ select.inp-field{-webkit-appearance:none;background-image:url("data:image/svg+xm
 #toast.error{background:var(--red);color:#fff}
 
 /* ═══ MISC ═══ */
+
+/* ═══ STATUS TABS ═══ */
+.tab-row{display:flex;align-items:center;gap:0;border-bottom:2px solid var(--border);margin-bottom:0;overflow-x:auto}
+.tab-btn{padding:11px 18px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;border:none;background:none;white-space:nowrap;position:relative;transition:.12s;font-family:var(--font);border-bottom:2px solid transparent;margin-bottom:-2px}
+.tab-btn:hover{color:var(--text);background:#F9FAFB}
+.tab-btn.active{color:var(--primary);border-bottom-color:var(--primary)}
+.tab-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-size:10px;font-weight:700;background:var(--bg);color:var(--muted);margin-left:5px}
+.tab-btn.active .tab-count{background:var(--primary-bg);color:var(--primary)}
+
+/* ═══ BULK ACTIONS BAR ═══ */
+.bulk-bar{position:sticky;top:0;z-index:20;background:#1F2937;color:#fff;padding:10px 18px;display:none;align-items:center;gap:12px;border-radius:0}
+.bulk-bar.show{display:flex}
+.bulk-count{font-size:13px;font-weight:700;flex:1}
+.bulk-btn{padding:6px 14px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;border:none;transition:.12s;font-family:var(--font)}
+.bb-green{background:var(--primary);color:#fff}
+.bb-blue{background:var(--blue);color:#fff}
+.bb-purple{background:var(--purple);color:#fff}
+.bb-red{background:#DC2626;color:#fff}
+.bb-clear{background:rgba(255,255,255,.15);color:#fff}
+
+/* ═══ CHECKBOXES ═══ */
+.row-cb{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--border);cursor:pointer;accent-color:var(--primary);flex-shrink:0}
+.cb-all{width:16px;height:16px;border-radius:4px;accent-color:var(--primary)}
 .empty{padding:52px 24px;text-align:center;color:var(--muted2)}
 .empty-ico{font-size:38px;margin-bottom:12px}
 .empty-title{font-size:15px;font-weight:600;color:var(--muted);margin-bottom:6px}
@@ -272,15 +295,30 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
       </div>
     </div>
     <div class="tbl-wrap">
-      <div class="tbl-head">
-        <span class="tbl-title">Return Requests</span>
-        <div class="tbl-search"><span style="color:var(--muted2)">🔍</span><input placeholder="Search…" oninput="filterTable(this.value)"></div>
-        <button class="filter-pill on" onclick="filterStatus('all',this)">All</button>
-        <button class="filter-pill" onclick="filterStatus('pending',this)">Pending</button>
-        <button class="filter-pill" onclick="filterStatus('approved',this)">Approved</button>
-        <button class="filter-pill" onclick="filterStatus('rejected',this)">Rejected</button>
-        <div style="margin-left:auto"></div>
-        <button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ Export</button>
+      <!-- Status Tabs -->
+      <div class="tab-row" id="status-tabs">
+        <button class="tab-btn active" onclick="switchTab('all',this)">All <span class="tab-count" id="tc-all">0</span></button>
+        <button class="tab-btn" onclick="switchTab('pending',this)">Requested <span class="tab-count" id="tc-pending">0</span></button>
+        <button class="tab-btn" onclick="switchTab('exchange-pending',this)">Exchange <span class="tab-count" id="tc-exchange-pending">0</span></button>
+        <button class="tab-btn" onclick="switchTab('approved',this)">Approved <span class="tab-count" id="tc-approved">0</span></button>
+        <button class="tab-btn" onclick="switchTab('received',this)">Received <span class="tab-count" id="tc-received">0</span></button>
+        <button class="tab-btn" onclick="switchTab('inspected',this)">Inspected <span class="tab-count" id="tc-inspected">0</span></button>
+        <button class="tab-btn" onclick="switchTab('refunded',this)">Refunded <span class="tab-count" id="tc-refunded">0</span></button>
+        <button class="tab-btn" onclick="switchTab('fulfilled',this)">Fulfilled <span class="tab-count" id="tc-fulfilled">0</span></button>
+        <button class="tab-btn" onclick="switchTab('rejected',this)">Rejected <span class="tab-count" id="tc-rejected">0</span></button>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px;padding:6px 14px">
+          <div class="tbl-search"><span style="color:var(--muted2)">🔍</span><input placeholder="Search…" oninput="filterTable(this.value)"></div>
+          <button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ Export</button>
+        </div>
+      </div>
+      <!-- Bulk Actions Bar -->
+      <div class="bulk-bar" id="bulk-bar">
+        <span class="bulk-count" id="bulk-count-label">0 selected</span>
+        <button class="bulk-btn bb-green" onclick="bulkApprove()">✓ Approve All</button>
+        <button class="bulk-btn bb-blue" onclick="bulkCreateExchange()">🛍️ Create Exchange</button>
+        <button class="bulk-btn bb-purple" onclick="bulkRefund()">💰 Refund All</button>
+        <button class="bulk-btn bb-red" onclick="bulkReject()">✗ Reject All</button>
+        <button class="bulk-btn bb-clear" onclick="clearSelection()">✕ Clear</button>
       </div>
       <div id="ret-table-wrap"><div class="empty"><div class="empty-ico">⏳</div><div class="empty-title">Loading…</div></div></div>
     </div>
@@ -539,7 +577,7 @@ function syncOrders(){showToast('↺ Syncing…','ok');loadOrders().then(()=>sho
 function updateStats(){
   const pending=RET_ORDERS.filter(o=>['pending','exchange-pending'].includes(o.return_status)).length;
   const approved=RET_ORDERS.filter(o=>o.return_status==='approved').length;
-  const revenue=RET_ORDERS.reduce((s,o)=>s+parseFloat(o.total_price||0),0);
+  const revenue=RET_ORDERS.filter(o=>o.request_type==='return'||o.request_type==='mixed').reduce((s,o)=>s+parseFloat(o.total_price||0),0);
   document.getElementById('st-total').textContent=RET_ORDERS.length;
   document.getElementById('st-pending').textContent=pending;
   document.getElementById('st-approved').textContent=approved;
@@ -551,11 +589,18 @@ function updateStats(){
 
 // ── RENDER RETURNS TABLE ──
 function renderRetTable(){
+  const STAGE_LABELS={'all':'all','pending':'pending','exchange-pending':'exchange-pending','approved':'approved','received':'received','inspected':'inspected','refunded':'refunded','fulfilled':'fulfilled','rejected':'rejected'};
   let data=RET_ORDERS.filter(o=>{
     if(filterStatusVal!=='all'){
-      if(filterStatusVal==='pending'&&!['pending','exchange-pending'].includes(o.return_status))return false;
-      if(filterStatusVal==='approved'&&o.return_status!=='approved')return false;
-      if(filterStatusVal==='rejected'&&o.return_status!=='rejected')return false;
+      const st=o.return_status;
+      if(filterStatusVal==='pending'&&st!=='pending')return false;
+      if(filterStatusVal==='exchange-pending'&&st!=='exchange-pending')return false;
+      if(filterStatusVal==='approved'&&st!=='approved')return false;
+      if(filterStatusVal==='received'&&st!=='received')return false;
+      if(filterStatusVal==='inspected'&&st!=='inspected')return false;
+      if(filterStatusVal==='refunded'&&st!=='refunded')return false;
+      if(filterStatusVal==='fulfilled'&&st!=='fulfilled')return false;
+      if(filterStatusVal==='rejected'&&st!=='rejected')return false;
     }
     if(searchVal){const q=searchVal.toLowerCase();if(!(o.order_number||'').toLowerCase().includes(q)&&!(o.customer_name||'').toLowerCase().includes(q)&&!(o.line_items||[]).some(li=>(li.title||'').toLowerCase().includes(q)))return false;}
     return true;
@@ -610,9 +655,146 @@ function renderAllOrders(d){
 }
 
 function filterTable(q){searchVal=q;renderRetTable();}
-function filterStatus(s,el){filterStatusVal=s;document.querySelectorAll('.filter-pill').forEach(b=>b.classList.remove('on'));el.classList.add('on');renderRetTable();}
+function filterStatus(s,el){switchTab(s,el);}
+
 function filterAllOrders(q){if(!q){renderAllOrders(ALL_AO);return;}const lq=q.toLowerCase();renderAllOrders(ALL_AO.filter(o=>(o.order_number||'').toLowerCase().includes(lq)||(o.customer_name||'').toLowerCase().includes(lq)||(o.line_items||[]).some(li=>(li.title||'').toLowerCase().includes(lq))));}
 function handleSearch(q){searchVal=q;renderRetTable();}
+
+
+// ── STAGE HELPERS ──
+const STAGE_COLORS={
+  pending:'amber',
+  'exchange-pending':'blue',
+  approved:'active',
+  received:'blue',
+  inspected:'blue',
+  refunded:'refunded',
+  fulfilled:'approved',
+  rejected:'rejected'
+};
+const STAGE_NAMES={
+  pending:'Requested',
+  'exchange-pending':'Exchange Req.',
+  approved:'Approved',
+  received:'Received',
+  inspected:'Inspected',
+  refunded:'Refunded',
+  fulfilled:'Fulfilled',
+  rejected:'Rejected'
+};
+function stageClass(s){return STAGE_COLORS[s]||'pending';}
+function stageLabel(s){return STAGE_NAMES[s]||cap(s?.replace('-',' ')||'—');}
+
+function updateTabCounts(){
+  const counts={all:RET_ORDERS.length,pending:0,'exchange-pending':0,approved:0,received:0,inspected:0,refunded:0,fulfilled:0,rejected:0};
+  RET_ORDERS.forEach(o=>{if(counts[o.return_status]!==undefined)counts[o.return_status]++;});
+  Object.entries(counts).forEach(([k,v])=>{const el=document.getElementById('tc-'+k);if(el)el.textContent=v;});
+}
+
+function switchTab(tab,el){
+  filterStatusVal=tab;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  if(el)el.classList.add('active');
+  SELECTED.clear();updateBulkBar();
+  renderRetTable();
+}
+
+// ── SELECTION + BULK ──
+const SELECTED=new Set();
+function toggleSelect(id,checked){
+  if(checked)SELECTED.add(String(id));else SELECTED.delete(String(id));
+  updateBulkBar();
+  const row=document.getElementById('row-'+id);
+  if(row)row.style.background=checked?'#F0FDF4':'';
+}
+function toggleSelectAll(checked){
+  FILTERED.forEach(o=>{
+    const id=String(o.id);
+    if(checked)SELECTED.add(id);else SELECTED.delete(id);
+    const row=document.getElementById('row-'+id);
+    if(row)row.style.background=checked?'#F0FDF4':'';
+    const cb=row?.querySelector('.row-cb');
+    if(cb)cb.checked=checked;
+  });
+  updateBulkBar();
+}
+function clearSelection(){SELECTED.clear();renderRetTable();updateBulkBar();}
+function updateBulkBar(){
+  const n=SELECTED.size;
+  const bar=document.getElementById('bulk-bar');
+  const lbl=document.getElementById('bulk-count-label');
+  if(bar)bar.classList.toggle('show',n>0);
+  if(lbl)lbl.textContent=n+' selected';
+}
+
+async function bulkApprove(){
+  const ids=[...SELECTED];
+  if(!ids.length)return;
+  showToast('Approving '+ids.length+' requests…','ok');
+  const res=await fetch(BACKEND+'/api/bulk/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({order_ids:ids,actor:'merchant'})}).then(r=>r.json()).catch(e=>({error:e.message}));
+  if(res.error){showToast('Error: '+res.error,'error');return;}
+  ids.forEach(id=>{const o=ALL_ORDERS.find(x=>String(x.id)===id);if(o)o.return_status='approved';});
+  clearSelection();updateStats();renderRetTable();renderExchanges();
+  showToast(`✅ ${res.succeeded}/${ids.length} approved`,'success');
+}
+
+async function bulkReject(){
+  const ids=[...SELECTED];
+  if(!ids.length)return;
+  if(!confirm('Reject '+ids.length+' requests?'))return;
+  const res=await fetch(BACKEND+'/api/bulk/reject',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({order_ids:ids,actor:'merchant'})}).then(r=>r.json()).catch(e=>({error:e.message}));
+  ids.forEach(id=>{const o=ALL_ORDERS.find(x=>String(x.id)===id);if(o)o.return_status='rejected';});
+  clearSelection();updateStats();renderRetTable();renderExchanges();
+  showToast(`${res.succeeded||ids.length} rejected`,'ok');
+}
+
+async function bulkRefund(){
+  const ids=[...SELECTED].filter(id=>{const o=ALL_ORDERS.find(x=>String(x.id)===id);return o?.return_status==='approved'&&(o.request_type==='return'||o.request_type==='mixed');});
+  if(!ids.length){showToast('Select approved return orders first','error');return;}
+  if(!confirm('Process refunds for '+ids.length+' orders? This cannot be undone.'))return;
+  showToast('Processing '+ids.length+' refunds…','ok');
+  const res=await fetch(BACKEND+'/api/bulk/refund',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({order_ids:ids})}).then(r=>r.json()).catch(e=>({error:e.message}));
+  if(res.error){showToast('Error: '+res.error,'error');return;}
+  ids.forEach(id=>{const o=ALL_ORDERS.find(x=>String(x.id)===id);if(o){o.return_status='refunded';if(o.tags&&!o.tags.includes('return-refunded'))o.tags.push('return-refunded');}});
+  clearSelection();updateStats();renderRetTable();
+  showToast(`✅ ${res.succeeded}/${ids.length} refunds created`,'success');
+}
+
+async function bulkCreateExchange(){
+  const ids=[...SELECTED].filter(id=>{const o=ALL_ORDERS.find(x=>String(x.id)===id);return o?.return_status==='approved'&&(o.request_type==='exchange'||o.request_type==='mixed');});
+  if(!ids.length){showToast('Select approved exchange orders first','error');return;}
+  if(!confirm('Create exchange orders for '+ids.length+' requests?'))return;
+  showToast('Creating '+ids.length+' exchange orders…','ok');
+  let done=0;
+  for(const id of ids){
+    const order=ALL_ORDERS.find(o=>String(o.id)===id);
+    const note=order?.note||'';
+    const exchItems=[];
+    for(const line of note.split('\n')){
+      if(!line.includes('[EXCHANGE]'))continue;
+      const varMatch=line.match(/ExchVarID:\s*(\d+)/);
+      const qtyMatch=line.match(/x(\d+)/);
+      if(varMatch)exchItems.push({variant_id:varMatch[1],quantity:parseInt(qtyMatch?.[1])||1,price:'0'});
+    }
+    if(!exchItems.length)continue;
+    const res=await fetch(BACKEND+'/api/shopify/exchange/'+id,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({exchange_items:exchItems,order_number:order?.order_number})}).then(r=>r.json()).catch(()=>null);
+    if(res?.success)done++;
+  }
+  clearSelection();renderRetTable();
+  showToast(`✅ ${done}/${ids.length} exchange orders created`,'success');
+}
+
+// ── MARK AS INSPECTED ──
+async function markInspected(orderId){
+  const res=await fetch(BACKEND+'/api/returns/'+orderId+'/inspect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({actor:'merchant'})}).then(r=>r.json()).catch(e=>({error:e.message}));
+  if(res.success){
+    const o=ALL_ORDERS.find(x=>String(x.id)===String(orderId));
+    if(o){o.return_status='inspected';if(o.tags)o.tags.push('return-inspected');}
+    showToast('✅ Marked as inspected','success');
+    renderRetTable();updateStats();
+    if(selectedOrder&&String(selectedOrder.id)===String(orderId)){selectedOrder.return_status='inspected';renderDetailPanel(selectedOrder);}
+  }else showToast('Error: '+res.error,'error');
+}
 
 // ── APPROVE / REJECT ──
 async function approveReturn(id,e){

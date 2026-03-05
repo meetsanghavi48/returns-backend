@@ -16,7 +16,7 @@ const SHOPIFY_API_KEY    = process.env.SHOPIFY_API_KEY    || 'c1542c4ed17151e558
 const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET || '';
 const BACKEND_URL        = process.env.BACKEND_URL        || 'https://returns-backend.onrender.com';
 // NOTE: write_gift_cards requires Shopify Gift Card feature (enabled on Basic plan)
-const SCOPES = 'read_orders,write_orders,read_products,write_products,read_draft_orders,write_draft_orders,read_customers,write_customers,read_inventory,write_inventory';
+const SCOPES = 'read_orders,write_orders,read_products,write_products,read_draft_orders,write_draft_orders,read_inventory,write_inventory';
 let ACCESS_TOKEN = process.env.ACCESS_TOKEN || '';
 let SHOP_DOMAIN  = process.env.SHOP_DOMAIN  || '';
 
@@ -195,7 +195,12 @@ app.get('/api/orders',async(req,res)=>{
       const allTags=Array.isArray(tags)?tags:tags.split(',').map(t=>t.trim());
       const has=t=>allTags.includes(t);
       const hasAny=arr=>arr.some(t=>allTags.includes(t));
+      // Stage priority: most advanced stage wins
       const return_status=
+        has('return-refunded')?'refunded':
+        has('exchange-fulfilled')?'fulfilled':
+        has('return-inspected')||has('exchange-inspected')?'inspected':
+        has('pickup-scheduled')||has('pickup-scan')?'received':
         hasAny(['return-approved','exchange-approved','mixed-approved'])?'approved':
         hasAny(['return-rejected','exchange-rejected','mixed-rejected'])?'rejected':
         has('return-requested')?'pending':
@@ -274,6 +279,10 @@ app.get('/api/lookup',async(req,res)=>{
     const tagArr=tags.split(',').map(t=>t.trim());
     const has=t=>tagArr.includes(t);
     const return_status=
+      has('return-refunded')?'refunded':
+      has('exchange-fulfilled')?'fulfilled':
+      has('return-inspected')||has('exchange-inspected')?'inspected':
+      has('pickup-scheduled')||has('pickup-scan')?'received':
       (has('return-approved')||has('exchange-approved')||has('mixed-approved'))?'approved':
       (has('return-rejected')||has('exchange-rejected')||has('mixed-rejected'))?'rejected':
       has('return-requested')?'pending':
@@ -635,6 +644,88 @@ app.post('/api/shopify/exchange/:order_id',async(req,res)=>{
   }catch(e){console.error('[/api/shopify/exchange]',e);res.status(500).json({error:e.message});}
 });
 
+
+// ════════════════════════════════════════════
+// BULK ACTIONS
+// ════════════════════════════════════════════
+app.post('/api/bulk/approve',async(req,res)=>{
+  const{order_ids,actor}=req.body;
+  if(!order_ids?.length)return res.status(400).json({error:'No order IDs'});
+  const results=[];
+  for(const order_id of order_ids){
+    try{
+      const reqs=RETURN_REQUESTS[String(order_id)]||[];
+      const lastReq=reqs[reqs.length-1]||{};
+      const type=lastReq.request_type||'return';
+      const approvedTag=type==='exchange'?'exchange-approved':type==='mixed'?'mixed-approved':'return-approved';
+      const removeTag=type==='exchange'?'exchange-requested':type==='mixed'?'mixed-requested':'return-requested';
+      await updateOrderTags(order_id,[approvedTag],[removeTag]);
+      if(reqs.length)reqs[reqs.length-1].status='approved';
+      ANALYTICS.approved++;
+      auditLog(order_id,'bulk_approved',actor||'merchant','Bulk approve');
+      results.push({order_id,success:true});
+    }catch(e){results.push({order_id,success:false,error:e.message});}
+  }
+  res.json({results,succeeded:results.filter(r=>r.success).length,failed:results.filter(r=>!r.success).length});
+});
+
+app.post('/api/bulk/reject',async(req,res)=>{
+  const{order_ids,reason,actor}=req.body;
+  if(!order_ids?.length)return res.status(400).json({error:'No order IDs'});
+  const results=[];
+  for(const order_id of order_ids){
+    try{
+      const reqs=RETURN_REQUESTS[String(order_id)]||[];
+      const lastReq=reqs[reqs.length-1]||{};
+      const type=lastReq.request_type||'return';
+      const rejectedTag=type==='exchange'?'exchange-rejected':type==='mixed'?'mixed-rejected':'return-rejected';
+      const removeTag=type==='exchange'?'exchange-requested':type==='mixed'?'mixed-requested':'return-requested';
+      await updateOrderTags(order_id,[rejectedTag],[removeTag]);
+      ANALYTICS.rejected++;
+      auditLog(order_id,'bulk_rejected',actor||'merchant',reason||'Bulk reject');
+      results.push({order_id,success:true});
+    }catch(e){results.push({order_id,success:false,error:e.message});}
+  }
+  res.json({results,succeeded:results.filter(r=>r.success).length,failed:results.filter(r=>!r.success).length});
+});
+
+app.post('/api/bulk/refund',async(req,res)=>{
+  const{order_ids}=req.body;
+  if(!order_ids?.length)return res.status(400).json({error:'No order IDs'});
+  const results=[];
+  for(const order_id of order_ids){
+    try{
+      const fo=await shopifyREST('GET',`orders/${order_id}.json?fields=line_items,financial_status`);
+      const lines=fo?.order?.line_items||[];
+      if(!lines.length){results.push({order_id,success:false,error:'No line items'});continue;}
+      const calc=await shopifyREST('POST',`orders/${order_id}/refunds/calculate.json`,{refund:{refund_line_items:lines.map(li=>({line_item_id:li.id,quantity:li.quantity,restock_type:'return'}))}});
+      const txns=(calc?.refund?.transactions||[]).map(t=>({parent_id:t.parent_id,amount:t.amount,kind:'refund',gateway:t.gateway}));
+      const rp={refund:{notify:true,note:'Bulk refund — Returns Manager',refund_line_items:lines.map(li=>({line_item_id:li.id,quantity:li.quantity,restock_type:'return'})),transactions:txns}};
+      const rr=await shopifyREST('POST',`orders/${order_id}/refunds.json`,rp);
+      if(rr?.refund?.id){
+        await updateOrderTags(order_id,['return-refunded'],[]);
+        const amount=rr.refund.transactions?.[0]?.amount||'0';
+        ANALYTICS.refunded_amount+=parseFloat(amount);
+        auditLog(order_id,'bulk_refund_created','merchant',`Bulk refund ₹${amount}`);
+        results.push({order_id,success:true,amount});
+      }else{results.push({order_id,success:false,error:JSON.stringify(rr?.errors||rr).slice(0,100)});}
+    }catch(e){results.push({order_id,success:false,error:e.message});}
+  }
+  res.json({results,succeeded:results.filter(r=>r.success).length,failed:results.filter(r=>!r.success).length});
+});
+
+// Mark as inspected (warehouse received)
+app.post('/api/returns/:order_id/inspect',async(req,res)=>{
+  const{order_id}=req.params;
+  const{actor,notes}=req.body;
+  try{
+    await updateOrderTags(order_id,['return-inspected'],[]);
+    if(RETURN_REQUESTS[String(order_id)]?.length)RETURN_REQUESTS[String(order_id)].forEach(r=>{if(r.status==='approved')r.status='inspected';});
+    auditLog(order_id,'item_inspected',actor||'merchant',notes||'Item received at warehouse');
+    res.json({success:true});
+  }catch(e){res.status(500).json({error:e.message});}
+});
+
 // ════════════════════════════════════════════
 // RULES ENGINE CRUD
 // ════════════════════════════════════════════
@@ -647,9 +738,16 @@ app.delete('/api/rules/:id',(req,res)=>{const i=RULES.findIndex(r=>r.id===req.pa
 app.get('/api/audit',(req,res)=>{const{order_id,limit}=req.query;let logs=AUDIT_LOG;if(order_id)logs=logs.filter(l=>l.order_id===String(order_id));res.json({logs:logs.slice(0,parseInt(limit)||100)});});
 app.get('/api/analytics',async(req,res)=>{
   try{
+    // Revenue at risk = only RETURN requests (not exchanges)
+    const returnRequests=Object.values(RETURN_REQUESTS).flat().filter(r=>r.request_type==='return'||r.request_type==='mixed');
+    const revenueAtRisk=returnRequests.reduce((s,r)=>s+parseFloat(r.total_price||0),0);
     const prevention=Object.entries(ANALYTICS.products_returned).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([product,count])=>({product,count}));
     const topReasons=Object.entries(ANALYTICS.reasons).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([reason,count])=>({reason,count}));
-    res.json({...ANALYTICS,prevention_report:prevention,top_reasons:topReasons,approval_rate:ANALYTICS.total_requests>0?Math.round(ANALYTICS.approved/ANALYTICS.total_requests*100):0,auto_approve_rate:ANALYTICS.total_requests>0?Math.round(ANALYTICS.auto_approved/ANALYTICS.total_requests*100):0});
+    // Stage counts
+    const allReqs=Object.values(RETURN_REQUESTS).flat();
+    const stageCounts={pending:0,approved:0,inspected:0,received:0,refunded:0,fulfilled:0,rejected:0};
+    allReqs.forEach(r=>{if(stageCounts[r.status]!==undefined)stageCounts[r.status]++;});
+    res.json({...ANALYTICS,revenue_at_risk:revenueAtRisk,stage_counts:stageCounts,prevention_report:prevention,top_reasons:topReasons,approval_rate:ANALYTICS.total_requests>0?Math.round(ANALYTICS.approved/ANALYTICS.total_requests*100):0,auto_approve_rate:ANALYTICS.total_requests>0?Math.round(ANALYTICS.auto_approved/ANALYTICS.total_requests*100):0});
   }catch(e){res.status(500).json({error:e.message});}
 });
 
@@ -750,6 +848,83 @@ app.post('/webhooks/order-fulfilled',express.raw({type:'application/json'}),(req
   try{const b=JSON.parse(req.body.toString());auditLog(b.id,'return_window_started','webhook',`Order #${b.order_number} fulfilled`);}catch(e){}
   res.sendStatus(200);
 });
+
+// ════════════════════════════════════════════
+// DELHIVERY POLLING (every 30 min)
+// ════════════════════════════════════════════
+async function pollDelhiveryAWBs(){
+  const ordersWithAWB=Object.entries(RETURN_REQUESTS).filter(([,reqs])=>reqs.some(r=>r.awb&&!r.awb_final));
+  if(!ordersWithAWB.length||!DELHIVERY_TOKEN)return;
+  console.log(`[Delhivery Poll] Checking ${ordersWithAWB.length} active shipments`);
+  for(const[order_id,reqs]of ordersWithAWB){
+    for(const req of reqs){
+      if(!req.awb||req.awb_final)continue;
+      try{
+        const d=await delhiveryAPI('GET',`/api/v1/packages/?waybill=${req.awb}`);
+        const pkg=d?.ShipmentData?.[0]?.Shipment;
+        if(!pkg)continue;
+        const status=(pkg.Status?.Status||'').toLowerCase();
+        const prevStatus=req.last_carrier_status||'';
+        if(status===prevStatus)continue;
+        req.last_carrier_status=status;
+        console.log(`[Delhivery Poll] AWB ${req.awb} → ${status}`);
+
+        // Determine event
+        let event=null;
+        if(status.includes('picked up')||status.includes('pickup')||status.includes('manifested')){
+          event='pickup_scan';
+          await updateOrderTags(order_id,['pickup-scan'],['pickup-scheduled']);
+        } else if(status.includes('delivered')||status.includes('rto delivered')){
+          event='delivered';
+          await updateOrderTags(order_id,['return-received'],['pickup-scan']);
+          req.awb_final=true; // stop polling
+        }
+
+        if(!event)continue;
+        auditLog(order_id,`carrier_${event}`,'delhivery_poll',`AWB ${req.awb} — ${status}`);
+
+        // Run automation rules
+        const rules=runRulesEngine({...req,carrier_event:event});
+        for(const rule of rules){
+          auditLog(order_id,`auto_rule:${rule.action}`,'rules_engine',`${rule.rule_name} triggered by ${event}`);
+          if(rule.action==='auto_exchange'){
+            const exchItems=(req.items||[]).filter(i=>i.action==='exchange'&&i.exchange_variant_id).map(i=>({variant_id:parseInt(i.exchange_variant_id),quantity:i.qty||1,price:'0'}));
+            if(exchItems.length){
+              const orig=await shopifyREST('GET',`orders/${order_id}.json?fields=shipping_address,email`);
+              const draftP={draft_order:{line_items:exchItems.map(item=>({variant_id:item.variant_id,quantity:item.quantity,applied_discount:{description:'Exchange',value_type:'percentage',value:'100',amount:'0',title:'Exchange'}})),shipping_address:orig?.order?.shipping_address,email:orig?.order?.email,note:`Auto exchange — ${event} — AWB ${req.awb}`,tags:'exchange-order,auto-created',send_invoice:false}};
+              const draft=await shopifyREST('POST','draft_orders.json',draftP);
+              if(draft?.draft_order?.id){
+                const done=await shopifyREST('PUT',`draft_orders/${draft.draft_order.id}/complete.json`);
+                await updateOrderTags(order_id,['exchange-fulfilled'],[]);
+                auditLog(order_id,'auto_exchange_created','rules_engine',`Order ${done?.draft_order?.name||''} created — ${event}`);
+              }
+            }
+          }
+          if(rule.action==='auto_refund'){
+            const fo=await shopifyREST('GET',`orders/${order_id}.json?fields=line_items`);
+            const lis=fo?.order?.line_items||[];
+            if(lis.length){
+              const calcP={refund:{refund_line_items:lis.map(li=>({line_item_id:li.id,quantity:li.quantity,restock_type:'return'}))}};
+              const calc=await shopifyREST('POST',`orders/${order_id}/refunds/calculate.json`,calcP);
+              const txns=(calc?.refund?.transactions||[]).map(t=>({parent_id:t.parent_id,amount:t.amount,kind:'refund',gateway:t.gateway}));
+              const rp={refund:{notify:true,note:`Auto refund — ${event}`,refund_line_items:lis.map(li=>({line_item_id:li.id,quantity:li.quantity,restock_type:'return'})),transactions:txns}};
+              const rr=await shopifyREST('POST',`orders/${order_id}/refunds.json`,rp);
+              if(rr?.refund?.id){
+                await updateOrderTags(order_id,['return-refunded'],[]);
+                auditLog(order_id,'auto_refund_created','rules_engine',`Auto refund ₹${rr.refund.transactions?.[0]?.amount||0} — ${event}`);
+              }
+            }
+          }
+        }
+      }catch(e){console.error(`[Delhivery Poll] AWB ${req.awb} error:`,e.message);}
+    }
+  }
+}
+// Poll every 30 minutes
+setInterval(pollDelhiveryAWBs, 30*60*1000);
+// Also poll 2 min after startup
+setTimeout(pollDelhiveryAWBs, 2*60*1000);
+
 
 const PORT=process.env.PORT||3000;
 app.listen(PORT,()=>console.log(`Returns Manager v3 on :${PORT} | Connected:${!!ACCESS_TOKEN} | Shop:${SHOP_DOMAIN||'none'}`));
