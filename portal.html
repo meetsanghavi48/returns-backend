@@ -251,7 +251,14 @@ function render() {
     case 'order':    el.innerHTML = renderOrder(); break;
     case 'process':  el.innerHTML = renderProcess(); break;
     case 'refund':   el.innerHTML = renderRefundFork(); break;
-    case 'logistics':el.innerHTML = renderLogistics(); break;
+    case 'logistics':
+      // Auto-populate address from order if not already set
+      if(!S.address && S.order) {
+        const src = S.order.address || S.order.shipping_address || S.order.billing_address;
+        if(src && (src.address1 || src.city)) S.address = src;
+      }
+      el.innerHTML = renderLogistics();
+      break;
     case 'success':  el.innerHTML = renderSuccess(); break;
     case 'track':    el.innerHTML = renderTrack(); break;
     case 'already':  el.innerHTML = renderAlready(); break;
@@ -671,9 +678,9 @@ function renderLogistics() {
       <div style="font-size:14px;font-weight:700">📍 Pickup Address</div>
       <button onclick="editAddress()" style="font-size:12px;font-weight:600;color:var(--accent);background:rgba(200,75,49,.08);border:1.5px solid rgba(200,75,49,.2);padding:4px 12px;border-radius:8px;cursor:pointer">✏️ ${addr?'Edit':'Add Address'}</button>
     </div>
-    ${addr&&addr.address1?
+    ${addr&&(addr.address1||addr.city||addr.zip)?
       `<div style="background:#f9fafb;border:1px solid var(--border);border-radius:10px;padding:13px 15px">
-        ${addr.name?`<div style="font-size:14px;font-weight:700;margin-bottom:4px">${escHtml(addr.name)}</div>`:''}
+        ${(addr.name||addr.first_name)?`<div style="font-size:14px;font-weight:700;margin-bottom:4px">${escHtml(addr.name||[addr.first_name,addr.last_name].filter(Boolean).join(' '))}</div>`:''}
         <div style="font-size:13px;color:var(--text);line-height:1.9">
           ${[addr.address1,addr.address2].filter(Boolean).map(escHtml).join('<br>')}<br>
           ${[addr.city,addr.province||addr.state,addr.zip||addr.pincode].filter(Boolean).map(escHtml).join(', ')}<br>
@@ -890,8 +897,22 @@ async function doLookup() {
     S.is_cod = res.order.is_cod || false;
     window._returnWindowDays = res.order.days_remaining !== undefined
       ? (res.order.days_remaining + (30 - res.order.days_remaining)) : 30;
-    // Pull address from order — try address field first, then shipping_address
-    S.address = res.order.address || res.order.shipping_address || null;
+    // Pull address from order — normalize all Shopify field variants
+    const _addrSrc = res.order.address || res.order.shipping_address || null;
+    if (_addrSrc) {
+      S.address = {
+        name:     _addrSrc.name || [_addrSrc.first_name,_addrSrc.last_name].filter(Boolean).join(' ') || '',
+        address1: _addrSrc.address1 || '',
+        address2: _addrSrc.address2 || '',
+        city:     _addrSrc.city || '',
+        province: _addrSrc.province || _addrSrc.state || '',
+        zip:      _addrSrc.zip || _addrSrc.pincode || '',
+        country:  _addrSrc.country || 'India',
+        phone:    _addrSrc.phone || res.order.customer_phone || ''
+      };
+    } else {
+      S.address = null;
+    }
     S.screen = res.order.has_return ? 'already' : 'order';
     render();
   } catch(e) {
@@ -1005,14 +1026,17 @@ function handleMedia(idx, input) {
 }
 
 function editAddress() {
-  const a = S.address||S.order?.address||{};
-  document.getElementById('am-name').value  = a.name||'';
-  document.getElementById('am-addr1').value = a.address1||'';
-  document.getElementById('am-addr2').value = a.address2||'';
-  document.getElementById('am-city').value  = a.city||'';
-  document.getElementById('am-state').value = a.province||a.state||'';
-  document.getElementById('am-zip').value   = a.zip||a.pincode||'';
-  document.getElementById('am-phone').value = a.phone||'';
+  const a = S.address || S.order?.address || S.order?.shipping_address || {};
+  // Shopify can send name as first_name+last_name or as name field
+  const fullName = a.name || [a.first_name,a.last_name].filter(Boolean).join(' ') || S.order?.customer_name || '';
+  const phone    = a.phone || S.order?.customer_phone || '';
+  document.getElementById('am-name').value  = fullName;
+  document.getElementById('am-addr1').value = a.address1 || '';
+  document.getElementById('am-addr2').value = a.address2 || '';
+  document.getElementById('am-city').value  = a.city || '';
+  document.getElementById('am-state').value = a.province || a.state || '';
+  document.getElementById('am-zip').value   = a.zip || a.pincode || '';
+  document.getElementById('am-phone').value = phone;
   document.getElementById('am-err').style.display='none';
   document.getElementById('addr-edit-modal').classList.add('open');
 }
