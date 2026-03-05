@@ -99,6 +99,14 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .logistics-opt{display:flex;gap:12px;align-items:flex-start;padding:14px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:8px;cursor:pointer;transition:.2s}
 .logistics-opt.selected{border-color:var(--text);background:rgba(0,0,0,.02)}
 
+/* Address modal */
+.addr-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:900;display:none;align-items:flex-end;justify-content:center}
+.addr-modal-bg.open{display:flex}
+.addr-modal{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:520px;padding:24px;max-height:90vh;overflow-y:auto}
+.addr-modal-title{font-size:16px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+.addr-inp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.addr-inp-full{grid-column:span 2}
+.addr-inp-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;display:block}
 /* Track timeline */
 .timeline{padding:8px 0}
 .tl-item{display:flex;gap:14px;align-items:flex-start;padding-bottom:20px;position:relative}
@@ -115,6 +123,51 @@ select.inp{-webkit-appearance:none;appearance:none}
 <body>
 <div class="shell" id="root"></div>
 <div class="toast" id="toast"></div>
+
+<!-- Address Edit Modal -->
+<div class="addr-modal-bg" id="addr-edit-modal">
+  <div class="addr-modal">
+    <div class="addr-modal-title">
+      <span>📍 Edit Pickup Address</span>
+      <button onclick="closeAddrModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">✕</button>
+    </div>
+    <div class="addr-inp-grid">
+      <div class="addr-inp-full">
+        <label class="addr-inp-lbl">Full Name</label>
+        <input class="inp" id="am-name" placeholder="Your full name">
+      </div>
+      <div class="addr-inp-full">
+        <label class="addr-inp-lbl">Address Line 1 <span style="color:var(--accent)">*</span></label>
+        <input class="inp" id="am-addr1" placeholder="House no., Street, Building">
+      </div>
+      <div class="addr-inp-full">
+        <label class="addr-inp-lbl">Address Line 2</label>
+        <input class="inp" id="am-addr2" placeholder="Area, Landmark (optional)">
+      </div>
+      <div>
+        <label class="addr-inp-lbl">City <span style="color:var(--accent)">*</span></label>
+        <input class="inp" id="am-city" placeholder="City">
+      </div>
+      <div>
+        <label class="addr-inp-lbl">State <span style="color:var(--accent)">*</span></label>
+        <input class="inp" id="am-state" placeholder="State">
+      </div>
+      <div>
+        <label class="addr-inp-lbl">Pincode <span style="color:var(--accent)">*</span></label>
+        <input class="inp" id="am-zip" placeholder="400001" maxlength="6" inputmode="numeric">
+      </div>
+      <div>
+        <label class="addr-inp-lbl">Phone</label>
+        <input class="inp" id="am-phone" placeholder="+91 98765 43210" inputmode="tel">
+      </div>
+    </div>
+    <div id="am-err" style="color:var(--accent);font-size:13px;margin-top:8px;display:none"></div>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="btn btn-outline" style="flex:.4" onclick="closeAddrModal()">Cancel</button>
+      <button class="btn btn-black" style="flex:1" onclick="saveAddrModal()">Save Address →</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const BACKEND = (()=>{
@@ -568,9 +621,28 @@ function renderLogistics() {
     </div>`:''}
   </div>`:''}
   <div class="card">
-    <div style="font-size:14px;font-weight:600;margin-bottom:10px">📍 Pickup address</div>
-    ${fmtAddr(addr)?`<div style="font-size:13px;line-height:1.9;color:var(--text)">${escHtml(fmtAddr(addr))}</div><button style="font-size:12px;color:var(--accent);background:none;border:none;cursor:pointer;margin-top:6px;text-decoration:underline" onclick="editAddress()">Edit address</button>`:
-    `<div style="font-size:13px;color:var(--muted)">No address on file</div>`}
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:700">📍 Pickup Address</div>
+      <button onclick="editAddress()" style="font-size:12px;font-weight:600;color:var(--accent);background:rgba(200,75,49,.08);border:1.5px solid rgba(200,75,49,.2);padding:4px 12px;border-radius:8px;cursor:pointer">✏️ ${addr?'Edit':'Add Address'}</button>
+    </div>
+    ${addr&&addr.address1?
+      `<div style="background:#f9fafb;border:1px solid var(--border);border-radius:10px;padding:13px 15px">
+        ${addr.name?`<div style="font-size:14px;font-weight:700;margin-bottom:4px">${escHtml(addr.name)}</div>`:''}
+        <div style="font-size:13px;color:var(--text);line-height:1.9">
+          ${[addr.address1,addr.address2].filter(Boolean).map(escHtml).join('<br>')}<br>
+          ${[addr.city,addr.province||addr.state,addr.zip||addr.pincode].filter(Boolean).map(escHtml).join(', ')}<br>
+          ${addr.country?escHtml(addr.country):''}
+          ${addr.phone?`<br><span style="color:var(--muted)">📞 ${escHtml(addr.phone)}</span>`:''}
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px">⚠ Delhivery will pick up from this address. Make sure pincode is correct.</div>`
+    :`<div style="padding:14px;border:2px dashed var(--border);border-radius:10px;text-align:center;color:var(--muted)">
+        <div style="font-size:24px;margin-bottom:6px">📍</div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:2px">No pickup address</div>
+        <div style="font-size:12px;margin-bottom:12px">Add your address for Delhivery reverse pickup</div>
+        <button onclick="editAddress()" style="padding:8px 20px;background:var(--text);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">+ Add Address</button>
+      </div>`
+    }
   </div>
   <div style="display:flex;gap:10px;margin-top:4px">
     <button class="btn btn-outline" style="flex:0.4" onclick="${S.queue.some(q=>q.action==='return')?'S.screen=\'refund\'':'S.screen=\'process\';S.qIdx=S.queue.length-1'};render()">← Back</button>
@@ -853,9 +925,45 @@ function handleMedia(idx, input) {
 }
 
 function editAddress() {
-  const a = S.address||S.order?.address;
-  const newAddr = prompt('Enter new address:', a?[a.address1,a.city,a.zip].filter(Boolean).join(', '):'');
-  if (newAddr) { S.address = { ...a, address1:newAddr }; render(); }
+  const a = S.address||S.order?.address||{};
+  document.getElementById('am-name').value  = a.name||'';
+  document.getElementById('am-addr1').value = a.address1||'';
+  document.getElementById('am-addr2').value = a.address2||'';
+  document.getElementById('am-city').value  = a.city||'';
+  document.getElementById('am-state').value = a.province||a.state||'';
+  document.getElementById('am-zip').value   = a.zip||a.pincode||'';
+  document.getElementById('am-phone').value = a.phone||'';
+  document.getElementById('am-err').style.display='none';
+  document.getElementById('addr-edit-modal').classList.add('open');
+}
+function closeAddrModal() {
+  document.getElementById('addr-edit-modal').classList.remove('open');
+}
+function saveAddrModal() {
+  const addr1 = document.getElementById('am-addr1').value.trim();
+  const city   = document.getElementById('am-city').value.trim();
+  const state  = document.getElementById('am-state').value.trim();
+  const zip    = document.getElementById('am-zip').value.trim();
+  const errEl  = document.getElementById('am-err');
+  if(!addr1||!city||!state||!zip){
+    errEl.textContent='Please fill in Address, City, State, and Pincode.';
+    errEl.style.display='block';return;
+  }
+  if(!/^\d{6}$/.test(zip)){
+    errEl.textContent='Pincode must be 6 digits.';
+    errEl.style.display='block';return;
+  }
+  errEl.style.display='none';
+  S.address = {
+    name:    document.getElementById('am-name').value.trim(),
+    address1:addr1,
+    address2:document.getElementById('am-addr2').value.trim(),
+    city, province:state, zip,
+    phone:   document.getElementById('am-phone').value.trim(),
+    country:'India'
+  };
+  closeAddrModal();
+  render(); // re-render so address card shows updated address
 }
 
 async function submitRequest() {
@@ -927,6 +1035,11 @@ async function fetchSettings() {
     window._returnWindowDays = s.return_window_days||30;
   } catch(e) {}
 }
+
+// Close address modal on bg click
+document.getElementById('addr-edit-modal').addEventListener('click', e => {
+  if(e.target === document.getElementById('addr-edit-modal')) closeAddrModal();
+});
 
 fetchSettings();
 render();
