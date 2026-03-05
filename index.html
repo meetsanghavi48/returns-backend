@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Returns Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0C0D10;--card:#131519;--border:#1E2028;--text:#F0F0F5;--muted:#6B7280;
+  --accent:#7EFF9F;--accent2:#5EE8FF;--accent3:#FFB84D;--danger:#FF6450;
+  --exchange:#60A5FA;--font:'DM Sans',sans-serif;--serif:'DM Serif Display',serif;
+  --sidebar:220px;--topbar:52px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex;height:100vh;overflow:hidden}
+/* ── SIDEBAR ── */
+#sidebar{width:var(--sidebar);background:var(--card);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+.sb-logo{padding:18px 16px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+.sb-logo-icon{width:32px;height:32px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;color:#000;font-weight:700;flex-shrink:0}
+.sb-logo-text{font-family:var(--serif);font-size:16px;color:var(--text)}
+.sb-section{padding:14px 12px 4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted)}
+.sb-item{display:flex;align-items:center;gap:9px;padding:8px 12px;border-radius:7px;margin:1px 6px;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);transition:.15s;text-decoration:none}
+.sb-item:hover{background:rgba(255,255,255,.05);color:var(--text)}
+.sb-item.active{background:rgba(126,255,159,.1);color:var(--accent)}
+.sb-badge{margin-left:auto;background:rgba(126,255,159,.2);color:var(--accent);font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px}
+/* ── MAIN ── */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#topbar{height:var(--topbar);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;padding:0 20px;flex-shrink:0;background:var(--card)}
+.tb-left{flex:1;display:flex;align-items:center;gap:8px;min-width:0}
+.live-badge{display:flex;align-items:center;gap:6px;padding:4px 12px;background:rgba(126,255,159,.08);border:1px solid rgba(126,255,159,.2);border-radius:20px;font-size:12px}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.tb-right{display:flex;align-items:center;gap:8px}
+.btn{padding:7px 14px;border-radius:7px;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;border:none;transition:.15s}
+.btn-outline{background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--text)}
+.btn-outline:hover{border-color:rgba(255,255,255,.3)}
+.btn-green{background:var(--accent);color:#000}
+.btn-green:hover{opacity:.88}
+.btn-cyan{background:rgba(94,232,255,.15);border:1px solid rgba(94,232,255,.3);color:var(--accent2)}
+.btn-red{background:rgba(255,100,80,.15);border:1px solid rgba(255,100,80,.3);color:var(--danger)}
+/* ── PAGES ── */
+#page{flex:1;overflow-y:auto;padding:24px}
+.page-hidden{display:none}
+/* ── STAT CARDS ── */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px}
+.stat-icon{font-size:22px;margin-bottom:8px}
+.stat-val{font-size:26px;font-weight:700;font-family:var(--serif);line-height:1}
+.stat-label{font-size:12px;color:var(--muted);margin-top:4px}
+.stat-trend{font-size:11px;margin-top:6px;font-weight:600}
+.stat-trend.up{color:var(--accent)} .stat-trend.down{color:var(--danger)}
+/* ── TABLE ── */
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.table-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.table-title{font-size:15px;font-weight:700}
+.search-inp{background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:7px;padding:7px 12px;color:var(--text);font-family:var(--font);font-size:13px;width:220px}
+.search-inp:focus{outline:none;border-color:rgba(255,255,255,.2)}
+.filter-btn{padding:6px 12px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted);transition:.15s}
+.filter-btn.active{background:rgba(126,255,159,.1);border-color:rgba(126,255,159,.3);color:var(--accent)}
+table{width:100%;border-collapse:collapse}
+th{padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);background:rgba(255,255,255,.02);text-align:left;border-bottom:1px solid var(--border)}
+td{padding:12px 14px;font-size:13px;border-bottom:1px solid rgba(255,255,255,.04)}
+tr{cursor:pointer;transition:.1s}
+tr:hover td{background:rgba(255,255,255,.025)}
+tr:last-child td{border-bottom:none}
+.status{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:700}
+.status::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+.status.pending{background:rgba(217,119,6,.15);color:#D97706}
+.status.approved,.status.paid,.status.fulfilled{background:rgba(21,128,61,.15);color:#16A34A}
+.status.rejected,.status.voided,.status.refunded{background:rgba(220,38,38,.15);color:#DC2626}
+.status.unfulfilled{background:rgba(94,232,255,.12);color:var(--accent2)}
+.status.exchange-pending{background:rgba(96,165,250,.15);color:var(--exchange)}
+/* ── DETAIL PANEL ── */
+#detail-panel{position:fixed;inset:0;z-index:400;display:none;background:#f5f6f8;overflow-y:auto;font-family:var(--font)}
+#detail-panel *{box-sizing:border-box}
+.dp-top{background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 24px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:10}
+.dp-body{max-width:1060px;margin:0 auto;padding:22px;display:grid;grid-template-columns:1fr 296px;gap:18px;align-items:start}
+.dp-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:18px;margin-bottom:14px}
+.dp-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#9ca3af;margin-bottom:12px}
+/* ── RULES ENGINE ── */
+.rule-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:10px}
+.rule-header{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.rule-name{font-size:14px;font-weight:700;flex:1}
+.rule-priority{font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,.07);color:var(--muted)}
+.toggle{position:relative;width:36px;height:20px;cursor:pointer}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;border-radius:20px;background:#374151;transition:.2s}
+.toggle-slider::before{content:'';position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;left:3px;top:3px;transition:.2s}
+.toggle input:checked+.toggle-slider{background:#15803d}
+.toggle input:checked+.toggle-slider::before{transform:translateX(16px)}
+.cond-row{display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap}
+.cond-tag{padding:4px 10px;border-radius:6px;background:rgba(255,255,255,.06);font-size:12px;border:1px solid var(--border)}
+.action-tag{padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600}
+.action-tag.auto_approve{background:rgba(21,128,61,.15);color:#16A34A;border:1px solid rgba(21,128,61,.3)}
+.action-tag.keep_it{background:rgba(96,165,250,.15);color:var(--exchange);border:1px solid rgba(96,165,250,.3)}
+.action-tag.flag_review{background:rgba(217,119,6,.15);color:#D97706;border:1px solid rgba(217,119,6,.3)}
+.action-tag.auto_reject{background:rgba(220,38,38,.15);color:#DC2626;border:1px solid rgba(220,38,38,.3)}
+/* ── ANALYTICS ── */
+.analytics-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.bar-label{font-size:13px;color:var(--text);min-width:120px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-track{flex:1;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;transition:.6s}
+.bar-count{font-size:12px;color:var(--muted);min-width:28px;text-align:right}
+/* ── AUDIT ── */
+.audit-row{display:flex;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);font-size:12px;align-items:flex-start}
+.audit-time{color:var(--muted);flex-shrink:0;min-width:100px}
+.audit-action{font-weight:600;flex-shrink:0;min-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.audit-order{color:var(--accent2);flex-shrink:0;min-width:70px}
+.audit-detail{color:var(--muted);flex:1}
+.audit-actor{padding:2px 8px;border-radius:8px;background:rgba(255,255,255,.06);color:var(--text);flex-shrink:0}
+/* ── SETTINGS ── */
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.setting-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px}
+.setting-title{font-size:14px;font-weight:700;margin-bottom:4px}
+.setting-sub{font-size:12px;color:var(--muted);margin-bottom:14px}
+.inp{background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:7px;padding:8px 12px;color:var(--text);font-family:var(--font);font-size:13px;width:100%;transition:.15s}
+.inp:focus{outline:none;border-color:rgba(255,255,255,.3)}
+.inp-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:5px}
+select.inp{-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236B7280' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+/* ── MODALS ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:none;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal-box{background:var(--card);border:1px solid var(--border);border-radius:12px;width:min(520px,96vw);max-height:90vh;overflow-y:auto}
+.modal-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-head-title{font-size:16px;font-weight:700}
+.modal-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:2px 6px}
+.modal-body{padding:20px}
+.modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
+/* ── TOAST ── */
+#toast{position:fixed;bottom:24px;right:24px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 18px;font-size:13px;z-index:999;opacity:0;transition:.25s;pointer-events:none;max-width:320px}
+#toast.show{opacity:1}
+#toast.success{border-color:rgba(126,255,159,.4);color:var(--accent)}
+#toast.error{border-color:rgba(255,100,80,.4);color:var(--danger)}
+/* ── EMPTY STATE ── */
+.empty{padding:48px;text-align:center;color:var(--muted)}
+.empty-icon{font-size:40px;margin-bottom:14px}
+/* ── MISC ── */
+.flex{display:flex}.gap-8{gap:8px}.gap-12{gap:12px}.items-center{align-items:center}
+.ml-auto{margin-left:auto}.mt-12{margin-top:12px}.mb-14{margin-bottom:14px}
+.text-sm{font-size:13px}.text-xs{font-size:11px}.text-muted{color:var(--muted)}
+.font-bold{font-weight:700}.w-full{width:100%}
+.r-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px}
+hr{border:none;border-top:1px solid var(--border);margin:12px 0}
+</style>
+</head>
+<body>
+
+<!-- ═══ SIDEBAR ═══ -->
+<div id="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-icon">↩</div>
+    <div class="sb-logo-text">Returns Mgr</div>
+  </div>
+  <div class="sb-section">Orders</div>
+  <a class="sb-item active" id="nav-returns"   onclick="showPage('returns')">📋 Return Requests <span class="sb-badge" id="badge-ret">0</span></a>
+  <a class="sb-item"        id="nav-allorders" onclick="showPage('allorders')">📦 All Orders</a>
+  <div class="sb-section">Insights</div>
+  <a class="sb-item" id="nav-analytics" onclick="showPage('analytics')">📊 Analytics</a>
+  <a class="sb-item" id="nav-audit"     onclick="showPage('audit')">📜 Audit Trail</a>
+  <div class="sb-section">Automation</div>
+  <a class="sb-item" id="nav-rules"     onclick="showPage('rules')">⚡ Rules Engine</a>
+  <div class="sb-section">Settings</div>
+  <a class="sb-item" id="nav-settings"  onclick="showPage('settings')">⚙️ Settings</a>
+  <a class="sb-item" id="nav-delhivery" onclick="openConfig()">🚚 Delhivery</a>
+</div>
+
+<!-- ═══ MAIN ═══ -->
+<div id="main">
+  <!-- TOPBAR -->
+  <div id="topbar">
+    <div class="tb-left">
+      <div class="live-badge" id="live-badge">
+        <div class="live-dot"></div>
+        <span id="shop-name">Connecting…</span>
+      </div>
+    </div>
+    <div class="tb-right">
+      <button class="btn btn-outline" onclick="syncOrders()">↺ Sync</button>
+      <button class="btn btn-cyan"    onclick="openConfig()">⚙ Delhivery</button>
+      <button class="btn btn-green"   onclick="window.open('portal.html','_blank')">↗ Portal</button>
+    </div>
+  </div>
+
+  <!-- ═══ PAGE: RETURNS ═══ -->
+  <div id="page" id="pg-returns">
+
+    <!-- STATS -->
+    <div class="stats-grid" id="stats-row">
+      <div class="stat-card" style="border-top:3px solid var(--accent2)"><div class="stat-icon">📬</div><div class="stat-val" id="st-total">—</div><div class="stat-label">Total Requests</div></div>
+      <div class="stat-card" style="border-top:3px solid #D97706"><div class="stat-icon">⏳</div><div class="stat-val" id="st-pending">—</div><div class="stat-label">Pending Review</div></div>
+      <div class="stat-card" style="border-top:3px solid var(--accent)"><div class="stat-icon">✅</div><div class="stat-val" id="st-approved">—</div><div class="stat-label">Approved</div></div>
+      <div class="stat-card" style="border-top:3px solid var(--danger)"><div class="stat-icon">💰</div><div class="stat-val" id="st-revenue">—</div><div class="stat-label">Revenue at Risk</div></div>
+    </div>
+
+    <!-- RETURNS TABLE -->
+    <div class="table-wrap">
+      <div class="table-header">
+        <span class="table-title">Return &amp; Exchange Requests</span>
+        <input class="search-inp" id="search-inp" placeholder="Search order, product…" oninput="filterTable(this.value)">
+        <button class="filter-btn active" onclick="filterStatus('all',this)">All</button>
+        <button class="filter-btn" onclick="filterStatus('pending',this)">Pending</button>
+        <button class="filter-btn" onclick="filterStatus('approved',this)">Approved</button>
+        <button class="filter-btn" onclick="filterStatus('rejected',this)">Rejected</button>
+      </div>
+      <div id="ret-table-wrap">
+        <div class="empty"><div class="empty-icon">⏳</div>Loading requests…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PAGE: ALL ORDERS ═══ -->
+  <div id="pg-allorders" class="page-hidden" style="padding:24px">
+    <div class="table-wrap">
+      <div class="table-header">
+        <span class="table-title">All Shopify Orders</span>
+        <input class="search-inp" id="ao-search" placeholder="Search…" oninput="filterAllOrders(this.value)">
+        <span class="ml-auto text-sm text-muted" id="ao-count"></span>
+      </div>
+      <div id="ao-table-wrap"><div class="empty"><div class="empty-icon">📦</div>Loading orders…</div></div>
+    </div>
+  </div>
+
+  <!-- ═══ PAGE: ANALYTICS ═══ -->
+  <div id="pg-analytics" class="page-hidden" style="padding:24px">
+    <div style="font-family:var(--serif);font-size:22px;margin-bottom:6px">Analytics</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:20px">Return prevention & refund intelligence</div>
+    <div id="analytics-content"><div class="empty"><div class="empty-icon">📊</div>Loading analytics…</div></div>
+  </div>
+
+  <!-- ═══ PAGE: AUDIT TRAIL ═══ -->
+  <div id="pg-audit" class="page-hidden" style="padding:24px">
+    <div style="font-family:var(--serif);font-size:22px;margin-bottom:6px">Audit Trail</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:20px">Every action logged with timestamp and actor</div>
+    <div class="table-wrap">
+      <div class="table-header">
+        <span class="table-title">System Log</span>
+        <input class="search-inp" id="audit-search" placeholder="Filter by order or action…" oninput="filterAudit(this.value)">
+        <button class="btn btn-outline" style="margin-left:auto" onclick="loadAudit()">↺ Refresh</button>
+      </div>
+      <div id="audit-content"><div class="empty"><div class="empty-icon">📜</div>Loading audit log…</div></div>
+    </div>
+  </div>
+
+  <!-- ═══ PAGE: RULES ENGINE ═══ -->
+  <div id="pg-rules" class="page-hidden" style="padding:24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <div style="font-family:var(--serif);font-size:22px;margin-bottom:4px">⚡ Rules Engine</div>
+        <div style="font-size:13px;color:var(--muted)">Automate approvals, refunds, and flags. First matching rule wins.</div>
+      </div>
+      <button class="btn btn-green" onclick="openRuleModal()">+ New Rule</button>
+    </div>
+    <div id="rules-list"><div class="empty"><div class="empty-icon">⚡</div>Loading rules…</div></div>
+  </div>
+
+  <!-- ═══ PAGE: SETTINGS ═══ -->
+  <div id="pg-settings" class="page-hidden" style="padding:24px">
+    <div style="font-family:var(--serif);font-size:22px;margin-bottom:20px">Settings</div>
+    <div class="settings-grid">
+      <div class="setting-card">
+        <div class="setting-title">📅 Return Window</div>
+        <div class="setting-sub">Days customers have to submit a return after fulfillment</div>
+        <label class="inp-label">Return window (days)</label>
+        <input class="inp" id="set-window" type="number" min="1" max="365" value="30">
+        <label class="inp-label mt-12">Exchange window (days)</label>
+        <input class="inp" id="set-exch-window" type="number" min="1" max="365" value="30">
+      </div>
+      <div class="setting-card">
+        <div class="setting-title">🎁 Store Credit Bonus</div>
+        <div class="setting-sub">Extra % added to store credit refunds to incentivise customers</div>
+        <label class="inp-label">Bonus percentage (%)</label>
+        <input class="inp" id="set-credit-bonus" type="number" min="0" max="100" step="0.5" value="10">
+        <div style="margin-top:12px;padding:12px;background:rgba(126,255,159,.06);border:1px solid rgba(126,255,159,.2);border-radius:8px;font-size:12px;color:var(--muted)">
+          Example: ₹100 refund → customer gets <strong style="color:var(--accent)">₹<span id="credit-preview">110</span></strong> in store credit
+        </div>
+      </div>
+      <div class="setting-card">
+        <div class="setting-title">💸 Restocking Fee</div>
+        <div class="setting-sub">Deducted from all refunds automatically</div>
+        <label class="inp-label">Fee percentage (%)</label>
+        <input class="inp" id="set-restock" type="number" min="0" max="50" step="0.5" value="0">
+        <label class="inp-label mt-12">Fee type</label>
+        <select class="inp" id="set-restock-type">
+          <option value="percentage">Percentage of item value</option>
+          <option value="flat">Flat fee per item</option>
+        </select>
+      </div>
+      <div class="setting-card">
+        <div class="setting-title">🏭 Warehouse Address</div>
+        <div class="setting-sub">Shown to customers for self-ship returns</div>
+        <label class="inp-label">Warehouse name</label>
+        <input class="inp" id="set-wh-name" placeholder="e.g. Main Warehouse" style="margin-bottom:8px">
+        <label class="inp-label">Address line 1</label>
+        <input class="inp" id="set-wh-addr" placeholder="Street address" style="margin-bottom:8px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div><label class="inp-label">City</label><input class="inp" id="set-wh-city" placeholder="City"></div>
+          <div><label class="inp-label">Pincode</label><input class="inp" id="set-wh-pin" placeholder="Pincode"></div>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-green" style="margin-top:16px" onclick="saveSettings()">Save Settings</button>
+    <div id="settings-status" style="margin-top:10px;font-size:13px;color:var(--accent)"></div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- ═══ DETAIL PANEL ═══ -->
+<div id="detail-panel">
+  <div class="dp-top">
+    <button onclick="closeDetail()" style="background:none;border:1px solid #d1d5db;border-radius:6px;padding:6px 14px;color:#374151;cursor:pointer;font-size:13px">← All Requests</button>
+    <div style="flex:1;margin-left:12px">
+      <div style="font-size:11px;color:#9ca3af" id="dp-ref"></div>
+      <div style="font-size:20px;font-weight:700;color:#111;line-height:1.2" id="dp-title"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center" id="dp-actions"></div>
+  </div>
+  <div class="dp-body">
+    <div id="dp-left"></div>
+    <div id="dp-right"></div>
+  </div>
+</div>
+
+<!-- ═══ RULE MODAL ═══ -->
+<div class="modal-overlay" id="rule-modal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <span class="modal-head-title" id="rule-modal-title">New Rule</span>
+      <button class="modal-close" onclick="closeRuleModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:12px">
+        <label class="inp-label">Rule Name</label>
+        <input class="inp" id="rm-name" placeholder="e.g. Auto-approve size issues">
+      </div>
+      <div style="margin-bottom:12px">
+        <label class="inp-label">Priority (1 = highest)</label>
+        <input class="inp" id="rm-priority" type="number" min="1" value="1">
+      </div>
+      <div style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span class="inp-label" style="margin:0">IF Conditions (ALL must match)</span>
+          <button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="addCondition()">+ Add</button>
+        </div>
+        <div id="rm-conditions"></div>
+      </div>
+      <div style="margin-bottom:12px">
+        <label class="inp-label">THEN Action</label>
+        <select class="inp" id="rm-action">
+          <option value="auto_approve">✅ Auto-Approve Request</option>
+          <option value="keep_it">📦 Keep It (Refund Without Return)</option>
+          <option value="flag_review">🚩 Flag for Manual Review</option>
+          <option value="auto_reject">❌ Auto-Reject</option>
+        </select>
+      </div>
+      <div style="margin-bottom:12px">
+        <label class="inp-label">Action Message (shown to customer)</label>
+        <input class="inp" id="rm-message" placeholder="Optional message to customer">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeRuleModal()">Cancel</button>
+      <button class="btn btn-green" onclick="saveRule()">Save Rule</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ DELHIVERY CONFIG MODAL ═══ -->
+<div class="modal-overlay" id="config-modal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <span class="modal-head-title">🚚 Delhivery Configuration</span>
+      <button class="modal-close" onclick="closeConfig()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:12px">
+        <label class="inp-label">API Token</label>
+        <input class="inp" id="cfg-token" placeholder="Token XXXXXXXX..." style="font-family:monospace">
+      </div>
+      <div style="margin-bottom:12px">
+        <label class="inp-label">Warehouse Name (exact, case-sensitive)</label>
+        <input class="inp" id="cfg-warehouse" placeholder="e.g. Mumbai-Warehouse-1">
+      </div>
+      <div style="margin-bottom:12px">
+        <label class="inp-label">Mode</label>
+        <select class="inp" id="cfg-mode">
+          <option value="staging">Staging (Test)</option>
+          <option value="production">Production (Live)</option>
+        </select>
+      </div>
+      <div id="cfg-status" style="font-size:12px;color:var(--muted)"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeConfig()">Cancel</button>
+      <button class="btn btn-cyan" onclick="saveConfig()">Save Config</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TRACKING MODAL ═══ -->
+<div class="modal-overlay" id="track-modal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <span class="modal-head-title">📦 Shipment Tracking</span>
+      <button class="modal-close" onclick="document.getElementById('track-modal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body" id="track-modal-body" style="min-height:120px"></div>
+  </div>
+</div>
+
+<!-- ═══ TOAST ═══ -->
+<div id="toast"></div>
+
+<script>
+// Auto-detect backend: same origin if served from Express, else env override
+const BACKEND = (()=>{
+  // If served from Render directly, use same origin
+  if(window.location.hostname !== 'localhost' && !window.location.hostname.includes('netlify') && !window.location.hostname.includes('127.0.0.1')) {
+    return window.location.origin;
+  }
+  return localStorage.getItem('rm_backend') || 'https://returns-backend.onrender.com';
+})();
+
+let ALL_ORDERS  = [];
+let RET_ORDERS  = [];
+let FILTERED    = [];
+let ALL_AO      = [];
+let AUDIT_DATA  = [];
+let RULES_DATA  = [];
+let ANALYTICS_DATA = {};
+let selectedOrder = null;
+let editRuleId    = null;
+let tempConditions = [];
+let currentPage   = 'returns';
+let filterStatusVal = 'all';
+let searchVal = '';
+
+// ── INIT ──
+(async function init(){
+  await Promise.all([checkStatus(), loadOrders()]);
+  loadAnalytics();
+  loadAudit();
+  loadRules();
+  loadSettings();
+  setInterval(loadOrders, 60000);
+})();
+
+// ── STATUS ──
+async function checkStatus(){
+  try {
+    const s = await fetch(BACKEND+'/api/status').then(r=>r.json());
+    if(s.connected){
+      document.getElementById('shop-name').textContent = '🔗 '+s.shop;
+      document.getElementById('live-badge').style.background='rgba(126,255,159,.1)';
+    } else {
+      document.getElementById('shop-name').textContent = 'Not connected';
+      document.getElementById('live-badge').style.background='rgba(255,100,80,.1)';
+    }
+    if(s.return_window_days) document.getElementById('set-window').value=s.return_window_days;
+    if(s.store_credit_bonus!==undefined){
+      document.getElementById('set-credit-bonus').value=s.store_credit_bonus;
+      updateCreditPreview();
+    }
+  } catch(e){}
+}
+
+// ── LOAD ORDERS ──
+async function loadOrders(){
+  try {
+    const data = await fetch(BACKEND+'/api/orders').then(r=>r.json());
+    if(data.error) { showEmpty('Connection failed', data.error); return; }
+    ALL_ORDERS = data.orders||[];
+    RET_ORDERS = ALL_ORDERS.filter(o=>o.return_status);
+    ALL_AO     = ALL_ORDERS;
+    updateStats();
+    renderRetTable();
+    renderAllOrders();
+  } catch(e){ showEmpty('Connection failed', e.message); }
+}
+
+function syncOrders(){ showToast('↺ Syncing…',''); loadOrders().then(()=>showToast('✓ Synced','success')); }
+
+function updateStats(){
+  const pending  = RET_ORDERS.filter(o=>o.return_status==='pending'||o.return_status==='exchange-pending').length;
+  const approved = RET_ORDERS.filter(o=>o.return_status==='approved').length;
+  const revenue  = RET_ORDERS.reduce((s,o)=>s+parseFloat(o.total_price||0),0);
+  document.getElementById('st-total').textContent   = RET_ORDERS.length;
+  document.getElementById('st-pending').textContent = pending;
+  document.getElementById('st-approved').textContent= approved;
+  document.getElementById('st-revenue').textContent = '₹'+revenue.toLocaleString('en-IN',{maximumFractionDigits:0});
+  document.getElementById('badge-ret').textContent  = pending;
+}
+
+// ── RENDER RETURNS TABLE ──
+function renderRetTable(){
+  let data = RET_ORDERS.filter(o=>{
+    if(filterStatusVal!=='all'){
+      if(filterStatusVal==='pending' && !['pending','exchange-pending'].includes(o.return_status)) return false;
+      if(filterStatusVal==='approved' && o.return_status!=='approved') return false;
+      if(filterStatusVal==='rejected' && o.return_status!=='rejected') return false;
+    }
+    if(searchVal){
+      const q=searchVal.toLowerCase();
+      const inNum=(o.order_number||'').toLowerCase().includes(q);
+      const inProd=(o.line_items||[]).some(li=>(li.title||'').toLowerCase().includes(q));
+      const inCust=(o.customer_name||'').toLowerCase().includes(q);
+      if(!inNum&&!inProd&&!inCust) return false;
+    }
+    return true;
+  });
+  FILTERED=data;
+
+  if(!data.length){
+    document.getElementById('ret-table-wrap').innerHTML=`<div class="empty"><div class="empty-icon">📭</div>No requests found</div>`;
+    return;
+  }
+  const rows = data.map(o=>{
+    const fi   = o.line_items?.[0];
+    const isEx = o.request_type==='exchange';
+    const isMx = o.request_type==='mixed';
+    const typePill = isEx
+      ? `<span style="font-size:10px;padding:2px 7px;border-radius:8px;background:rgba(96,165,250,.15);color:var(--exchange)">🔄 Exchange</span>`
+      : isMx
+      ? `<span style="font-size:10px;padding:2px 7px;border-radius:8px;background:rgba(255,184,77,.15);color:var(--accent3)">↩🔄 Mixed</span>`
+      : `<span style="font-size:10px;padding:2px 7px;border-radius:8px;background:rgba(126,255,159,.12);color:var(--accent)">↩ Return</span>`;
+    const isPending = ['pending','exchange-pending'].includes(o.return_status);
+    const date = new Date(o.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+    const fs   = o.financial_status||'pending';
+    const typeBadge = typePill;
+    return `<tr onclick="openDetail('${escAttr(o.id)}')" style="cursor:pointer">
+      <td><div style="font-size:13px;font-weight:700;color:var(--accent2)">#${escHtml(o.order_number)}</div>${typeBadge}</td>
+      <td>${escHtml(o.customer_name||'Guest')}</td>
+      <td>
+        <div style="font-size:13px;font-weight:500">${fi?escHtml(fi.title):'—'}</div>
+        <div style="font-size:11px;color:var(--muted)">${(o.line_items?.length||1)>1?'+'+(o.line_items.length-1)+' more item(s)':fi?'Qty: '+(fi.quantity||1):''}</div>
+      </td>
+      <td><span style="font-weight:600">₹${parseFloat(o.total_price||0).toLocaleString('en-IN',{maximumFractionDigits:0})}</span></td>
+      <td><span class="status ${o.return_status}">${cap(o.return_status?.replace('-',' ')||'—')}</span></td>
+      <td>${date}</td>
+      <td onclick="event.stopPropagation()">
+        ${isPending
+          ? `<div style="display:flex;gap:6px"><button class="btn btn-green" style="padding:5px 10px;font-size:12px" onclick="approveReturn('${escAttr(o.id)}',event)">✓ Approve</button><button class="btn btn-red" style="padding:5px 10px;font-size:12px" onclick="rejectReturn('${escAttr(o.id)}',event)">✗</button></div>`
+          : `<button class="btn btn-outline" style="padding:5px 12px;font-size:12px" onclick="openDetail('${escAttr(o.id)}')">View →</button>`}
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('ret-table-wrap').innerHTML=`
+    <table><thead><tr>
+      <th>ORDER</th><th>CUSTOMER</th><th>PRODUCT(S)</th><th>AMOUNT</th><th>STATUS</th><th>DATE</th><th>ACTIONS</th>
+    </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function filterTable(q){ searchVal=q; renderRetTable(); }
+function filterStatus(s,el){ filterStatusVal=s; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); el.classList.add('active'); renderRetTable(); }
+
+// ── ALL ORDERS TABLE ──
+function renderAllOrders(data){
+  const d = data||ALL_AO;
+  document.getElementById('ao-count').textContent=d.length+' orders';
+  if(!d.length){document.getElementById('ao-table-wrap').innerHTML='<div class="empty"><div class="empty-icon">📦</div>No orders</div>';return;}
+  const rows=d.map(o=>`<tr onclick="openDetail('${escAttr(o.id)}')">
+    <td><span style="font-weight:700;color:var(--accent2)">#${escHtml(o.order_number)}</span></td>
+    <td>${escHtml(o.customer_name||'Guest')}</td>
+    <td>${(o.line_items||[]).map(li=>escHtml(li.title)).slice(0,2).join(', ')}</td>
+    <td>₹${parseFloat(o.total_price||0).toLocaleString('en-IN',{maximumFractionDigits:0})}</td>
+    <td><span class="status ${o.financial_status||'pending'}">${cap(o.financial_status||'—')}</span></td>
+    <td><span class="status ${o.fulfillment_status||'unfulfilled'}">${cap(o.fulfillment_status||'—')}</span></td>
+    <td>${new Date(o.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</td>
+  </tr>`).join('');
+  document.getElementById('ao-table-wrap').innerHTML=`<table><thead><tr><th>ORDER</th><th>CUSTOMER</th><th>PRODUCTS</th><th>AMOUNT</th><th>PAYMENT</th><th>FULFILLMENT</th><th>DATE</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function filterAllOrders(q){
+  if(!q){renderAllOrders(ALL_AO);return;}
+  const lq=q.toLowerCase();
+  renderAllOrders(ALL_AO.filter(o=>(o.order_number||'').toLowerCase().includes(lq)||(o.customer_name||'').toLowerCase().includes(lq)||(o.line_items||[]).some(li=>(li.title||'').toLowerCase().includes(lq))));
+}
+
+// ── APPROVE / REJECT ──
+async function approveReturn(id,e){
+  if(e&&e.stopPropagation)e.stopPropagation();
+  const order=ALL_ORDERS.find(o=>String(o.id)===String(id));
+  showToast('Approving…','');
+  const res=await fetch(BACKEND+'/api/returns/'+id+'/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:order?.request_type||'return',actor:'merchant'})}).then(r=>r.json()).catch(e=>({error:e.message}));
+  if(res.error){showToast('Error: '+res.error,'error');return;}
+  if(order)order.return_status='approved';
+  updateStats();renderRetTable();showToast('✅ Approved!','success');
+  if(selectedOrder&&String(selectedOrder.id)===String(id)){selectedOrder.return_status='approved';renderDetailPanel(selectedOrder);}
+}
+
+async function rejectReturn(id,e,reason){
+  if(e&&e.stopPropagation)e.stopPropagation();
+  const order=ALL_ORDERS.find(o=>String(o.id)===String(id));
+  showToast('Rejecting…','');
+  const res=await fetch(BACKEND+'/api/returns/'+id+'/reject',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:order?.request_type||'return',reason:reason||'',actor:'merchant'})}).then(r=>r.json()).catch(e=>({error:e.message}));
+  if(res.error){showToast('Error: '+res.error,'error');return;}
+  if(order)order.return_status='rejected';
+  updateStats();renderRetTable();showToast('❌ Rejected.','error');
+  if(selectedOrder&&String(selectedOrder.id)===String(id)){selectedOrder.return_status='rejected';renderDetailPanel(selectedOrder);}
+}
+
+// ── DETAIL PANEL ──
+function openDetail(id){
+  selectedOrder=ALL_ORDERS.find(o=>String(o.id)===String(id));
+  if(!selectedOrder)return;
+  document.getElementById('detail-panel').style.display='block';
+  document.body.style.overflow='hidden';
+  renderDetailPanel(selectedOrder);
+}
+
+function closeDetail(){
+  document.getElementById('detail-panel').style.display='none';
+  document.body.style.overflow='';
+  selectedOrder=null;
+}
+
+function renderDetailPanel(o){
+  const parsed   = parseNote(o.note);
+  const isPending= ['pending','exchange-pending'].includes(o.return_status)||(!o.return_status&&false);
+  const isApproved=o.return_status==='approved';
+  const isReturn = o.request_type==='return'||o.request_type==='mixed';
+  const isExchange=o.request_type==='exchange'||o.request_type==='mixed';
+  const tags     = Array.isArray(o.tags)?o.tags:String(o.tags||'').split(',').map(t=>t.trim()).filter(Boolean);
+  const awbMatch = (o.note||'').match(/AWB:\s*([\w]+)/);
+  const awb      = awbMatch?awbMatch[1]:null;
+  const isRefunded= tags.includes('return-refunded');
+  const isExFulfilled=tags.includes('exchange-fulfilled');
+  const typeRef  = o.request_type==='exchange'?'#EXC':o.request_type==='mixed'?'#MIX':'#RET';
+
+  document.getElementById('dp-ref').textContent=typeRef+String(o.order_number||'').padStart(4,'0');
+  document.getElementById('dp-title').textContent='Order #'+(o.order_number||'');
+
+  // Status pill + action btns
+  const statusPill=isPending
+    ?`<span style="padding:5px 12px;border-radius:20px;background:#fef3c7;color:#d97706;font-size:12px;font-weight:700;border:1px solid #fcd34d">⏳ Pending</span>`
+    :isApproved
+    ?`<span style="padding:5px 12px;border-radius:20px;background:#dcfce7;color:#16a34a;font-size:12px;font-weight:700;border:1px solid #86efac">✅ Approved</span>`
+    :`<span style="padding:5px 12px;border-radius:20px;background:#fee2e2;color:#dc2626;font-size:12px;font-weight:700;border:1px solid #fca5a5">❌ Rejected</span>`;
+  document.getElementById('dp-actions').innerHTML=statusPill
+    +(isPending?`<button onclick="rejectReturn('${escAttr(o.id)}',null)" style="padding:8px 18px;border:1px solid #d1d5db;background:#fff;color:#374151;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">Reject</button>`:'')
+    +(isPending?`<button onclick="approveReturn('${escAttr(o.id)}',null)" style="padding:8px 18px;background:#111;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">Approve</button>`:'');
+
+  // ── LEFT COLUMN ──
+  const card=(html,mb='14px')=>`<div class="dp-card" style="margin-bottom:${mb}">${html}</div>`;
+  const sec=(t)=>`<div class="dp-section-title">${t}</div>`;
+
+  let L='';
+
+  // Timeline card
+  const sub = `<div style="font-size:13px;color:#6b7280">Submitted ${parsed.submitted?new Date(parsed.submitted).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}):'recently'}</div>`;
+  L+=card(`<div style="display:flex;align-items:center;gap:12px"><div style="width:36px;height:36px;border-radius:50%;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">⏺</div><div><div style="font-size:14px;font-weight:600;color:#111">Requested</div>${sub}</div></div>`);
+
+  // Items
+  const allItems=parsed.items;
+  if(allItems.length){
+    allItems.forEach((line,idx)=>{
+      const isEx2=line.includes('[EXCHANGE]');
+      const clean=line.replace('[EXCHANGE]','').replace('[RETURN]','').trim();
+      const parts=clean.split('|').map(s=>s.trim());
+      const itemDesc=parts[0];
+      const reason=(parts.find(p=>p.startsWith('Reason:'))||'').replace('Reason:','').trim();
+      const exchFor=(parts.find(p=>p.startsWith('Exchange for:')||p.startsWith('New Product:'))||'').replace('Exchange for:','').replace('New Product:','').trim();
+      const li=o.line_items?.find(x=>itemDesc.toLowerCase().includes((x.title||'').toLowerCase().slice(0,12)))||o.line_items?.[idx]||o.line_items?.[0];
+      const img=li?.image_url?`<img style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb;flex-shrink:0" src="${li.image_url}">`:`<div style="width:64px;height:64px;background:#f3f4f6;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">👗</div>`;
+      const price=li?parseFloat(li.price||0):0;
+      const qty=li?.quantity||1;
+
+      if(isEx2&&exchFor){
+        L+=card(`<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:start">
+          <div><div style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Original Item</div>
+          <div style="display:flex;gap:10px">${img}<div><div style="font-size:13px;font-weight:600;color:#111">${escHtml(itemDesc)}</div>${li?.variant_title?`<div style="font-size:12px;color:#6b7280">${escHtml(li.variant_title)}</div>`:''}<div style="font-size:12px;color:#6b7280">₹${price.toFixed(2)} × ${qty}</div>${reason?`<div style="margin-top:5px;font-size:11px;padding:2px 8px;background:#f9fafb;border-radius:8px;color:#6b7280;border:1px solid #e5e7eb;display:inline-block">Reason: ${escHtml(reason)}</div>`:''}</div></div></div>
+          <div style="display:flex;align-items:center;justify-content:center;padding-top:36px;color:#9ca3af;font-size:22px">⇄</div>
+          <div><div style="font-size:11px;font-weight:600;color:#1d4ed8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Exchange For</div>
+          <div style="display:flex;gap:10px"><div style="width:64px;height:64px;background:#eff6ff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;border:1px solid #bfdbfe">📦</div>
+          <div><div style="font-size:13px;font-weight:600;color:#1d4ed8">${escHtml(exchFor)}</div></div></div></div>
+        </div>`);
+      } else {
+        L+=card(`<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:12px">
+          ${img}<div style="flex:1">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:${isEx2?'#eff6ff':'#fff7ed'};color:${isEx2?'#1d4ed8':'#c2410c'};border:1px solid ${isEx2?'#bfdbfe':'#fed7aa'}">${isEx2?'🔄 Exchange':'↩ Return'}</span></div>
+          <div style="font-size:14px;font-weight:600;color:#111;margin-bottom:2px">${escHtml(itemDesc)}</div>
+          ${li?.variant_title?`<div style="font-size:12px;color:#6b7280">${escHtml(li.variant_title)}</div>`:''}
+          ${reason?`<div style="margin-top:5px;font-size:11px;padding:2px 8px;background:#f9fafb;border-radius:8px;color:#6b7280;border:1px solid #e5e7eb;display:inline-block">📋 ${escHtml(reason)}</div>`:''}
+          </div>
+          <div style="text-align:right;flex-shrink:0"><div style="font-size:14px;font-weight:700">₹${price.toFixed(2)}</div><div style="font-size:11px;color:#6b7280">× ${qty}</div></div>
+        </div>
+        <div style="border-top:1px solid #f3f4f6;padding-top:10px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:#6b7280">Item price</span><span>₹${price.toFixed(2)} × ${qty}</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;font-weight:700;border-top:1px solid #f3f4f6;margin-top:4px"><span>Total</span><span style="color:#16a34a">₹${(price*qty).toFixed(2)}</span></div>
+        </div>`);
+      }
+    });
+  } else {
+    (o.line_items||[]).forEach(li=>{
+      const img=li.image_url?`<img style="width:56px;height:56px;object-fit:cover;border-radius:8px" src="${li.image_url}">`:`<div style="width:56px;height:56px;background:#f3f4f6;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px">👗</div>`;
+      L+=card(`<div style="display:flex;gap:12px;align-items:center">${img}<div style="flex:1"><div style="font-size:14px;font-weight:600;color:#111">${escHtml(li.title)}</div>${li.variant_title?`<div style="font-size:12px;color:#6b7280">${escHtml(li.variant_title)}</div>`:''}<div style="font-size:12px;color:#6b7280">₹${parseFloat(li.price||0).toFixed(2)} × ${li.quantity}</div></div></div>`);
+    });
+  }
+
+  // Delhivery Logistics
+  L+=card(`${sec('🚚 Delhivery Reverse Pickup')}
+    ${awb
+      ?`<div style="display:flex;align-items:center;gap:12px;padding:12px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px">
+          <div style="font-size:22px">📦</div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:600;color:#15803d">Pickup Scheduled</div><div style="font-size:12px;color:#16a34a">AWB: <strong>${escHtml(awb)}</strong></div></div>
+          <button onclick="trackAWB('${escAttr(awb)}')" style="padding:7px 16px;background:#16a34a;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">Track →</button>
+        </div>`
+      :isPending
+        ?`<div style="font-size:13px;color:#6b7280;padding:8px 0">Approve the request first to schedule a Delhivery reverse pickup.</div>`
+        :`<div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px">
+            <div style="display:flex;align-items:center;gap:10px"><div style="font-size:22px">🚚</div>
+            <div><div style="font-size:13px;font-weight:600;color:#0369a1">Delhivery</div>
+            <div id="del-status-${escAttr(o.id)}" style="font-size:12px;color:#6b7280">Ready to create reverse pickup</div></div></div>
+            <button onclick="createDelhiveryPickup('${escAttr(o.id)}')" style="padding:8px 16px;background:#0369a1;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">Create Pickup</button>
+          </div>`
+    }`);
+
+  // Shopify Actions
+  if(isApproved){
+    L+=card(`${sec('🛍️ Shopify Actions')}
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${isReturn?`<div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:${isRefunded?'#f0fdf4':'#fafafa'};border:1px solid ${isRefunded?'#86efac':'#e5e7eb'};border-radius:8px">
+          <div><div style="font-size:13px;font-weight:600;color:#111">💰 Process Refund</div>
+          <div id="refund-status-${escAttr(o.id)}" style="font-size:12px;color:#6b7280;margin-top:2px">${isRefunded?'✓ Refund created':'Issue refund + restock inventory'}</div></div>
+          ${!isRefunded?`<button onclick="createShopifyRefund('${escAttr(o.id)}')" style="padding:8px 16px;background:#16a34a;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">Create Refund</button>`:''}</div>`:''}
+        ${isReturn?`<div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:#fafafa;border:1px solid #e5e7eb;border-radius:8px">
+          <div><div style="font-size:13px;font-weight:600;color:#111">🎁 Issue Store Credit</div>
+          <div id="credit-status-${escAttr(o.id)}" style="font-size:12px;color:#6b7280;margin-top:2px">Issue Shopify gift card</div></div>
+          <button onclick="issueStoreCredit('${escAttr(o.id)}')" style="padding:8px 16px;background:#7c3aed;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">Issue Credit</button></div>`:''}
+        ${isExchange?`<div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:${isExFulfilled?'#eff6ff':'#fafafa'};border:1px solid ${isExFulfilled?'#bfdbfe':'#e5e7eb'};border-radius:8px">
+          <div><div style="font-size:13px;font-weight:600;color:#111">🛍️ Create Exchange Order</div>
+          <div id="exchange-status-${escAttr(o.id)}" style="font-size:12px;color:#6b7280;margin-top:2px">${isExFulfilled?'✓ Exchange order created':'Create new Shopify order'}</div></div>
+          ${!isExFulfilled?`<button onclick="createExchangeOrder('${escAttr(o.id)}')" style="padding:8px 16px;background:#1d4ed8;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">Create Order</button>`:''}</div>`:''}
+      </div>`);
+  }
+
+  document.getElementById('dp-left').innerHTML=L;
+
+  // ── RIGHT COLUMN ──
+  const rc=(inner,mb='12px')=>`<div class="dp-card" style="margin-bottom:${mb}">${inner}</div>`;
+  const rt=(t)=>`<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:10px">${t}</div>`;
+  let R='';
+
+  const mainReason=(parsed.items[0]||'').split('|').find(p=>p.trim().startsWith('Reason:'));
+  if(mainReason) R+=rc(`${rt('Reason')}<div style="font-size:14px;color:#111">${escHtml(mainReason.replace('Reason:','').trim())}</div>`);
+
+  R+=rc(`${rt('Customer')}
+    <div style="font-size:14px;font-weight:700;color:#111;margin-bottom:2px">${escHtml(o.customer_name||'Guest')}</div>
+    ${o.customer_email?`<div style="font-size:13px;color:#6b7280;margin-bottom:10px">${escHtml(o.customer_email)}</div>`:''}
+    <div style="border-top:1px solid #f3f4f6;padding-top:10px">
+      <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px">Delivery address</div>
+      <div id="addr-display-${escAttr(o.id)}" style="font-size:12px;color:#6b7280;line-height:1.8">
+        <button onclick="loadCustomerAddr('${escAttr(o.id)}')" style="font-size:12px;color:#1d4ed8;background:none;border:none;cursor:pointer;text-decoration:underline">Load address →</button>
+      </div>
+    </div>`);
+
+  if(parsed.refund&&parsed.refund!=='None') R+=rc(`${rt('Refund Method')}<div style="font-size:13px;color:#111">${escHtml(parsed.refund)}</div><div style="font-size:11px;color:#9ca3af;margin-top:3px">${parsed.refund.toLowerCase().includes('credit')?'Store credit issued':'Refund to original payment'}</div>`);
+
+  if(parsed.customerNote&&parsed.customerNote!=='None') R+=rc(`${rt('Customer Note')}<div style="font-size:13px;color:#374151;line-height:1.6;font-style:italic">"${escHtml(parsed.customerNote)}"</div>`);
+
+  R+=rc(`${rt('Order Info')}
+    <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid #f3f4f6"><span style="color:#6b7280">Order</span><span style="font-weight:600">#${escHtml(o.order_number)}</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid #f3f4f6"><span style="color:#6b7280">Amount</span><span style="font-weight:600">₹${parseFloat(o.total_price||0).toLocaleString('en-IN',{maximumFractionDigits:2})}</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid #f3f4f6"><span style="color:#6b7280">Payment</span><span>${cap(o.financial_status||'paid')}</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span style="color:#6b7280">Type</span><span>${isExchange&&isReturn?'↩🔄 Mixed':isExchange?'🔄 Exchange':'↩ Return'}</span></div>
+    `,'0');
+
+  document.getElementById('dp-right').innerHTML=R;
+}
+
+async function loadCustomerAddr(orderId){
+  const el=document.getElementById('addr-display-'+orderId);
+  if(!el)return;
+  el.textContent='Loading...';
+  const data=await fetch(BACKEND+'/api/orders/'+orderId+'/details').then(r=>r.json()).catch(()=>null);
+  if(!data?.address){el.textContent='Address not available';return;}
+  const a=data.address;
+  el.innerHTML=[a.name,a.address1,a.address2,`${a.city||''} ${a.province||''} ${a.zip||''}`,a.country,a.phone].filter(Boolean).map(escHtml).join('<br>');
+  const ord=ALL_ORDERS.find(x=>String(x.id)===String(orderId));
+  if(ord)ord._addr=a;
+}
+
+// ── DELHIVERY PICKUP ──
+async function createDelhiveryPickup(orderId){
+  const el=document.getElementById('del-status-'+orderId);
+  if(el)el.textContent='⏳ Creating pickup…';
+  const order=ALL_ORDERS.find(o=>String(o.id)===String(orderId));
+  const addr=order?._addr;
+  const details=await fetch(BACKEND+'/api/orders/'+orderId+'/details').then(r=>r.json()).catch(()=>null);
+  const a=details?.address||addr;
+  if(!a?.zip){showToast('Load customer address first','error');if(el)el.textContent='Address required';return;}
+  const payload={
+    order_id:orderId, order_number:order?.order_number||orderId,
+    customer_name:a.name||order?.customer_name||'Customer',
+    customer_phone:a.phone||'',
+    customer_address:[a.address1,a.address2].filter(Boolean).join(', '),
+    customer_city:a.city||'', customer_state:a.province||'',
+    customer_pincode:a.zip?.replace(/\D/g,'')||'',
+    products_desc:(order?.line_items||[]).map(li=>li.title).slice(0,2).join(', ').slice(0,100)||'Return Shipment',
+    total_amount:details?.total_price||'0',
+    quantity:(order?.line_items||[]).reduce((s,li)=>s+(li.quantity||1),0)||1,
+    weight:0.5
+  };
+  const res=await fetch(BACKEND+'/api/delhivery/create-pickup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(r=>r.json()).catch(e=>({error:e.message}));
+  if(res.success&&res.waybill){
+    if(el)el.innerHTML=`✓ AWB: <strong>${res.waybill}</strong>`;
+    showToast('✅ Pickup created! AWB: '+res.waybill,'success');
+    if(order&&order.note)order.note+=`\nAWB: ${res.waybill}`;
+    renderDetailPanel(order);
+  } else {
+    const errMsg=res.error||'Pickup failed';
+    if(el)el.textContent='✗ '+errMsg;
+    showToast('Error: '+errMsg,'error');
+  }
+}
+
+async function trackAWB(waybill){
+  document.getElementById('track-modal').classList.add('open');
+  document.getElementById('track-modal-body').innerHTML='<div style="text-align:center;padding:24px;color:var(--muted)">⏳ Loading track data…</div>';
+  const data=await fetch(BACKEND+'/api/delhivery/track/'+waybill).then(r=>r.json()).catch(()=>({found:false}));
+  if(!data.found){document.getElementById('track-modal-body').innerHTML='<div style="color:var(--muted);font-size:13px">No tracking data found for AWB: '+escHtml(waybill)+'</div>';return;}
+  const scans=(data.scans||[]).slice(0,8).map(s=>`<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px">
+    <div style="color:var(--muted);flex-shrink:0;min-width:90px">${s.date?new Date(s.date).toLocaleDateString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):''}</div>
+    <div><div style="font-weight:600">${escHtml(s.status||'')}</div><div style="color:var(--muted)">${escHtml(s.detail||'')} ${s.location?'— '+escHtml(s.location):''}</div></div>
+  </div>`).join('');
+  document.getElementById('track-modal-body').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div style="padding:12px;background:rgba(255,255,255,.04);border-radius:8px;border:1px solid var(--border)"><div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:4px">Status</div><div style="font-size:13px;font-weight:700">${escHtml(data.status||'Unknown')}</div></div>
+      <div style="padding:12px;background:rgba(255,255,255,.04);border-radius:8px;border:1px solid var(--border)"><div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:4px">Destination</div><div style="font-size:13px;font-weight:700">${escHtml(data.destination||'—')}</div></div>
+    </div>
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px">Scan History</div>
+    ${scans||'<div style="color:var(--muted);font-size:13px">No scans yet</div>'}`;
+}
+
+// ── SHOPIFY ACTIONS ──
+async function createShopifyRefund(orderId){
+  const el=document.getElementById('refund-status-'+orderId);
+  if(el){el.textContent='⏳ Creating refund…';}
+  const order=ALL_ORDERS.find(o=>String(o.id)===String(orderId));
+  const details=await fetch(BACKEND+'/api/orders/'+orderId+'/details').then(r=>r.json()).catch(()=>null);
+  const lineItems=(details?.line_items||order?.line_items||[]).map(li=>({id:li.id,quantity:li.quantity||1}));
+  const res=await fetch(BACKEND+'/api/shopify/refund/'+orderId,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({line_items:lineItems,refund_method:'original',note:'Approved return — Returns Manager'})}).then(r=>r.json()).catch(e=>({error:e.message}));
+  if(res.success){if(el)el.innerHTML=`✓ Refunded ₹${res.amount||''}`;showToast('✅ Refund created!','success');}
+  else{if(el)el.textContent='✗ '+(res.error||'Failed');showToast('Refund error: '+(res.error||''),'error');}
+}
+
+async function issueStoreCredit(orderId){
+  const order=ALL_ORDERS.find(o=>String(o.id)===String(orderId));
+  const amount=parseFloat(order?.total_price||0).toFixed(2);
+  const el=document.getElementById('credit-status-'+orderId);
+  if(el)el.textContent='⏳ Issuing credit…';
+  const res=await fetch(BACKEND+'/api/shopify/store-credit/'+orderId,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount,apply_bonus:true,note:'Store credit from Returns Manager'})}).then(r=>r.json()).catch(e=>({error:e.message}));
+  if(res.success){if(el)el.innerHTML=`✓ Gift Card: <strong>${escHtml(res.code)}</strong> (₹${res.amount})`;showToast('🎁 Store credit issued! Code: '+res.code,'success');}
+  else{if(el)el.textContent='✗ '+(res.error||'Failed');showToast('Credit error: '+(res.error||''),'error');}
+}
+
+async function createExchangeOrder(orderId){
+  const el=document.getElementById('exchange-status-'+orderId);
+  if(el)el.textContent='⏳ Creating exchange order…';
+  const details=await fetch(BACKEND+'/api/orders/'+orderId+'/details').then(r=>r.json()).catch(()=>null);
+  const order=ALL_ORDERS.find(o=>String(o.id)===String(orderId));
+  const parsed=parseNote(order?.note);
+  const exchItems=(details?.line_items||[]).map(li=>({variant_id:li.variant_id,quantity:li.quantity||1,price:li.price||'0',title:li.title}));
+  const res=await fetch(BACKEND+'/api/shopify/exchange/'+orderId,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({exchange_items:exchItems,order_number:order?.order_number})}).then(r=>r.json()).catch(e=>({error:e.message}));
+  if(res.success){if(el)el.innerHTML=`✓ Exchange Order: <strong>${escHtml(res.new_order_name||'')}</strong>`;showToast('✅ Exchange order created: '+(res.new_order_name||''),'success');}
+  else{if(el)el.textContent='✗ '+(res.error||'Failed');showToast('Exchange error: '+(res.error||''),'error');}
+}
+
+// ── ANALYTICS ──
+async function loadAnalytics(){
+  try {
+    const data=await fetch(BACKEND+'/api/analytics').then(r=>r.json());
+    ANALYTICS_DATA=data;
+    renderAnalytics(data);
+  } catch(e){}
+}
+
+function renderAnalytics(d){
+  const reasons   = d.top_reasons||[];
+  const prevent   = d.prevention_report||[];
+  const maxR = Math.max(1,...reasons.map(r=>r.count));
+  const maxP = Math.max(1,...prevent.map(p=>p.count));
+  const reasonBars=reasons.map(r=>`<div class="bar-row">
+    <div class="bar-label">${escHtml(r.reason)}</div>
+    <div class="bar-track"><div class="bar-fill" style="width:${(r.count/maxR*100).toFixed(0)}%;background:var(--danger)"></div></div>
+    <div class="bar-count">${r.count}</div>
+  </div>`).join('')||'<div class="empty" style="padding:16px">No data yet</div>';
+  const preventBars=prevent.map(p=>`<div class="bar-row">
+    <div class="bar-label">${escHtml(p.product)}</div>
+    <div class="bar-track"><div class="bar-fill" style="width:${(p.count/maxP*100).toFixed(0)}%;background:var(--accent3)"></div></div>
+    <div class="bar-count">${p.count}</div>
+  </div>`).join('')||'<div class="empty" style="padding:16px">No data yet</div>';
+  document.getElementById('analytics-content').innerHTML=`
+    <div class="stats-grid" style="margin-bottom:18px">
+      <div class="stat-card"><div class="stat-icon">📬</div><div class="stat-val">${d.total_requests||0}</div><div class="stat-label">Total Requests</div></div>
+      <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-val">${d.approval_rate||0}%</div><div class="stat-label">Approval Rate</div></div>
+      <div class="stat-card"><div class="stat-icon">⚡</div><div class="stat-val">${d.auto_approve_rate||0}%</div><div class="stat-label">Auto-Approved</div><div class="stat-trend up">Reduced manual work</div></div>
+      <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-val">₹${(d.refunded_amount||0).toLocaleString('en-IN',{maximumFractionDigits:0})}</div><div class="stat-label">Total Refunded</div></div>
+    </div>
+    <div class="analytics-grid">
+      <div class="r-card">
+        <div style="font-size:14px;font-weight:700;margin-bottom:4px">📉 Return Prevention Report</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Most returned products — update listings to reduce returns</div>
+        ${preventBars}
+      </div>
+      <div class="r-card">
+        <div style="font-size:14px;font-weight:700;margin-bottom:4px">📋 Top Return Reasons</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Use these to update size guides, product descriptions</div>
+        ${reasonBars}
+      </div>
+    </div>
+    <div class="r-card">
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px">💡 Return Prevention Insights</div>
+      ${prevent.length
+        ?prevent.slice(0,3).map(p=>`<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+          <div style="font-size:13px;font-weight:600">⚠️ "${escHtml(p.product)}" — returned ${p.count} time${p.count!==1?'s':''}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px">Consider: Update size guide, improve product photos, add detailed description</div>
+        </div>`).join('')
+        :'<div style="color:var(--muted);font-size:13px">Submit some return requests to see insights</div>'}
+    </div>`;
+}
+
+// ── AUDIT TRAIL ──
+async function loadAudit(){
+  try {
+    const data=await fetch(BACKEND+'/api/audit').then(r=>r.json());
+    AUDIT_DATA=data.logs||[];
+    renderAudit(AUDIT_DATA);
+  } catch(e){}
+}
+
+function renderAudit(logs){
+  if(!logs.length){document.getElementById('audit-content').innerHTML='<div class="empty"><div class="empty-icon">📜</div>No audit entries yet</div>';return;}
+  const actionColors={'approved':'var(--accent)','rejected':'var(--danger)','rule_matched':'var(--accent2)','refund_created':'var(--accent)','store_credit_issued':'#a78bfa','exchange_order_created':'var(--exchange)','auto_approve':'var(--accent)','keep_it':'var(--exchange)','request_submitted':'var(--accent3)'};
+  const rows=logs.map(l=>`<div class="audit-row">
+    <div class="audit-time">${new Date(l.timestamp).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+    <div class="audit-action" style="color:${actionColors[l.action]||'var(--text)'}">${escHtml(l.action.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()))}</div>
+    <div class="audit-order">#${escHtml(l.order_id)}</div>
+    <div class="audit-detail">${escHtml(l.details)}</div>
+    <div class="audit-actor">${escHtml(l.actor)}</div>
+  </div>`).join('');
+  document.getElementById('audit-content').innerHTML=rows;
+}
+
+function filterAudit(q){
+  if(!q){renderAudit(AUDIT_DATA);return;}
+  const lq=q.toLowerCase();
+  renderAudit(AUDIT_DATA.filter(l=>l.order_id.toLowerCase().includes(lq)||l.action.toLowerCase().includes(lq)||l.details.toLowerCase().includes(lq)));
+}
+
+// ── RULES ENGINE ──
+async function loadRules(){
+  try {
+    const data=await fetch(BACKEND+'/api/rules').then(r=>r.json());
+    RULES_DATA=data.rules||[];
+    renderRules(RULES_DATA);
+  } catch(e){}
+}
+
+function renderRules(rules){
+  if(!rules.length){document.getElementById('rules-list').innerHTML='<div class="empty"><div class="empty-icon">⚡</div>No rules yet. Create your first automation rule.</div>';return;}
+  const condOps={'lt':'<','gt':'>','eq':'=','neq':'≠','contains':'contains','gte':'≥','lte':'≤'};
+  const fieldLabels={'return_reason':'Return Reason','product_price':'Product Price','order_value':'Order Value','shipping_cost':'Shipping Cost','customer_return_count':'Return Count','request_type':'Request Type','item_category':'Item Category'};
+  const html=rules.sort((a,b)=>a.priority-b.priority).map(r=>`
+    <div class="rule-card">
+      <div class="rule-header">
+        <div class="rule-priority">#${r.priority}</div>
+        <div class="rule-name">${escHtml(r.name)}</div>
+        <label class="toggle"><input type="checkbox" ${r.enabled?'checked':''} onchange="toggleRule('${escAttr(r.id)}',this.checked)"><div class="toggle-slider"></div></label>
+        <button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="openRuleModal('${escAttr(r.id)}')">Edit</button>
+        <button class="btn" style="padding:4px 10px;font-size:12px;background:rgba(255,100,80,.1);border:1px solid rgba(255,100,80,.3);color:var(--danger)" onclick="deleteRule('${escAttr(r.id)}')">Delete</button>
+      </div>
+      <div style="margin-bottom:8px">
+        <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">IF</span>
+        ${r.conditions.map((c,i)=>`${i>0?'<span style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;margin:0 4px">AND</span>':''}
+        <span class="cond-tag">${escHtml(fieldLabels[c.field]||c.field)} <strong>${escHtml(condOps[c.op]||c.op)}</strong> "${escHtml(c.value)}"</span>`).join('')}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">THEN</span>
+        <span class="action-tag ${r.action}">${escHtml(r.action.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()))}</span>
+        ${r.action_params?.message?`<span style="font-size:12px;color:var(--muted)">"${escHtml(r.action_params.message)}"</span>`:''}
+      </div>
+    </div>`).join('');
+  document.getElementById('rules-list').innerHTML=html+`
+    <div class="r-card" style="margin-top:16px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px">💡 Example Rules</div>
+      <div style="font-size:12px;color:var(--muted);line-height:2">
+        <div>• <strong>Keep It Rule:</strong> IF Product_Price &lt; ₹300 AND Shipping_Cost &gt; ₹100 → Auto-approve + tell customer to keep item</div>
+        <div>• <strong>VIP Fast Track:</strong> IF Return_Count &lt; 2 → Auto-approve immediately</div>
+        <div>• <strong>Serial Returner:</strong> IF Return_Count ≥ 5 → Flag for manual review</div>
+        <div>• <strong>Size Issues:</strong> IF Return_Reason contains "size" → Auto-approve</div>
+      </div>
+    </div>`;
+}
+
+function openRuleModal(ruleId){
+  editRuleId=ruleId||null;
+  const rule=ruleId?RULES_DATA.find(r=>r.id===ruleId):null;
+  document.getElementById('rule-modal-title').textContent=rule?'Edit Rule':'New Rule';
+  document.getElementById('rm-name').value=rule?.name||'';
+  document.getElementById('rm-priority').value=rule?.priority||RULES_DATA.length+1;
+  document.getElementById('rm-action').value=rule?.action||'auto_approve';
+  document.getElementById('rm-message').value=rule?.action_params?.message||'';
+  tempConditions=rule?.conditions?[...rule.conditions]:[{field:'return_reason',op:'contains',value:''}];
+  renderRuleConditions();
+  document.getElementById('rule-modal').classList.add('open');
+}
+
+function closeRuleModal(){document.getElementById('rule-modal').classList.remove('open');editRuleId=null;tempConditions=[];}
+
+function renderRuleConditions(){
+  const fields=[['return_reason','Return Reason'],['product_price','Product Price'],['order_value','Order Value'],['shipping_cost','Shipping Cost'],['customer_return_count','Return Count'],['request_type','Request Type'],['item_category','Item Category']];
+  const ops=[['eq','= equals'],['neq','≠ not equals'],['contains','contains'],['lt','< less than'],['gt','> greater than'],['gte','≥ gte'],['lte','≤ lte']];
+  document.getElementById('rm-conditions').innerHTML=tempConditions.map((c,i)=>`
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
+      <select class="inp" style="flex:1;font-size:12px" onchange="tempConditions[${i}].field=this.value">
+        ${fields.map(([v,l])=>`<option value="${v}" ${c.field===v?'selected':''}>${l}</option>`).join('')}
+      </select>
+      <select class="inp" style="width:120px;font-size:12px" onchange="tempConditions[${i}].op=this.value">
+        ${ops.map(([v,l])=>`<option value="${v}" ${c.op===v?'selected':''}>${l}</option>`).join('')}
+      </select>
+      <input class="inp" style="flex:1;font-size:12px" placeholder="value" value="${escHtml(c.value||'')}" oninput="tempConditions[${i}].value=this.value">
+      ${i>0?`<button onclick="tempConditions.splice(${i},1);renderRuleConditions()" style="background:rgba(255,100,80,.1);border:1px solid rgba(255,100,80,.3);color:var(--danger);border-radius:6px;padding:4px 8px;cursor:pointer;font-size:14px">✕</button>`:'<div style="width:30px"></div>'}
+    </div>`).join('');
+}
+
+function addCondition(){tempConditions.push({field:'return_reason',op:'contains',value:''});renderRuleConditions();}
+
+async function saveRule(){
+  const name=document.getElementById('rm-name').value.trim();
+  if(!name){showToast('Rule name required','error');return;}
+  const rule={
+    name, priority:parseInt(document.getElementById('rm-priority').value)||1,
+    conditions:tempConditions.filter(c=>c.value),
+    action:document.getElementById('rm-action').value,
+    action_params:{ message:document.getElementById('rm-message').value }
+  };
+  if(!rule.conditions.length){showToast('Add at least one condition','error');return;}
+  if(editRuleId){
+    await fetch(BACKEND+'/api/rules/'+editRuleId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(rule)}).then(r=>r.json());
+    showToast('✅ Rule updated','success');
+  } else {
+    await fetch(BACKEND+'/api/rules',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rule)}).then(r=>r.json());
+    showToast('✅ Rule created','success');
+  }
+  closeRuleModal();loadRules();
+}
+
+async function toggleRule(id,enabled){
+  await fetch(BACKEND+'/api/rules/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled})}).then(r=>r.json());
+  showToast(enabled?'Rule enabled':'Rule disabled','');
+  loadRules();
+}
+
+async function deleteRule(id){
+  if(!confirm('Delete this rule?'))return;
+  await fetch(BACKEND+'/api/rules/'+id,{method:'DELETE'}).then(r=>r.json());
+  showToast('Rule deleted','');
+  loadRules();
+}
+
+// ── DELHIVERY CONFIG ──
+async function openConfig(){
+  const data=await fetch(BACKEND+'/api/delhivery/config').then(r=>r.json()).catch(()=>null);
+  if(data){
+    document.getElementById('cfg-token').value=data.configured?'••••••••••••':'';
+    document.getElementById('cfg-warehouse').value=data.warehouse||'';
+    document.getElementById('cfg-mode').value=data.mode||'staging';
+    document.getElementById('cfg-status').textContent=data.configured?'✓ Token configured':'No token set';
+  }
+  document.getElementById('config-modal').classList.add('open');
+}
+
+function closeConfig(){document.getElementById('config-modal').classList.remove('open');}
+
+async function saveConfig(){
+  const token=document.getElementById('cfg-token').value;
+  const warehouse=document.getElementById('cfg-warehouse').value;
+  const mode=document.getElementById('cfg-mode').value;
+  if(token==='••••••••••••'){document.getElementById('cfg-status').textContent='Token unchanged';return;}
+  const r=await fetch(BACKEND+'/api/delhivery/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,warehouse,mode})}).then(r=>r.json()).catch(()=>null);
+  if(r?.success){document.getElementById('cfg-status').textContent='✓ Saved!';showToast('✅ Delhivery config saved','success');setTimeout(closeConfig,1200);}
+  else{document.getElementById('cfg-status').textContent='Error saving';}
+}
+
+// ── SETTINGS ──
+async function loadSettings(){
+  try {
+    const s=await fetch(BACKEND+'/api/settings').then(r=>r.json());
+    if(s.return_window_days)document.getElementById('set-window').value=s.return_window_days;
+    if(s.store_credit_bonus!==undefined)document.getElementById('set-credit-bonus').value=s.store_credit_bonus;
+    if(s.restocking_fee_pct!==undefined)document.getElementById('set-restock').value=s.restocking_fee_pct;
+    if(s.warehouse){
+      document.getElementById('set-wh-name').value=s.warehouse.name||'';
+      document.getElementById('set-wh-addr').value=s.warehouse.address||'';
+      document.getElementById('set-wh-city').value=s.warehouse.city||'';
+      document.getElementById('set-wh-pin').value=s.warehouse.pincode||'';
+    }
+    updateCreditPreview();
+  } catch(e){}
+}
+
+async function saveSettings(){
+  const body={
+    return_window_days:parseInt(document.getElementById('set-window').value),
+    store_credit_bonus:parseFloat(document.getElementById('set-credit-bonus').value),
+    restocking_fee_pct:parseFloat(document.getElementById('set-restock').value),
+    warehouse:{
+      name:document.getElementById('set-wh-name').value,
+      address:document.getElementById('set-wh-addr').value,
+      city:document.getElementById('set-wh-city').value,
+      pincode:document.getElementById('set-wh-pin').value
+    }
+  };
+  const r=await fetch(BACKEND+'/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json()).catch(()=>null);
+  if(r?.success){document.getElementById('settings-status').textContent='✅ Settings saved!';showToast('✅ Settings saved','success');setTimeout(()=>{document.getElementById('settings-status').textContent='';},3000);}
+}
+
+function updateCreditPreview(){
+  const bonus=parseFloat(document.getElementById('set-credit-bonus')?.value||10);
+  const el=document.getElementById('credit-preview');
+  if(el)el.textContent=(100+bonus).toFixed(0);
+}
+document.getElementById('set-credit-bonus')?.addEventListener('input',updateCreditPreview);
+
+// ── PAGE NAVIGATION ──
+function showPage(p){
+  currentPage=p;
+  const pages=['returns','allorders','analytics','audit','rules','settings'];
+  pages.forEach(pg=>{
+    const el=document.getElementById('pg-'+pg);
+    if(el)el.className=pg===p?'':'page-hidden';
+  });
+  // Also show stats + main page area only on returns
+  document.getElementById('stats-row').style.display=p==='returns'?'':'none';
+  // Update sidebar
+  document.querySelectorAll('.sb-item').forEach(el=>el.classList.remove('active'));
+  const navEl=document.getElementById('nav-'+p);
+  if(navEl)navEl.classList.add('active');
+  // Refresh data on tab switch
+  if(p==='analytics')loadAnalytics();
+  if(p==='audit')loadAudit();
+  if(p==='rules')loadRules();
+  if(p==='settings')loadSettings();
+  // Fix: page div itself
+  const mainPage=document.getElementById('page');
+  if(mainPage){
+    if(p==='returns'){mainPage.style.display='block';mainPage.style.padding='24px';}
+    else mainPage.style.display='none';
+  }
+}
+
+// ── PARSE NOTE ──
+function parseNote(note){
+  if(!note)return{items:[],refund:'',customerNote:'',submitted:''};
+  const lines=note.split('\n');
+  const items=[];
+  let inItems=false, refund='', customerNote='', submitted='';
+  for(const l of lines){
+    const t=l.trim();
+    if(t.startsWith('Items:')){ inItems=true; continue; }
+    if(inItems&&(t.startsWith('[RETURN]')||t.startsWith('[EXCHANGE]')||t.startsWith('- '))){items.push(t.startsWith('- ')?t.slice(2):t);continue;}
+    if(inItems&&t&&!t.startsWith(' ')&&!t.startsWith('[')&&!t.startsWith('-'))inItems=false;
+    if(t.startsWith('Refund Method:'))refund=t.replace('Refund Method:','').trim();
+    if(t.startsWith('Customer Note:'))customerNote=t.replace('Customer Note:','').trim();
+    if(t.startsWith('Submitted:'))submitted=t.replace('Submitted:','').trim();
+  }
+  return{items,refund,customerNote,submitted};
+}
+
+// ── HELPERS ──
+function cap(s){return s?s.charAt(0).toUpperCase()+s.slice(1):'';}
+function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function escAttr(s){return String(s||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function showEmpty(title,sub){document.getElementById('ret-table-wrap').innerHTML=`<div class="empty"><div class="empty-icon">✗</div><div class="font-bold">${escHtml(title)}</div><div class="text-muted text-sm" style="margin-top:6px">${escHtml(sub)}</div><button class="btn btn-outline" style="margin-top:14px" onclick="loadOrders()">↺ Try Again</button></div>`;}
+function showToast(msg,type,dur=2500){const t=document.getElementById('toast');t.textContent=msg;t.className='show '+(type||'');setTimeout(()=>t.className='',dur);}
+
+// Close modals on backdrop click
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+</script>
+</body>
+</html>

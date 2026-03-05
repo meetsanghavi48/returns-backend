@@ -2,6 +2,8 @@ const express = require('express');
 const cors    = require('cors');
 const fetch   = require('node-fetch');
 const crypto  = require('crypto');
+const path    = require('path');
+const fs      = require('fs');
 
 const app = express();
 app.use(cors({ origin:'*', methods:['GET','POST','PUT','DELETE','OPTIONS'], allowedHeaders:['Content-Type','Authorization','X-Shopify-Access-Token'] }));
@@ -179,8 +181,25 @@ async function delhiveryAPI(method, path, body, isForm) {
 // ════════════════════════════════════════════
 // AUTH
 // ════════════════════════════════════════════
-app.get('/', (req,res) => res.json({ status:'Returns Manager v2', connected:!!ACCESS_TOKEN, shop:SHOP_DOMAIN||'not connected' }));
-app.get('/api/status', (req,res) => res.json({ connected:!!ACCESS_TOKEN, shop:SHOP_DOMAIN||null, return_window:RETURN_WINDOW_DAYS, store_credit_bonus:STORE_CREDIT_BONUS }));
+// ── SERVE FRONTEND FILES ──
+// Serve index.html at /dashboard
+app.get('/dashboard', (req,res) => {
+  const f = path.join(__dirname,'index.html');
+  if(fs.existsSync(f)) res.sendFile(f);
+  else res.send('<h2>Upload index.html next to server.js on Render</h2>');
+});
+
+// Serve portal.html at /portal and /
+app.get('/portal', (req,res) => {
+  const f = path.join(__dirname,'portal.html');
+  if(fs.existsSync(f)) res.sendFile(f);
+  else res.send('<h2>Upload portal.html next to server.js on Render</h2>');
+});
+
+// Root → redirect to dashboard
+app.get('/', (req,res) => res.redirect('/dashboard'));
+
+app.get('/api/status', (req,res) => res.json({ status:'Returns Manager v2', connected:!!ACCESS_TOKEN, shop:SHOP_DOMAIN||'not connected' }));
 
 app.get('/auth', (req,res) => {
   const shop = req.query.shop||SHOP_DOMAIN;
