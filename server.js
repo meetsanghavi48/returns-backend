@@ -71,12 +71,16 @@ app.get('/api/status', (req, res) => res.json({ connected: !!ACCESS_TOKEN, shop:
 app.get('/api/orders', async (req, res) => {
   try {
     const result = await graphql(`{
-      orders(first: 50, reverse: true) {
+      orders(first: 250, reverse: true) {
         edges { node {
           id name createdAt tags note
           displayFinancialStatus displayFulfillmentStatus
           totalPriceSet { shopMoney { amount currencyCode } }
-          lineItems(first: 10) { edges { node { title quantity } } }
+          customer { firstName lastName email phone }
+          lineItems(first: 20) { edges { node { 
+            title quantity originalUnitPriceSet { shopMoney { amount } }
+            variant { image { url } }
+          } } }
         }}
       }
     }`);
@@ -91,7 +95,13 @@ app.get('/api/orders', async (req, res) => {
       total_price: o.totalPriceSet.shopMoney.amount,
       currency: o.totalPriceSet.shopMoney.currencyCode,
       tags: o.tags, note: o.note||'', email: '', customer: null,
-      line_items: o.lineItems.edges.map(({ node: li }) => ({ title: li.title, quantity: li.quantity, price: '0' })),
+      customer_name: o.customer ? `${o.customer.firstName||''} ${o.customer.lastName||''}`.trim() : 'Guest',
+      customer_email: o.customer?.email || '',
+      line_items: o.lineItems.edges.map(({ node: li }) => ({ 
+        title: li.title, quantity: li.quantity,
+        price: li.originalUnitPriceSet?.shopMoney?.amount || '0',
+        image_url: li.variant?.image?.url || null
+      })),
       request_type: (o.tags.some(t=>['exchange-requested','exchange-approved','exchange-rejected'].includes(t))) ? 'exchange'
         : (o.tags.some(t=>['mixed-requested','mixed-approved','mixed-rejected'].includes(t))) ? 'mixed' : 'return',
       return_status: o.tags.some(t=>['return-approved','exchange-approved','mixed-approved'].includes(t)) ? 'approved'
