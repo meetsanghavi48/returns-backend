@@ -3,28 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>BLAKC Returns</title>
+<title>Returns Portal</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg: #F9F9F9;
-  --card: #FFFFFF;
-  --border: #E5E5E5;
-  --text: #000000;
-  --muted: #666666;
-  --accent: #000000;
-  --exchange: #1A1A1A;
-  --success: #15803D;
-  --warn: #D97706;
-  --font: 'DM Sans', sans-serif;
-  --serif: 'DM Serif Display', serif;
-  --radius: 8px;
-  --shadow: 0 4px 16px rgba(0,0,0,0.04);
+  --bg:#F8F7F5;--card:#fff;--border:#E8E4DF;--text:#1A1A1A;--muted:#6B7280;
+  --accent:#C84B31;--exchange:#1D4ED8;--success:#15803D;--warn:#D97706;
+  --font:'DM Sans',sans-serif;--serif:'DM Serif Display',serif;
+  --radius:12px;--shadow:0 2px 12px rgba(0,0,0,.08);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh}
 .shell{max-width:520px;margin:0 auto;padding:16px 16px 80px}
-.logo{text-align:center;padding:20px 0 10px;font-family:var(--serif);font-size:24px;color:var(--text); letter-spacing: 1px; text-transform: uppercase;}
+.logo{text-align:center;padding:20px 0 10px;font-family:var(--serif);font-size:22px;color:var(--text)}
 .step-bar{display:flex;align-items:center;justify-content:center;gap:4px;margin-bottom:20px}
 .step-dot{width:8px;height:8px;border-radius:50%;background:var(--border)}
 .step-dot.active{background:var(--accent);width:24px;border-radius:4px}
@@ -32,72 +23,108 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:14px;box-shadow:var(--shadow)}
 .card-title{font-family:var(--serif);font-size:18px;margin-bottom:4px}
 .card-sub{color:var(--muted);font-size:13px;margin-bottom:16px}
-.inp{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:6px;font-size:15px;font-family:var(--font);background:#fff;transition:.2s}
+.inp{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-family:var(--font);background:#fff;transition:.2s}
 .inp:focus{outline:none;border-color:var(--accent)}
 .inp.err{border-color:var(--accent)}
 .label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;display:block}
-.btn{width:100%;padding:14px;border-radius:6px;font-size:15px;font-weight:600;font-family:var(--font);cursor:pointer;border:none;transition:.2s}
+.btn{width:100%;padding:14px;border-radius:10px;font-size:15px;font-weight:600;font-family:var(--font);cursor:pointer;border:none;transition:.2s}
 .btn-black{background:var(--text);color:#fff}
 .btn-black:hover{opacity:.88}
 .btn-black:disabled{opacity:.4;cursor:not-allowed}
-.btn-outline{background:none;border:1px solid var(--border);color:var(--text)}
+.btn-outline{background:none;border:1.5px solid var(--border);color:var(--text)}
 .btn-outline:hover{border-color:var(--text)}
-.btn-sm{padding:7px 14px;font-size:13px;border-radius:6px;font-weight:600;cursor:pointer;border:none}
-.btn-sm-outline{padding:7px 14px;font-size:13px;border-radius:6px;font-weight:600;cursor:pointer;background:none;border:1px solid var(--border);color:var(--text)}
+.btn-sm{padding:7px 14px;font-size:13px;border-radius:8px;font-weight:600;cursor:pointer;border:none}
+.btn-sm-outline{padding:7px 14px;font-size:13px;border-radius:8px;font-weight:600;cursor:pointer;background:none;border:1.5px solid var(--border);color:var(--text)}
 .err-msg{color:var(--accent);font-size:13px;margin-top:6px}
 .fade-in{animation:fadeIn .3s ease}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
 /* Item row */
-.item-row{display:flex;gap:12px;align-items:flex-start;padding:14px;border:1px solid var(--border);border-radius:8px;margin-bottom:10px;cursor:pointer;transition:.2s;position:relative}
-.item-row.selected{border-color:var(--accent);background:rgba(0,0,0,.02)}
-.item-img{width:60px;height:60px;object-fit:cover;border-radius:4px;flex-shrink:0;border:1px solid var(--border)}
-.item-img-ph{width:60px;height:60px;background:#f3f4f6;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
-.item-check{width:22px;height:22px;border-radius:4px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.2s;background:#fff}
+.item-row{display:flex;gap:12px;align-items:flex-start;padding:14px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:10px;cursor:pointer;transition:.2s;position:relative}
+.item-row.selected{border-color:var(--accent);background:rgba(200,75,49,.03)}
+.item-img{width:60px;height:60px;object-fit:cover;border-radius:8px;flex-shrink:0;border:1px solid var(--border)}
+.item-img-ph{width:60px;height:60px;background:#f3f4f6;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
+.item-check{width:22px;height:22px;border-radius:6px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.2s;background:#fff}
 .item-check.checked{background:var(--accent);border-color:var(--accent);color:#fff}
 .item-title{font-size:14px;font-weight:600;margin-bottom:2px}
 .item-variant{font-size:12px;color:var(--muted)}
 .item-price{font-size:13px;font-weight:600;color:var(--text);margin-top:3px}
+.non-ret-badge{font-size:10px;padding:2px 7px;background:#fef2f2;color:#dc2626;border-radius:10px;border:1px solid #fecaca;display:inline-block;margin-top:4px}
 .action-pills{display:flex;gap:8px;margin-top:10px}
-.pill{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:#fff;transition:.2s}
-.pill.active-ret{background:#000;border-color:#000;color:#fff}
-.pill.active-exch{background:#333;border-color:#333;color:#fff}
+.pill{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:#fff;transition:.2s}
+.pill.active-ret{background:rgba(200,75,49,.1);border-color:var(--accent);color:var(--accent)}
+.pill.active-exch{background:rgba(29,78,216,.1);border-color:var(--exchange);color:var(--exchange)}
 
 /* Revenue fork cards */
-.fork-option{display:flex;gap:14px;align-items:flex-start;padding:16px;border:1px solid var(--border);border-radius:8px;margin-bottom:10px;cursor:pointer;transition:.2s}
+.fork-option{display:flex;gap:14px;align-items:flex-start;padding:16px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:10px;cursor:pointer;transition:.2s}
 .fork-option:hover{border-color:var(--text)}
-.fork-option.selected{border-color:var(--accent);background:rgba(0,0,0,.03)}
+.fork-option.selected{border-color:var(--accent);background:rgba(200,75,49,.03)}
 .fork-icon{font-size:26px;flex-shrink:0;margin-top:2px}
 .fork-title{font-size:14px;font-weight:700;margin-bottom:2px}
 .fork-sub{font-size:12px;color:var(--muted);line-height:1.5}
-.fork-badge{font-size:10px;padding:2px 7px;background:#e5e5e5;color:#000;border-radius:4px;font-weight:700;margin-left:6px}
+.fork-badge{font-size:10px;padding:2px 7px;background:#dcfce7;color:#15803d;border-radius:10px;font-weight:700;margin-left:6px}
+
+/* Media upload */
+.upload-zone{border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:.2s}
+.upload-zone:hover{border-color:var(--accent)}
+.upload-zone.has-files{border-color:var(--success);background:rgba(21,128,61,.04)}
+.upload-preview{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.upload-thumb{width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid var(--border)}
 
 /* Qty selector */
 .qty-row{display:flex;align-items:center;gap:10px}
-.qty-btn{width:32px;height:32px;border-radius:4px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+.qty-btn{width:32px;height:32px;border-radius:6px;border:1.5px solid var(--border);background:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
 .qty-val{font-size:16px;font-weight:700;min-width:24px;text-align:center}
 
-/* Opt selector */
+/* Variant picker */
 .opt-group{margin-bottom:12px}
 .opt-title{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
 .opt-pills{display:flex;flex-wrap:wrap;gap:6px}
-.opt-pill{padding:6px 14px;border-radius:4px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:#fff;transition:.2s}
-.opt-pill.selected{border-color:var(--accent);background:#000;color:#fff;font-weight:700}
+.opt-pill{padding:6px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:1.5px solid var(--border);background:#fff;transition:.2s}
+.opt-pill.selected{border-color:var(--exchange);background:rgba(29,78,216,.1);color:var(--exchange);font-weight:700}
 .opt-pill.unavail{opacity:.4;cursor:not-allowed;text-decoration:line-through}
 
+/* Return window */
+.window-bar{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.window-bar.urgent{border-color:#f59e0b;background:#fffbeb}
+
+/* Exchange balance */
+.balance-card{background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;margin-top:12px}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;z-index:999;opacity:0;transition:.3s;pointer-events:none}
+.toast.show{opacity:1}
+
+/* Logistics */
+.logistics-opt{display:flex;gap:12px;align-items:flex-start;padding:14px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:8px;cursor:pointer;transition:.2s}
+.logistics-opt.selected{border-color:var(--text);background:rgba(0,0,0,.02)}
+
 /* Address modal */
-.addr-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:900;display:none;align-items:flex-end;justify-content:center}
+.addr-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:900;display:none;align-items:flex-end;justify-content:center}
 .addr-modal-bg.open{display:flex}
-.addr-modal{background:#fff;border-radius:12px 12px 0 0;width:100%;max-width:520px;padding:24px;max-height:90vh;overflow-y:auto}
+.addr-modal{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:520px;padding:24px;max-height:90vh;overflow-y:auto}
 .addr-modal-title{font-size:16px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
 .addr-inp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .addr-inp-full{grid-column:span 2}
-.addr-inp-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:4px;display:block}
+.addr-inp-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;display:block}
+/* Track timeline */
+.timeline{padding:8px 0}
+.tl-item{display:flex;gap:14px;align-items:flex-start;padding-bottom:20px;position:relative}
+.tl-item:not(:last-child)::after{content:'';position:absolute;left:15px;top:32px;bottom:0;width:2px;background:var(--border)}
+.tl-dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;border:2px solid var(--border);background:#fff;position:relative;z-index:1}
+.tl-dot.done{background:var(--success);border-color:var(--success);color:#fff}
+.tl-dot.active{border-color:var(--accent);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(200,75,49,.3)}50%{box-shadow:0 0 0 8px rgba(200,75,49,0)}}
+.tl-title{font-size:14px;font-weight:600;margin-bottom:2px}
+.tl-sub{font-size:12px;color:var(--muted)}
+select.inp{-webkit-appearance:none;appearance:none}
 </style>
 </head>
 <body>
 <div class="shell" id="root"></div>
+<div class="toast" id="toast"></div>
 
+<!-- Address Edit Modal -->
 <div class="addr-modal-bg" id="addr-edit-modal">
   <div class="addr-modal">
     <div class="addr-modal-title">
@@ -105,186 +132,1020 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
       <button onclick="closeAddrModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">✕</button>
     </div>
     <div class="addr-inp-grid">
-      <div class="addr-inp-full"><label class="addr-inp-lbl">Full Name</label><input class="inp" id="am-name"></div>
-      <div class="addr-inp-full"><label class="addr-inp-lbl">Address Line 1 <span style="color:var(--accent)">*</span></label><input class="inp" id="am-addr1"></div>
-      <div class="addr-inp-full"><label class="addr-inp-lbl">Address Line 2</label><input class="inp" id="am-addr2"></div>
-      <div><label class="addr-inp-lbl">City <span style="color:var(--accent)">*</span></label><input class="inp" id="am-city"></div>
-      <div><label class="addr-inp-lbl">State <span style="color:var(--accent)">*</span></label><input class="inp" id="am-state"></div>
-      <div><label class="addr-inp-lbl">Pincode <span style="color:var(--accent)">*</span></label><input class="inp" id="am-zip" maxlength="6"></div>
-      <div><label class="addr-inp-lbl">Phone</label><input class="inp" id="am-phone"></div>
+      <div class="addr-inp-full">
+        <label class="addr-inp-lbl">Full Name</label>
+        <input class="inp" id="am-name" placeholder="Your full name">
+      </div>
+      <div class="addr-inp-full">
+        <label class="addr-inp-lbl">Address Line 1 <span style="color:var(--accent)">*</span></label>
+        <input class="inp" id="am-addr1" placeholder="House no., Street, Building">
+      </div>
+      <div class="addr-inp-full">
+        <label class="addr-inp-lbl">Address Line 2</label>
+        <input class="inp" id="am-addr2" placeholder="Area, Landmark (optional)">
+      </div>
+      <div>
+        <label class="addr-inp-lbl">City <span style="color:var(--accent)">*</span></label>
+        <input class="inp" id="am-city" placeholder="City">
+      </div>
+      <div>
+        <label class="addr-inp-lbl">State <span style="color:var(--accent)">*</span></label>
+        <input class="inp" id="am-state" placeholder="State">
+      </div>
+      <div>
+        <label class="addr-inp-lbl">Pincode <span style="color:var(--accent)">*</span></label>
+        <input class="inp" id="am-zip" placeholder="400001" maxlength="6" inputmode="numeric">
+      </div>
+      <div>
+        <label class="addr-inp-lbl">Phone</label>
+        <input class="inp" id="am-phone" placeholder="+91 98765 43210" inputmode="tel">
+      </div>
     </div>
     <div id="am-err" style="color:var(--accent);font-size:13px;margin-top:8px;display:none"></div>
     <div style="display:flex;gap:10px;margin-top:16px">
       <button class="btn btn-outline" style="flex:.4" onclick="closeAddrModal()">Cancel</button>
-      <button class="btn btn-black" style="flex:1" onclick="saveAddrModal()">Save Address</button>
+      <button class="btn btn-black" style="flex:1" onclick="saveAddrModal()">Save Address →</button>
     </div>
   </div>
 </div>
 
 <script>
 const BACKEND = (()=>{
-  if(window.location.hostname !== 'localhost' && !window.location.hostname.includes('127.0.0.1')) return window.location.origin;
+  if(window.location.hostname !== 'localhost' && !window.location.hostname.includes('netlify') && !window.location.hostname.includes('127.0.0.1')) {
+    return window.location.origin;
+  }
   return 'https://returns-backend.onrender.com';
 })();
 
-const S = { screen: 'lookup', order: null, contact: '', checked: new Set(), actions: {}, qtys: {}, reasons: {}, media: {}, mediaUrls: {}, exchangeOpts: {}, exchangeVariant: {}, exchangeProduct: {}, queue: [], qIdx: 0, processed: [], refundMethod: null, logistics: 'pickup', address: null, prodData: {}, searchResults: [], diffProdSearch: '', diffProd: null, is_cod: false, loading: false, error: '' };
-const REASONS = { default: ['Size Issue','Wrong Item Received','Defective / Damaged','Changed My Mind','Quality Issue'], apparel: ['Too Small','Too Large','Wrong Colour','Fabric Quality','Stitching Issue','Wrong Item Received','Defective','Changed My Mind'] };
+// ── STATE ──
+const S = {
+  screen: 'lookup',        // lookup | order | process | refund | logistics | success | track | already
+  order: null,
+  contact: '',
+  // Selection state
+  checked: new Set(),      // item indices selected
+  actions: {},             // {idx: 'return'|'exchange'}
+  qtys: {},                // {idx: qty}
+  reasons: {},             // {idx: reason}
+  media: {},               // {idx: [FileObject,...]}
+  mediaUrls: {},           // {idx: [dataUrl,...]}
+  // Exchange state
+  exchangeOpts: {},        // {idx: {optName:val}}
+  exchangeVariant: {},     // {idx: variant object}
+  exchangeProduct: {},     // {idx: product object (for diff product)}
+  // Queue
+  queue: [],               // [{idx, item, action}]
+  qIdx: 0,
+  processed: [],           // completed items
+  // Refund fork
+  refundMethod: null,      // 'store_credit'|'original'|'upsell'|'exchange'
+  // Logistics
+  logistics: 'pickup',  // 'pickup'|'self_ship'
+  selfShipTracking: '',
+  address: null,
+  // Products
+  prodData: {},
+  featuredProds: [],
+  searchResults: [],
+  diffProdSearch: '',
+  diffProd: null,
+  // Payment
+  is_cod: false,
+  contactError: '',
+  // Error/loading
+  loading: false,
+  error: ''
+};
 
-function render() {
-  const root = document.getElementById('root'); root.innerHTML = '';
-  const el = document.createElement('div'); el.className = 'fade-in';
-  switch(S.screen) {
-    case 'lookup': el.innerHTML = renderLookup(); break;
-    case 'order': el.innerHTML = renderOrder(); break;
-    case 'process': el.innerHTML = renderProcess(); break;
-    case 'refund': el.innerHTML = renderRefundFork(); break;
-    case 'logistics': 
-      if(!S.address && S.order) { const src = S.order.address || S.order.shipping_address; if(src && (src.address1 || src.city)) S.address = src; }
-      el.innerHTML = renderLogistics(); break;
-    case 'success': el.innerHTML = renderSuccess(); break;
-  }
-  root.appendChild(el);
+// ── REASONS by category ──
+const REASONS = {
+  default: ['Size Issue','Wrong Item Received','Defective / Damaged','Changed My Mind','Does Not Match Description','Quality Issue','Received Duplicate','Late Delivery'],
+  apparel: ['Too Small','Too Large','Wrong Colour','Fabric Quality','Stitching Issue','Wrong Item Received','Defective','Changed My Mind'],
+  electronics: ['Defective / Not Working','Wrong Model','Damaged in Transit','Missing Accessories','Performance Issue','Changed My Mind'],
+  footwear: ['Size Too Small','Size Too Large','Wrong Colour','Sole Issue','Wrong Item','Defective']
+};
+
+const MEDIA_REQUIRED_REASONS = ['Defective / Damaged','Defective','Wrong Item Received','Wrong Item','Damaged in Transit','Defective / Not Working'];
+
+function getReasons(item) {
+  const t = (item?.title||'').toLowerCase();
+  if (t.includes('shoe')||t.includes('sandal')||t.includes('footwear')) return REASONS.footwear;
+  if (t.includes('phone')||t.includes('laptop')||t.includes('electronic')||t.includes('earphone')) return REASONS.electronics;
+  if (t.includes('shirt')||t.includes('jeans')||t.includes('dress')||t.includes('top')||t.includes('trouser')) return REASONS.apparel;
+  return REASONS.default;
 }
 
-function steps(active) { return `<div class="step-bar">${[1,2,3,4].map((n,i)=>`<div class="step-dot ${active>i?'done':active===i?'active':''}"></div>`).join('')}</div>`; }
-function escHtml(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function needsMedia(idx) {
+  const r = S.reasons[idx]||'';
+  return MEDIA_REQUIRED_REASONS.some(m => r.toLowerCase().includes(m.toLowerCase()));
+}
 
+// ── RENDER ──
+function render() {
+  const root = document.getElementById('root');
+  root.innerHTML = '';
+  const el = document.createElement('div');
+  el.className = 'fade-in';
+  switch(S.screen) {
+    case 'lookup':   el.innerHTML = renderLookup(); break;
+    case 'order':    el.innerHTML = renderOrder(); break;
+    case 'process':  el.innerHTML = renderProcess(); break;
+    case 'refund':   el.innerHTML = renderRefundFork(); break;
+    case 'logistics':
+      // Auto-populate address from order if not already set
+      if(!S.address && S.order) {
+        const src = S.order.address || S.order.shipping_address || S.order.billing_address;
+        if(src && (src.address1 || src.city)) S.address = src;
+      }
+      el.innerHTML = renderLogistics();
+      break;
+    case 'success':  el.innerHTML = renderSuccess(); break;
+    case 'track':    el.innerHTML = renderTrack(); break;
+    case 'already':  el.innerHTML = renderAlready(); break;
+  }
+  root.appendChild(el);
+  bindEvents();
+}
+
+function steps(active) {
+  return `<div class="step-bar">${[1,2,3,4].map((n,i)=>`<div class="step-dot ${active>i?'done':active===i?'active':''}"></div>`).join('')}</div>`;
+}
+
+// ════════════════════════════════════════════
+// SCREEN: LOOKUP
+// ════════════════════════════════════════════
 function renderLookup() {
   return `
-  <div class="logo">BLAKC Returns</div>
+  <div class="logo">↩ Returns Portal</div>
   <div class="card">
     <div class="card-title">Start your return</div>
     <div class="card-sub">Enter your order details to get started</div>
-    <div style="margin-bottom:12px"><label class="label">Order Number</label><input class="inp" id="inp-order" placeholder="e.g. 1001" value="${escHtml(S.orderNum||'')}"></div>
-    <div style="margin-bottom:16px"><label class="label">Email or Phone</label><input class="inp" id="inp-contact" placeholder="Email or 10-digit phone" value="${escHtml(S.contact||'')}"></div>
+    <div style="margin-bottom:12px">
+      <label class="label">Order Number</label>
+      <input class="inp ${S.error?'err':''}" id="inp-order" placeholder="e.g. 1001" value="${escHtml(S.orderNum||'')}">
+    </div>
+    <div style="margin-bottom:16px">
+      <label class="label">Email or Phone</label>
+      <input class="inp" id="inp-contact" placeholder="Email or 10-digit phone" value="${escHtml(S.contact||'')}">
+    </div>
     ${S.error?`<div class="err-msg">⚠ ${escHtml(S.error)}</div>`:''}
-    <button class="btn btn-black" onclick="doLookup()" style="margin-top:12px" ${S.loading?'disabled':''}>${S.loading?'Looking up…':'Continue →'}</button>
+    <button class="btn btn-black" id="btn-lookup" style="margin-top:12px" ${S.loading?'disabled':''}>
+      ${S.loading?'Looking up…':'Continue →'}
+    </button>
+  </div>
+  <div style="text-align:center;margin-top:12px">
+    <span style="font-size:13px;color:var(--muted);cursor:pointer;text-decoration:underline" onclick="S.screen='track';render()">Track existing request →</span>
   </div>`;
 }
 
+// ════════════════════════════════════════════
+// SCREEN: ORDER (item selection)
+// ════════════════════════════════════════════
 function renderOrder() {
   const o = S.order;
+  // Customer PII — now available from custom app
+  const custName  = o.customer_name  || '';
+  const custEmail = o.customer_email || '';
+  const custPhone = o.customer_phone || '';
+  const days = o.days_remaining||0;
+  const urgent = days <= 3;
+  const fmtDate = d => new Date(d).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
   const eligibleItems = (o.line_items||[]).filter(li => !li.non_returnable);
+  const nonRetItems   = (o.line_items||[]).filter(li => li.non_returnable);
+
+  const windowBar = o.within_window
+    ? `<div class="window-bar ${urgent?'urgent':''}">
+        <span style="font-size:20px">${urgent?'⚠️':'📅'}</span>
+        <div><div style="font-size:13px;font-weight:600">${urgent?`Hurry! Only ${days} day${days!==1?'s':''} left`:`Return window: ${days} days remaining`}</div>
+        <div style="font-size:11px;color:var(--muted)">Ordered ${fmtDate(o.created_at)} · Deadline ${fmtDate(o.return_deadline)}</div></div>
+      </div>`
+    : `<div class="window-bar" style="border-color:#dc2626;background:#fef2f2">
+        <span style="font-size:20px">⛔</span>
+        <div><div style="font-size:13px;font-weight:600;color:#dc2626">Return window closed</div>
+        <div style="font-size:11px;color:var(--muted)">Your ${(window._returnWindowDays||30)}-day return window has expired</div></div>
+      </div>`;
+
   let itemsHTML = eligibleItems.map((item, idx) => {
-    const checked = S.checked.has(idx), action = S.actions[idx];
-    const img = item.image_url ? `<img class="item-img" src="${item.image_url}">` : `<div class="item-img-ph">👕</div>`;
-    return `<div class="item-row ${checked?'selected':''}" onclick="toggleCheck(${idx})">
-      <div class="item-check ${checked?'checked':''}">${checked?'✓':''}</div>${img}
-      <div style="flex:1"><div class="item-title">${escHtml(item.title)}</div>${item.variant_title?`<div class="item-variant">${escHtml(item.variant_title)}</div>`:''}
+    const checked = S.checked.has(idx);
+    const action  = S.actions[idx];
+    const img = item.image_url ? `<img class="item-img" src="${item.image_url}" onerror="this.style.display='none'">` : `<div class="item-img-ph">👗</div>`;
+    return `<div class="item-row ${checked?'selected':''}" id="irow-${idx}" onclick="toggleCheck(${idx})">
+      <div class="item-check ${checked?'checked':''}">${checked?'✓':''}</div>
+      ${img}
+      <div style="flex:1">
+        <div class="item-title">${escHtml(item.title)}</div>
+        ${item.variant_title?`<div class="item-variant">${escHtml(item.variant_title)}</div>`:''}
         <div class="item-price">₹${parseFloat(item.price||0).toFixed(2)} × ${item.quantity}</div>
         ${checked?`<div class="action-pills" onclick="event.stopPropagation()">
           <span class="pill ${action==='return'?'active-ret':''}" onclick="setAction(${idx},'return')">↩ Return</span>
           <span class="pill ${action==='exchange'?'active-exch':''}" onclick="setAction(${idx},'exchange')">🔄 Exchange</span>
         </div>`:''}
-      </div></div>`;
+      </div>
+    </div>`;
   }).join('');
-  return `<div class="logo">BLAKC Returns</div>${steps(1)}
-  <div class="card"><div class="card-title">Order #${o.order_number}</div><div class="card-sub">Select items to return or exchange</div>${itemsHTML}</div>
-  <button class="btn btn-black" ${S.checked.size===0?'disabled':''} onclick="buildQueue()">Continue with ${S.checked.size} items →</button>`;
+
+  if (nonRetItems.length) {
+    itemsHTML += `<div style="margin-top:6px">
+      <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Non-returnable items</div>
+      ${nonRetItems.map(item=>`<div class="item-row" style="opacity:.5;cursor:not-allowed">
+        <div class="item-img-ph">👗</div>
+        <div style="flex:1"><div class="item-title">${escHtml(item.title)}</div><div class="non-ret-badge">Non-returnable</div></div>
+      </div>`).join('')}
+    </div>`;
+  }
+
+  const hasSelection = S.checked.size>0 && [...S.checked].every(i=>S.actions[i]);
+
+  return `
+  <div class="logo">↩ Returns Portal</div>
+  ${steps(1)}
+  ${windowBar}
+  ${(custName||custEmail||custPhone)?`<div class="card" style="display:flex;align-items:center;gap:14px;padding:14px 18px">
+    <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#C84B31,#E97D5A);display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;font-weight:700;flex-shrink:0">${custName?escHtml(custName.charAt(0).toUpperCase()):'👤'}</div>
+    <div style="flex:1;min-width:0">
+      ${custName?`<div style="font-size:15px;font-weight:700;color:var(--text)">${escHtml(custName)}</div>`:''}
+      ${custEmail?`<div style="font-size:12px;color:var(--muted);margin-top:1px">✉ ${escHtml(custEmail)}</div>`:''}
+      ${custPhone?`<div style="font-size:12px;color:var(--muted)">📞 ${escHtml(custPhone)}</div>`:''}
+    </div>
+    <div style="text-align:right;flex-shrink:0">
+      <div style="font-size:11px;color:var(--muted2)">Order</div>
+      <div style="font-size:14px;font-weight:700;color:var(--text)">#${escHtml(String(o.order_number||''))}</div>
+    </div>
+  </div>`:''}
+  <div class="card">
+    <div class="card-title">Order #${o.order_number}</div>
+    <div class="card-sub">Select items you want to return or exchange</div>
+    ${itemsHTML}
+  </div>
+  <button class="btn btn-black" ${(!hasSelection||!o.within_window)?'disabled':''} onclick="buildQueue()">
+    Continue with ${S.checked.size} item${S.checked.size!==1?'s':''} →
+  </button>`;
 }
 
+// ════════════════════════════════════════════
+// SCREEN: PROCESS (reasons + qty + media + exchange variant per item)
+// ════════════════════════════════════════════
 function renderProcess() {
-  if (S.qIdx >= S.queue.length) { 
-    if(S.queue.some(q=>q.action==='return')) { S.screen='refund'; render(); return ''; } 
-    else { S.screen='logistics'; render(); return ''; } 
+  if (S.qIdx >= S.queue.length) {
+    // All items processed — go to refund fork or logistics
+    const hasReturns = S.queue.some(q=>q.action==='return');
+    if (hasReturns) { S.screen='refund'; render(); return ''; }
+    else { S.screen='logistics'; render(); return ''; }
   }
+
   const { idx, item, action } = S.queue[S.qIdx];
-  const qNum = S.qIdx+1, total = S.queue.length, reason = S.reasons[idx]||'', qty = S.qtys[idx]||1;
-  const reasons = (item?.title||'').toLowerCase().includes('shirt')||(item?.title||'').toLowerCase().includes('cargo') ? REASONS.apparel : REASONS.default;
+  const qNum = S.qIdx+1;
+  const total = S.queue.length;
+  const reasons = getReasons(item);
+  const reason  = S.reasons[idx]||'';
+  const qty     = S.qtys[idx]||1;
+  const mediaReq = needsMedia(idx);
+  const hasMedia = (S.mediaUrls[idx]||[]).length > 0;
 
   if (action === 'return') {
-    return `<div class="logo">BLAKC Returns</div>${steps(2)}
-    <div class="card"><div class="item-row" style="cursor:default"><img class="item-img" src="${item.image_url||''}"><div style="flex:1"><div class="item-title">${escHtml(item.title)}</div></div></div>
-      <div style="margin-bottom:14px"><label class="label">Quantity</label><div class="qty-row"><button class="qty-btn" onclick="changeQty(${idx},-1)">−</button><span class="qty-val">${qty}</span><button class="qty-btn" onclick="changeQty(${idx},1)">+</button></div></div>
-      <div style="margin-bottom:14px"><label class="label">Reason</label><select class="inp" onchange="S.reasons[${idx}]=this.value;render()"><option value="">Select reason...</option>${reasons.map(r=>`<option value="${r}" ${reason===r?'selected':''}>${r}</option>`).join('')}</select></div>
+    return `
+    <div class="logo">↩ Returns Portal</div>
+    ${steps(2)}
+    <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:12px">Item ${qNum} of ${total}</div>
+    <div class="card">
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px">
+        ${item.image_url?`<img style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--border)" src="${item.image_url}">`:'<div class="item-img-ph" style="width:56px;height:56px">👗</div>'}
+        <div><div class="item-title">${escHtml(item.title)}</div>${item.variant_title?`<div class="item-variant">${escHtml(item.variant_title)}</div>`:''}</div>
+      </div>
+
+      <div style="margin-bottom:14px">
+        <label class="label">Quantity to return</label>
+        <div class="qty-row">
+          <button class="qty-btn" onclick="changeQty(${idx},-1)">−</button>
+          <span class="qty-val">${qty}</span>
+          <button class="qty-btn" onclick="changeQty(${idx},1)">+</button>
+          <span style="font-size:12px;color:var(--muted);margin-left:6px">of ${item.quantity} available</span>
+        </div>
+      </div>
+
+      <div style="margin-bottom:14px">
+        <label class="label">Reason for return</label>
+        <select class="inp" id="sel-reason-${idx}" onchange="S.reasons[${idx}]=this.value;render()">
+          <option value="">Select a reason...</option>
+          ${reasons.map(r=>`<option value="${escHtml(r)}" ${reason===r?'selected':''}>${escHtml(r)}</option>`).join('')}
+        </select>
+      </div>
+
+      ${reason && mediaReq ? `
+      <div style="margin-bottom:14px">
+        <label class="label">📷 Photo/Video required <span style="color:var(--accent)">*</span></label>
+        <div class="upload-zone ${hasMedia?'has-files':''}" onclick="document.getElementById('media-inp-${idx}').click()">
+          <input type="file" id="media-inp-${idx}" accept="image/*,video/*" multiple style="display:none" onchange="handleMedia(${idx},this)">
+          ${hasMedia
+            ? `<div class="upload-preview">${(S.mediaUrls[idx]||[]).map(u=>`<img class="upload-thumb" src="${u}">`).join('')}</div><div style="font-size:12px;color:var(--success);margin-top:8px">✓ ${(S.media[idx]||[]).length} file(s) uploaded</div>`
+            : `<div style="font-size:24px;margin-bottom:8px">📷</div><div style="font-size:14px;font-weight:600">Upload photos or videos</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Tap to select files</div>`}
+        </div>
+      </div>` : ''}
+
+      <div style="margin-bottom:8px">
+        <label class="label">Additional notes (optional)</label>
+        <textarea class="inp" id="note-${idx}" rows="2" placeholder="Any extra details..." style="resize:none">${escHtml(S.notes?.[idx]||'')}</textarea>
+      </div>
+
+      ${reason && !mediaReq && reason.toLowerCase().includes('exchange') ? `
+      <div style="margin-top:10px;padding:12px;background:#eff6ff;border-radius:8px;border:1px solid #bfdbfe;display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">💡</span>
+        <div style="flex:1;font-size:13px">Want a different size/color instead? <strong>Exchange is faster!</strong></div>
+        <button class="btn-sm" style="background:var(--exchange);color:#fff" onclick="setAction(${idx},'exchange');render()">Switch →</button>
+      </div>` : ''}
     </div>
-    <div style="display:flex;gap:10px"><button class="btn btn-outline" style="flex:.4" onclick="prevItem()">Back</button><button class="btn btn-black" style="flex:1" onclick="nextItem(${idx})" ${!reason?'disabled':''}>Continue</button></div>`;
+    <div style="display:flex;gap:10px;margin-top:4px">
+      <button class="btn btn-outline" style="flex:0.4" onclick="prevItem()">← Back</button>
+      <button class="btn btn-black" style="flex:1" onclick="nextItem(${idx})" ${!reason||(mediaReq&&!hasMedia)?'disabled':''}>
+        ${qNum<total?'Next Item →':'Continue →'}
+      </button>
+    </div>`;
   }
-  
-  const prod = S.prodData[idx], selOpts = S.exchangeOpts[idx]||{}, selVariant = S.exchangeVariant[idx]||null;
-  let picker = '';
+
+  // Exchange flow
+  const prod = S.prodData[idx];
+  const selOpts = S.exchangeOpts[idx]||{};
+  const selVariant = S.exchangeVariant[idx]||null;
+
+  let variantPickerHTML = '';
   if (prod) {
-    picker = (prod.options||[]).map(opt => `<div class="opt-group"><div class="opt-title">${escHtml(opt.name)}</div><div class="opt-pills">${[...new Set((prod.variants||[]).map(v=>v[`option${opt.position}`]).filter(Boolean))].map(v=>{
-      const avail = (prod.variants||[]).some(vr=>vr[`option${opt.position}`]===v && vr.available!==false);
-      return `<span class="opt-pill ${selOpts[opt.name]===v?'selected':''} ${!avail?'unavail':''}" onclick="${avail?`selectOpt(${idx},'${opt.name}','${v}')`:''}">${v}</span>`;
-    }).join('')}</div></div>`).join('');
-  } else { picker = `Loading variants...`; fetchVariants(idx, item.product_id); }
+    const optHTML = (prod.options||[]).map(opt => {
+      const vals = [...new Set((prod.variants||[]).map(v=>v[`option${opt.position}`]).filter(Boolean))];
+      return `<div class="opt-group">
+        <div class="opt-title">${escHtml(opt.name)}</div>
+        <div class="opt-pills">
+          ${vals.map(v=>{
+            const available = (prod.variants||[]).some(vr=>vr[`option${opt.position}`]===v && vr.available!==false);
+            const sel = selOpts[opt.name]===v;
+            return `<span class="opt-pill ${sel?'selected':''} ${!available?'unavail':''}" onclick="${available?`selectOpt(${idx},'${escHtml(opt.name)}','${escHtml(v)}')`:''}">${escHtml(v)}</span>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }).join('');
+    variantPickerHTML = optHTML;
+    if (selVariant) {
+      variantPickerHTML += `<div style="margin-top:12px;padding:12px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">✓</span>
+        <div><div style="font-size:13px;font-weight:600;color:var(--success)">Selected: ${escHtml(selVariant.title)}</div>
+        <div style="font-size:12px;color:var(--muted)">Price: ₹${parseFloat(selVariant.price||0).toFixed(2)}</div></div>
+      </div>`;
+      // Price difference
+      const origPrice = parseFloat(item.price||0);
+      const newPrice  = parseFloat(selVariant.price||0);
+      const diff = newPrice - origPrice;
+      if (diff > 0) {
+        variantPickerHTML += `<div class="balance-card">
+          <div style="font-size:13px;font-weight:700;color:var(--exchange)">💰 Price difference: +₹${diff.toFixed(2)}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">You'll be charged ₹${diff.toFixed(2)} before the exchange label is issued.</div>
+        </div>`;
+      } else if (diff < 0) {
+        variantPickerHTML += `<div class="balance-card" style="background:#f0fdf4;border-color:#86efac">
+          <div style="font-size:13px;font-weight:700;color:var(--success)">✓ Credit: ₹${Math.abs(diff).toFixed(2)} will be refunded</div>
+        </div>`;
+      }
+    }
+  } else {
+    variantPickerHTML = `<div style="text-align:center;padding:20px;color:var(--muted)"><div style="font-size:24px;margin-bottom:8px">⏳</div>Loading variants...</div>`;
+    fetchVariants(idx, item.product_id);
+  }
 
-  return `<div class="logo">BLAKC Returns</div>${steps(2)}
-  <div class="card"><div class="item-row" style="cursor:default"><img class="item-img" src="${item.image_url||''}"><div style="flex:1"><div class="item-title">${escHtml(item.title)}</div><div class="item-variant">Exchanging ${escHtml(item.variant_title)}</div></div></div>${picker}</div>
-  <div style="display:flex;gap:10px"><button class="btn btn-outline" style="flex:.4" onclick="prevItem()">Back</button><button class="btn btn-black" style="flex:1" onclick="nextItem(${idx})" ${!selVariant?'disabled':''}>Continue</button></div>`;
-}
-
-function renderRefundFork() {
-  const o = S.order, isCOD = S.is_cod || ['cash_on_delivery','cod'].includes((o.payment_gateway||'').toLowerCase());
-  const total = S.queue.filter(q=>q.action==='return').reduce((s,q)=>s+parseFloat(q.item.price||0)*(S.qtys[q.idx]||1),0);
-  const creditAmt = (total + (total*(o.store_credit_bonus||10)/100)).toFixed(2);
-  
-  return `<div class="logo">BLAKC Returns</div>${steps(2)}
-  <div class="card"><div class="card-title">Refund Method</div><div class="card-sub">Choose what you'd like us to do with your ₹${total.toFixed(2)}</div>
-    <div class="fork-option ${S.refundMethod==='store_credit'?'selected':''}" onclick="S.refundMethod='store_credit';render()"><span class="fork-icon">🎁</span><div><div class="fork-title">Store Credit <span class="fork-badge">+${o.store_credit_bonus||10}% BONUS</span></div><div class="fork-sub">Get ₹${creditAmt} to use on anything in our store</div></div></div>
-    ${isCOD ? `<div style="opacity:.4;padding:16px;border:1px solid var(--border);border-radius:8px;margin-bottom:10px"><div class="fork-title">Original Payment (Not available for COD)</div></div>` 
-            : `<div class="fork-option ${S.refundMethod==='original'?'selected':''}" onclick="S.refundMethod='original';render()"><span class="fork-icon">💳</span><div><div class="fork-title">Refund to Bank</div><div class="fork-sub">5–7 business days to reflect</div></div></div>`}
+  return `
+  <div class="logo">↩ Returns Portal</div>
+  ${steps(2)}
+  <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:12px">Item ${qNum} of ${total} — Exchange</div>
+  <div class="card">
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px">
+      ${item.image_url?`<img style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--border)" src="${item.image_url}">`:'<div class="item-img-ph" style="width:56px;height:56px">👗</div>'}
+      <div><div class="item-title">${escHtml(item.title)}</div><div class="item-variant">Exchanging ${escHtml(item.variant_title||'')}</div></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button class="btn-sm ${S.exchTab===idx||!S.exchTab2?'btn-black':''}" style="flex:1" onclick="S.exchTab2=false;S.exchangeOpts[${idx}]={};S.exchangeVariant[${idx}]=null;S.diffProd=null;render()">Same Product</button>
+      <button class="btn-sm ${S.exchTab2?'btn-black':'btn-sm-outline'}" style="flex:1" onclick="S.exchTab2=true;S.exchangeOpts[${idx}]={};S.exchangeVariant[${idx}]=null;render()">Different Product</button>
+    </div>
+    ${!S.exchTab2 ? variantPickerHTML : renderDiffProduct(idx)}
   </div>
-  <div style="display:flex;gap:10px"><button class="btn btn-outline" style="flex:.4" onclick="S.screen='process';S.qIdx=S.queue.length-1;render()">Back</button><button class="btn btn-black" style="flex:1" ${!S.refundMethod?'disabled':''} onclick="S.screen='logistics';render()">Continue</button></div>`;
-}
-
-function renderLogistics() {
-  const addr = S.address;
-  return `<div class="logo">BLAKC Returns</div>${steps(3)}
-  <div class="card"><div style="display:flex;justify-content:space-between;margin-bottom:12px"><div style="font-size:14px;font-weight:700">📍 Pickup Address</div><button onclick="editAddress()" style="font-size:12px;font-weight:600;color:#000;background:none;border:1px solid #000;padding:4px 12px;border-radius:4px;cursor:pointer">Edit</button></div>
-    ${addr&&(addr.address1||addr.city)?`<div style="background:#f9fafb;border:1px solid var(--border);border-radius:6px;padding:12px;font-size:13px;line-height:1.6">${[addr.name,addr.address1,addr.city,addr.zip].filter(Boolean).map(escHtml).join('<br>')}</div>`:`<div style="padding:14px;border:2px dashed var(--border);text-align:center"><button onclick="editAddress()" class="btn btn-black">+ Add Address</button></div>`}
-  </div>
-  <div style="display:flex;gap:10px"><button class="btn btn-outline" style="flex:.4" onclick="S.screen='refund';render()">Back</button><button class="btn btn-black" style="flex:1" id="btn-submit" onclick="submitRequest()">Submit Request</button></div>`;
-}
-
-function renderSuccess() {
-  return `<div class="logo">BLAKC Returns</div>${steps(4)}
-  <div class="card" style="text-align:center;padding:32px 20px"><div style="font-size:48px;margin-bottom:12px">✅</div><div style="font-family:var(--serif);font-size:22px;margin-bottom:8px">Request Submitted</div><div style="color:var(--muted);font-size:13px;line-height:1.7;margin-bottom:20px">Your request has been received. Our courier will contact you to schedule pickup.</div>
-    <button class="btn btn-black" onclick="S.screen='lookup';render()">Start Over</button>
+  <div style="display:flex;gap:10px;margin-top:4px">
+    <button class="btn btn-outline" style="flex:0.4" onclick="prevItem()">← Back</button>
+    <button class="btn btn-black" style="flex:1" onclick="nextItem(${idx})" ${!selVariant&&!S.exchangeProduct[idx]?'disabled':''}>
+      ${qNum<total?'Next Item →':'Continue →'}
+    </button>
   </div>`;
 }
 
-/* Scripts logic */
+function renderDiffProduct(idx) {
+  const dp = S.diffProd;
+  const selProd = S.exchangeProduct[idx];
+  return `<div>
+    <label class="label">Search for a product</label>
+    <input class="inp" id="diff-search" placeholder="Search products..." value="${escHtml(S.diffProdSearch||'')}" oninput="searchProducts(this.value)">
+    <div id="search-results" style="margin-top:10px">
+      ${(S.searchResults||[]).map(p=>`
+        <div style="display:flex;gap:10px;align-items:center;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;${selProd?.id==p.id?'border-color:var(--exchange);background:rgba(29,78,216,.05)':''}" onclick="selectDiffProd(${idx},${JSON.stringify(p).replace(/"/g,'&quot;')})">
+          ${p.image?`<img style="width:44px;height:44px;object-fit:cover;border-radius:6px" src="${p.image}">`:'<div style="width:44px;height:44px;background:#f3f4f6;border-radius:6px;display:flex;align-items:center;justify-content:center">📦</div>'}
+          <div style="flex:1"><div style="font-size:13px;font-weight:600">${escHtml(p.title)}</div><div style="font-size:12px;color:var(--muted)">₹${p.price}</div></div>
+          ${selProd?.id==p.id?'<span style="color:var(--exchange);font-size:18px">✓</span>':''}
+        </div>`).join('')}
+    </div>
+    ${selProd?`<div style="margin-top:10px;padding:12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px">
+      <div style="font-size:12px;font-weight:700;color:var(--exchange);margin-bottom:8px">Selected: ${escHtml(selProd.title)}</div>
+      ${selProd.variants?.length>1?`<select class="inp" onchange="selectDiffVariant(${idx},this.value)" style="font-size:13px">
+        <option value="">Select variant...</option>
+        ${(selProd.variants||[]).map(v=>`<option value="${v.id}" ${S.exchangeVariant[idx]?.id==v.id?'selected':''}>${v.title} — ₹${v.price}</option>`).join('')}
+      </select>`:'<div style="font-size:12px;color:var(--success)">✓ Only one variant available</div>'}
+    </div>`:''}
+  </div>`;
+}
+
+// ════════════════════════════════════════════
+// SCREEN: REFUND FORK
+// ════════════════════════════════════════════
+function renderRefundFork() {
+  const o = S.order;
+  const hasExchanges = S.queue.some(q=>q.action==='exchange');
+  const isCOD = S.is_cod || o.is_cod ||
+    ['cash_on_delivery','cod','manual'].includes((o.payment_gateway||'').toLowerCase());
+  const returnTotal = S.queue.filter(q=>q.action==='return')
+    .reduce((s,q)=>s+parseFloat(q.item.price||0)*(S.qtys[q.idx]||1),0);
+  const bonus = returnTotal * (o.store_credit_bonus||10) / 100;
+  const creditAmt = (returnTotal + bonus).toFixed(2);
+  // Auto-clear invalid selection for COD
+  if(isCOD && S.refundMethod==='original') S.refundMethod = null;
+
+  const codBanner = isCOD ? `
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:11px 14px;background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:10px;margin-bottom:14px">
+      <span style="font-size:20px;flex-shrink:0">💵</span>
+      <div><div style="font-size:13px;font-weight:700;color:#92400E">Cash on Delivery Order</div>
+      <div style="font-size:12px;color:#B45309;margin-top:2px">Refund to original payment is not available for COD orders. Choose store credit or exchange.</div></div>
+    </div>` : '';
+
+  const originalOption = isCOD
+    ? `<div style="opacity:.38;display:flex;gap:14px;align-items:flex-start;padding:16px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:10px;background:#F9FAFB;cursor:not-allowed">
+        <span class="fork-icon" style="filter:grayscale(1)">💳</span>
+        <div><div class="fork-title" style="color:var(--muted)">Refund to Original Payment
+          <span style="font-size:10px;padding:2px 8px;background:#FEE2E2;color:#DC2626;border-radius:5px;margin-left:6px;font-weight:700">COD — NOT AVAILABLE</span></div>
+        <div class="fork-sub">Not available for Cash on Delivery orders</div></div>
+      </div>`
+    : `<div class="fork-option ${S.refundMethod==='original'?'selected':''}" onclick="S.refundMethod='original';render()">
+        <span class="fork-icon">💳</span>
+        <div><div class="fork-title">Refund to Original Payment</div>
+        <div class="fork-sub">Takes 5–7 business days to reflect in your account</div></div>
+      </div>`;
+
+  return `
+  <div class="logo">↩ Returns Portal</div>
+  ${steps(2)}
+  <div class="card">
+    <div class="card-title">How would you like your refund?</div>
+    <div class="card-sub">Choose what you'd like us to do with your ₹${returnTotal.toFixed(2)}</div>
+    ${codBanner}
+
+    <div class="fork-option ${S.refundMethod==='store_credit'?'selected':''}" onclick="S.refundMethod='store_credit';render()">
+      <span class="fork-icon">🎁</span>
+      <div><div class="fork-title">Store Credit <span class="fork-badge">+${o.store_credit_bonus||10}% BONUS</span></div>
+      <div class="fork-sub">Get <strong>₹${creditAmt}</strong> instead of ₹${returnTotal.toFixed(2)} — use on anything in our store</div></div>
+    </div>
+
+    ${hasExchanges ? '' : `<div class="fork-option ${S.refundMethod==='exchange'?'selected':''}" onclick="S.refundMethod='exchange';render()">
+      <span class="fork-icon">🔄</span>
+      <div><div class="fork-title">Exchange for a different item</div>
+      <div class="fork-sub">Get a faster replacement shipped out immediately</div></div>
+    </div>`}
+
+    <div class="fork-option ${S.refundMethod==='upsell'?'selected':''}" onclick="S.refundMethod='upsell';render()">
+      <span class="fork-icon">🛍️</span>
+      <div><div class="fork-title">Shop Now with Credit</div>
+      <div class="fork-sub">Use your ₹${creditAmt} credit to buy anything else in our store</div></div>
+    </div>
+
+    ${originalOption}
+  </div>
+  <div style="display:flex;gap:10px;margin-top:4px">
+    <button class="btn btn-outline" style="flex:0.4" onclick="S.screen='process';S.qIdx=S.queue.length-1;render()">← Back</button>
+    <button class="btn btn-black" style="flex:1" ${!S.refundMethod?'disabled':''} onclick="S.screen='logistics';render()">Continue →</button>
+  </div>`;
+}
+// ════════════════════════════════════════════
+// SCREEN: LOGISTICS
+// ════════════════════════════════════════════
+function renderLogistics() {
+  const o = S.order;
+  const addr = S.address||o.address;
+  const fmtAddr = a => a?[a.address1,a.address2,a.city,a.province,a.zip].filter(Boolean).join(', '):null;
+  const hasReturns = S.queue.some(q=>q.action==='return');
+  const summary = S.queue.map(q=>`${q.action==='exchange'?'🔄':'↩'} ${q.item.title}${q.item.variant_title?' – '+q.item.variant_title:''}${q.action==='return'&&S.reasons[q.idx]?' ('+S.reasons[q.idx]+')':''}`).join('<br>');
+
+  return `
+  <div class="logo">↩ Returns Portal</div>
+  ${steps(3)}
+  <div class="card">
+    <div class="card-title">Confirm your request</div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.9;margin-bottom:14px">${summary}</div>
+    ${S.refundMethod?`<div style="padding:10px 14px;background:#f9fafb;border-radius:8px;border:1px solid var(--border);font-size:13px;margin-bottom:14px">
+      Refund: <strong>${S.refundMethod==='store_credit'?'Store Credit (+'+o.store_credit_bonus+'% bonus)':S.refundMethod==='original'?'Original Payment':S.refundMethod==='upsell'?'Shop with Credit':'Exchange'}</strong>
+    </div>`:''}
+  </div>
+  ${hasReturns?`<div class="card">
+    <div class="card-title" style="font-size:16px;margin-bottom:12px">📦 How will you ship it back?</div>
+    <div class="logistics-opt ${S.logistics==='pickup'?'selected':''}" onclick="S.logistics='pickup';render()">
+      <span style="font-size:24px;margin-top:2px">🚚</span>
+      <div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:3px">Reverse Pickup <span style="font-size:10px;background:#DCFCE7;color:#16A34A;padding:2px 7px;border-radius:6px;font-weight:700;margin-left:4px">RECOMMENDED</span></div>
+        <div style="font-size:12px;color:var(--muted)">Delhivery will pick up from your address. We'll schedule it automatically after approval.</div>
+      </div>
+    </div>
+    <div class="logistics-opt ${S.logistics==='self_ship'?'selected':''}" onclick="S.logistics='self_ship';render()">
+      <span style="font-size:24px;margin-top:2px">📬</span>
+      <div><div style="font-size:14px;font-weight:600;margin-bottom:3px">Self-Ship</div>
+      <div style="font-size:12px;color:var(--muted)">Ship via any courier to our warehouse. Enter your AWB/tracking number.</div></div>
+    </div>
+    ${S.logistics==='self_ship'?`
+    <div style="margin-top:12px;padding:14px;background:#f9fafb;border-radius:8px;border:1px solid var(--border)">
+      <div style="font-size:12px;font-weight:600;margin-bottom:6px">📦 Ship to our warehouse:</div>
+      <div style="font-size:13px;line-height:1.8;color:var(--text)">\${window._warehouseAddr||'Warehouse address will be confirmed in email'}</div>
+      <div style="margin-top:10px">
+        <label class="label">Enter AWB / Tracking number</label>
+        <input class="inp" id="inp-awb" placeholder="e.g. 1234567890" value="\${S.selfShipTracking||''}">
+      </div>
+    </div>`:''}
+    ${S.logistics==='pickup'?`
+    <div style="margin-top:12px;padding:14px;background:#EFF6FF;border-radius:8px;border:1px solid #BFDBFE">
+      <div style="font-size:12px;font-weight:600;color:#1D4ED8;margin-bottom:4px">🚚 How Reverse Pickup works</div>
+      <div style="font-size:12px;color:#3B82F6;line-height:1.8">1. Submit your request below<br>2. We'll schedule a Delhivery pickup from your address<br>3. Keep your item packed and ready — courier will arrive in 1–3 days</div>
+    </div>`:''}
+  </div>`:''}
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:700">📍 Pickup Address</div>
+      <button onclick="editAddress()" style="font-size:12px;font-weight:600;color:var(--accent);background:rgba(200,75,49,.08);border:1.5px solid rgba(200,75,49,.2);padding:4px 12px;border-radius:8px;cursor:pointer">✏️ ${addr?'Edit':'Add Address'}</button>
+    </div>
+    ${addr&&(addr.address1||addr.city||addr.zip)?
+      `<div style="background:#f9fafb;border:1px solid var(--border);border-radius:10px;padding:13px 15px">
+        ${(addr.name||addr.first_name)?`<div style="font-size:14px;font-weight:700;margin-bottom:4px">${escHtml(addr.name||[addr.first_name,addr.last_name].filter(Boolean).join(' '))}</div>`:''}
+        <div style="font-size:13px;color:var(--text);line-height:1.9">
+          ${[addr.address1,addr.address2].filter(Boolean).map(escHtml).join('<br>')}<br>
+          ${[addr.city,addr.province||addr.state,addr.zip||addr.pincode].filter(Boolean).map(escHtml).join(', ')}<br>
+          ${addr.country?escHtml(addr.country):''}
+          ${addr.phone?`<br><span style="color:var(--muted)">📞 ${escHtml(addr.phone)}</span>`:''}
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px">⚠ Delhivery will pick up from this address. Make sure pincode is correct.</div>`
+    :`<div style="padding:14px;border:2px dashed var(--border);border-radius:10px;text-align:center;color:var(--muted)">
+        <div style="font-size:24px;margin-bottom:6px">📍</div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:2px">No pickup address</div>
+        <div style="font-size:12px;margin-bottom:12px">Add your address for Delhivery reverse pickup</div>
+        <button onclick="editAddress()" style="padding:8px 20px;background:var(--text);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">+ Add Address</button>
+      </div>`
+    }
+  </div>
+  <div style="display:flex;gap:10px;margin-top:4px">
+    <button class="btn btn-outline" style="flex:0.4" onclick="${S.queue.some(q=>q.action==='return')?'S.screen=\'refund\'':'S.screen=\'process\';S.qIdx=S.queue.length-1'};render()">← Back</button>
+    <button class="btn btn-black" style="flex:1" id="btn-submit" onclick="submitRequest()">Submit Request →</button>
+  </div>`;
+}
+
+// ════════════════════════════════════════════
+// SCREEN: SUCCESS
+// ════════════════════════════════════════════
+function renderSuccess() {
+  return `
+  <div class="logo">↩ Returns Portal</div>
+  ${steps(4)}
+  <div class="card" style="text-align:center;padding:32px 20px">
+    <div style="font-size:56px;margin-bottom:12px">✅</div>
+    <div style="font-family:var(--serif);font-size:22px;margin-bottom:8px">Request Submitted!</div>
+    <div style="color:var(--muted);font-size:13px;line-height:1.7;margin-bottom:20px">
+      Your request <strong>${S.refCode||''}</strong> has been received.<br>
+      ${S.autoAction==='keep_it'?`<span style="color:var(--success);font-weight:600">${S.keepItMsg||'Please keep/donate the item. Refund issued!'}</span>`:'We\'ll review it and get back to you shortly.'}
+      ${S.autoApproved?'<br><span style="color:var(--success);font-weight:600">✓ Auto-approved by our system!</span>':''}
+    </div>
+    ${(S.logistics==='self_ship'||S.logistics==='pickup')?`<div style="background:#f9fafb;border-radius:10px;padding:14px;margin-bottom:16px;text-align:left">
+      <div style="font-size:13px;font-weight:600;margin-bottom:6px">📬 Next steps:</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.9">\${S.logistics==='pickup'?'1. Keep your item packaged and ready<br>2. Our courier (Delhivery) will contact you to schedule pickup<br>3. Track status here or on the Delhivery app':'1. Package your item(s) securely<br>2. Ship to our warehouse address (sent to your email)<br>3. Enter your AWB tracking number in the portal'}</div>
+    </div>`:''}
+    <button class="btn btn-black" onclick="S.screen='track';S.trackOrderNum=S.order?.order_number;render()">Track Status →</button>
+    <button class="btn btn-outline" style="margin-top:10px" onclick="S.screen='lookup';render()">New Request</button>
+  </div>`;
+}
+
+// ════════════════════════════════════════════
+// SCREEN: TRACK
+// ════════════════════════════════════════════
+function renderTrack() {
+  const o = S.order;
+  const status = o?.return_status;
+  const type   = o?.request_type||'return';
+  const isExch = type==='exchange'||type==='mixed';
+
+  const stages = isExch
+    ? [['Request Received','Submitted successfully','done'],
+       ['Under Review','Our team is reviewing','active'],[null,null,null],
+       ['Exchange Approved','Item being prepared',''],
+       ['New Item Shipped','On its way to you','']]
+    : [['Request Received','Submitted successfully','done'],
+       ['Under Review','Our team is reviewing','active'],[null,null,null],
+       ['Approved','Request has been approved',''],
+       ['Refund Processed','Refund issued','']];
+
+  // Map status to active stage
+  const stageMap = {'pending':1,'exchange-pending':1,'approved':3,'rejected':3,'refunded':4};
+  const activeStage = stageMap[status]||1;
+  const isRejected  = status==='rejected';
+
+  const tlHTML = stages.filter(Boolean).map(([title,sub,cls],i)=>{
+    const done   = i<activeStage;
+    const active = i===activeStage;
+    const rej    = isRejected && i===activeStage;
+    const icon = done?'✓': rej?'✗': active?'🔍':'📦';
+    return `<div class="tl-item">
+      <div class="tl-dot ${done?'done':active?'active':''}" style="${rej?'background:#dc2626;border-color:#dc2626;color:#fff':''}">${icon}</div>
+      <div><div class="tl-title" style="${rej?'color:#dc2626':done?'color:var(--success)':active?'color:var(--text)':'color:var(--muted)'}">${title}</div>
+      <div class="tl-sub">${rej?'Your request was not approved':sub}</div></div>
+    </div>`;
+  }).join('');
+
+  return `
+  <div class="logo">↩ Returns Portal</div>
+  ${o?`<div class="card" style="margin-bottom:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:18px;font-weight:700;color:var(--accent)">Order #${o.order_number}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">${new Date(o.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}</div>
+      </div>
+      <span style="padding:4px 10px;border-radius:10px;font-size:11px;font-weight:700;background:${status==='approved'?'#dcfce7':status==='rejected'?'#fee2e2':'#fef9c3'};color:${status==='approved'?'#15803d':status==='rejected'?'#dc2626':'#92400e'}">${status==='approved'?'✅ Approved':status==='rejected'?'❌ Rejected':'⏳ Under Review'}</span>
+    </div>
+    ${isExch?'<div style="margin-top:8px;font-size:11px;padding:3px 10px;background:rgba(29,78,216,.1);color:var(--exchange);border-radius:10px;display:inline-block;font-weight:600">🔄 Exchange Request</div>':''}
+  </div>`:''}
+  <div class="card">
+    <div class="card-title" style="margin-bottom:16px">Request Status</div>
+    <div class="timeline">${tlHTML}</div>
+  </div>
+  <div style="display:flex;gap:10px">
+    <button class="btn btn-outline" style="flex:1" onclick="S.screen='lookup';render()">← Search Another</button>
+    <button class="btn btn-black" style="flex:1" onclick="S.screen='order';render()">New Request</button>
+  </div>`;
+}
+
+// ════════════════════════════════════════════
+// SCREEN: ALREADY SUBMITTED (detailed)
+// ════════════════════════════════════════════
+function renderAlready() {
+  const o = S.order;
+  const note = o.note||'';
+  const lines = note.split('\n');
+  const itemLines = [];
+  let inItems=false;
+  for (const l of lines) {
+    if (l.startsWith('Items:')) { inItems=true; continue; }
+    if (inItems&&(l.startsWith('[')||l.startsWith('- '))) itemLines.push(l.startsWith('- ')?l.slice(2):l);
+    else if (inItems&&l.trim()&&!l.startsWith(' ')&&!l.startsWith('[')&&!l.startsWith('-')) inItems=false;
+  }
+  const getField = prefix => (lines.find(l=>l.startsWith(prefix))||'').replace(prefix,'').trim();
+  const refund = getField('Refund Method:');
+  const submitted = getField('Submitted:');
+  const custNote  = getField('Customer Note:');
+
+  const statusColor = o.return_status==='approved'?'var(--success)':o.return_status==='rejected'?'var(--accent)':'var(--warn)';
+  const statusLabel = o.return_status==='approved'?'✅ Approved':o.return_status==='rejected'?'❌ Not Approved':'⏳ Under Review';
+  const typeLabel   = o.request_type==='exchange'?'🔄 Exchange':o.request_type==='mixed'?'↩🔄 Mixed':'↩ Return';
+
+  const itemHTML = itemLines.map(line=>{
+    const isExch = line.includes('[EXCHANGE]');
+    const clean  = line.replace('[EXCHANGE]','').replace('[RETURN]','').trim();
+    const parts  = clean.split('|').map(s=>s.trim());
+    const desc   = parts[0];
+    const reason = (parts.find(p=>p.startsWith('Reason:'))||'').replace('Reason:','').trim();
+    const exchFor=(parts.find(p=>p.startsWith('Exchange for:')||p.startsWith('New Product:'))||'').replace('Exchange for:','').replace('New Product:','').trim();
+    return `<div style="padding:12px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:${isExch?'rgba(29,78,216,.1)':'rgba(200,75,49,.1)'};color:${isExch?'var(--exchange)':'var(--accent)'}">${isExch?'🔄 Exchange':'↩ Return'}</span>
+        <span style="font-size:13px;font-weight:600">${escHtml(desc)}</span>
+      </div>
+      ${reason?`<div style="font-size:12px;color:var(--muted);margin-left:2px">Reason: ${escHtml(reason)}</div>`:''}
+      ${exchFor?`<div style="font-size:12px;color:var(--exchange);margin-left:2px;margin-top:2px">→ For: <strong>${escHtml(exchFor)}</strong></div>`:''}
+    </div>`;
+  }).join('');
+
+  return `
+  <div class="logo">↩ Returns Portal</div>
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div><div style="font-family:var(--serif);font-size:20px">Order #${o.order_number}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px">${submitted?'Submitted '+new Date(submitted).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):''}</div></div>
+      <div style="text-align:right"><div style="font-size:12px;font-weight:700;color:${statusColor}">${statusLabel}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">${typeLabel}</div></div>
+    </div>
+    ${itemHTML||`<div style="color:var(--muted);font-size:13px;padding:10px 0">${(o.line_items||[]).map(li=>`<div style="padding:8px 0;border-bottom:1px solid var(--border)"><div style="font-size:13px;font-weight:600">${escHtml(li.title)}</div></div>`).join('')}</div>`}
+    ${refund&&refund!=='None'?`<div style="margin-top:14px;padding:12px;background:#f9fafb;border-radius:8px;border:1px solid var(--border)"><span style="font-size:12px;color:var(--muted)">Refund method: </span><strong>${escHtml(refund)}</strong></div>`:''}
+    ${custNote&&custNote!=='None'?`<div style="margin-top:10px;font-size:13px;color:var(--muted)">"${escHtml(custNote)}"</div>`:''}
+  </div>
+  <div style="display:flex;gap:10px;margin-top:4px">
+    <button class="btn btn-outline" style="flex:1" onclick="S.screen='lookup';render()">← Back</button>
+    <button class="btn btn-black" style="flex:1" onclick="S.screen='track';render()">📍 Track Status →</button>
+  </div>
+  <div style="text-align:center;margin-top:12px">
+    <span style="font-size:12px;color:var(--muted);cursor:pointer;text-decoration:underline" onclick="S.order.has_return=false;S.screen='order';render()">Submit a new request</span>
+  </div>`;
+}
+
+// ════════════════════════════════════════════
+// ACTIONS
+// ════════════════════════════════════════════
+function bindEvents() {
+  const btnLookup = document.getElementById('btn-lookup');
+  if (btnLookup) btnLookup.onclick = doLookup;
+}
+
 async function doLookup() {
-  const orderNum = document.getElementById('inp-order')?.value, contact = document.getElementById('inp-contact')?.value;
-  if(!orderNum||!contact) { S.error='Order number and Email/Phone required.'; render(); return; }
-  S.orderNum=orderNum; S.contact=contact; S.loading=true; render();
+  const orderNum = (document.getElementById('inp-order')?.value||'').trim().replace(/^#+/,''); // accept #1001 or 1001
+  const contact  = document.getElementById('inp-contact')?.value?.trim();
+
+  // Validate order number
+  if (!orderNum) { S.error='Please enter your order number'; S.contactError=''; render(); return; }
+
+  // Validate contact — REQUIRED since we're on a real store
+  if (!contact) {
+    S.error='';
+    S.contactError='Please enter your mobile number or email to verify your identity';
+    render(); return;
+  }
+  // Basic format check
+  const isPhone = /^[6-9]\d{9}$/.test(contact.replace(/[\s+\-]/g,''));
+  const isEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(contact);
+  if (!isPhone && !isEmail) {
+    S.error='';
+    S.contactError='Enter a valid 10-digit mobile number or email address';
+    render(); return;
+  }
+
+  S.orderNum=orderNum; S.contact=contact; S.error=''; S.contactError=''; S.loading=true; render();
   try {
-    const res = await fetch(`${BACKEND}/api/lookup?order_number=${orderNum}&contact=${contact}`).then(r=>r.json());
+    const res = await fetch(`${BACKEND}/api/lookup?order_number=${encodeURIComponent(orderNum)}&contact=${encodeURIComponent(contact)}`).then(r=>r.json());
     S.loading=false;
-    if (!res.found) { S.error='Order not found or contact mismatch.'; render(); return; }
-    S.order = res.order; S.is_cod = res.order.is_cod;
-    const a = res.order.address; if(a) S.address = {name:a.name, address1:a.address1, city:a.city, province:a.province, zip:a.zip, phone:a.phone};
-    S.screen = 'order'; render();
-  } catch(e) { S.loading=false; S.error='Network error.'; render(); }
+    if (!res.found) {
+      if (res.mismatch) {
+        S.contactError = isPhone
+          ? 'Mobile number does not match this order. Try the email used at checkout.'
+          : 'Email does not match this order. Try the mobile number used at checkout.';
+        S.error='';
+      } else {
+        S.error='Order not found. Check your order number (no # needed).';
+        S.contactError='';
+      }
+      render(); return;
+    }
+    S.order = res.order;
+    S.is_cod = res.order.is_cod || false;
+    window._returnWindowDays = res.order.days_remaining !== undefined
+      ? (res.order.days_remaining + (30 - res.order.days_remaining)) : 30;
+    // Pull address from order — normalize all Shopify field variants
+    const _addrSrc = res.order.address || res.order.shipping_address || null;
+    if (_addrSrc) {
+      S.address = {
+        name:     _addrSrc.name || [_addrSrc.first_name,_addrSrc.last_name].filter(Boolean).join(' ') || '',
+        address1: _addrSrc.address1 || '',
+        address2: _addrSrc.address2 || '',
+        city:     _addrSrc.city || '',
+        province: _addrSrc.province || _addrSrc.state || '',
+        zip:      _addrSrc.zip || _addrSrc.pincode || '',
+        country:  _addrSrc.country || 'India',
+        phone:    _addrSrc.phone || res.order.customer_phone || ''
+      };
+    } else {
+      S.address = null;
+    }
+    S.screen = res.order.has_return ? 'already' : 'order';
+    render();
+  } catch(e) {
+    S.loading=false;
+    S.error='Network error. Please try again.';
+    render();
+  }
 }
 
-function toggleCheck(idx) { if (S.checked.has(idx)) { S.checked.delete(idx); delete S.actions[idx]; } else { S.checked.add(idx); S.actions[idx]='return'; } render(); }
-function setAction(idx, action) { S.actions[idx]=action; render(); }
-function changeQty(idx, delta) { S.qtys[idx] = Math.max(1, Math.min(S.order.line_items[idx].quantity, (S.qtys[idx]||1)+delta)); render(); }
-function buildQueue() { S.queue = [...S.checked].sort().map(idx => ({ idx, item:S.order.line_items[idx], action:S.actions[idx] })); S.qIdx = 0; S.screen='process'; render(); }
-function nextItem(idx) { S.qIdx++; render(); }
-function prevItem() { if (S.qIdx > 0) { S.qIdx--; } else { S.screen='order'; } render(); }
-async function fetchVariants(idx, pid) { if (S.prodData[idx]) return; try { S.prodData[idx] = await fetch(`${BACKEND}/api/products/${pid}`).then(r=>r.json()); render(); } catch(e) {} }
-function selectOpt(idx, opt, val) { 
-  if(!S.exchangeOpts[idx]) S.exchangeOpts[idx]={}; S.exchangeOpts[idx][opt]=val; 
-  const p = S.prodData[idx]; S.exchangeVariant[idx] = p.variants.find(v => p.options.every(o => !S.exchangeOpts[idx][o.name] || v[`option${o.position}`]===S.exchangeOpts[idx][o.name]))||null; render(); 
+function toggleCheck(idx) {
+  if (S.checked.has(idx)) { S.checked.delete(idx); delete S.actions[idx]; }
+  else { S.checked.add(idx); if (!S.actions[idx]) S.actions[idx]='return'; }
+  render();
 }
 
-function editAddress() { document.getElementById('addr-edit-modal').classList.add('open'); const a = S.address||{}; ['name','addr1','addr2','city','state','zip','phone'].forEach(k=>document.getElementById('am-'+k).value=a[k==='addr1'?'address1':k==='state'?'province':k]||''); }
-function closeAddrModal() { document.getElementById('addr-edit-modal').classList.remove('open'); }
-function saveAddrModal() { S.address = {name:document.getElementById('am-name').value, address1:document.getElementById('am-addr1').value, city:document.getElementById('am-city').value, province:document.getElementById('am-state').value, zip:document.getElementById('am-zip').value, phone:document.getElementById('am-phone').value, country:'India'}; closeAddrModal(); render(); }
+function setAction(idx, action) {
+  S.actions[idx]=action;
+  render();
+}
+
+function changeQty(idx, delta) {
+  const item = S.order.line_items[idx];
+  const max  = item.quantity||1;
+  S.qtys[idx] = Math.max(1, Math.min(max, (S.qtys[idx]||1)+delta));
+  render();
+}
+
+function buildQueue() {
+  S.queue = [...S.checked].sort().map(idx => ({ idx, item:S.order.line_items[idx], action:S.actions[idx] }));
+  S.qIdx = 0; S.screen='process'; render();
+}
+
+function nextItem(idx) {
+  // Save note if any
+  const noteEl = document.getElementById(`note-${idx}`);
+  if (noteEl) { if(!S.notes) S.notes={}; S.notes[idx]=noteEl.value; }
+  // Save AWB if any
+  const awbEl = document.getElementById('inp-awb');
+  if (awbEl) S.selfShipTracking = awbEl.value;
+  S.processed.push({ ...S.queue[S.qIdx], reason:S.reasons[idx], qty:S.qtys[idx]||1, exchangeVariant:S.exchangeVariant[idx], exchangeProduct:S.exchangeProduct[idx] });
+  S.qIdx++;
+  render();
+}
+
+function prevItem() {
+  if (S.qIdx > 0) { S.qIdx--; S.processed.pop(); render(); }
+  else { S.screen='order'; render(); }
+}
+
+async function fetchVariants(idx, product_id) {
+  if (!product_id||S.prodData[idx]) return;
+  S.prodData[idx] = null; // loading
+  try {
+    const res = await fetch(`${BACKEND}/api/products/${product_id}`).then(r=>r.json());
+    S.prodData[idx] = res;
+    render();
+  } catch(e) {}
+}
+
+function selectOpt(idx, optName, val) {
+  if (!S.exchangeOpts[idx]) S.exchangeOpts[idx]={};
+  S.exchangeOpts[idx][optName]=val;
+  // Find matching variant
+  const prod = S.prodData[idx];
+  if (prod?.variants && prod?.options) {
+    const matched = prod.variants.find(v => {
+      return prod.options.every((opt,i) => {
+        const sel = S.exchangeOpts[idx][opt.name];
+        return !sel || v[`option${opt.position}`]===sel;
+      });
+    });
+    S.exchangeVariant[idx] = matched||null;
+  }
+  render();
+}
+
+async function searchProducts(q) {
+  S.diffProdSearch=q;
+  if (!q||q.length<2) { S.searchResults=[]; render(); return; }
+  try {
+    const res = await fetch(`${BACKEND}/api/products/search?q=${encodeURIComponent(q)}`).then(r=>r.json());
+    S.searchResults=res.products||[];
+    render();
+  } catch(e) {}
+}
+
+function selectDiffProd(idx, prod) {
+  S.exchangeProduct[idx] = prod;
+  S.diffProd = prod;
+  if (prod.variants?.length===1) S.exchangeVariant[idx] = prod.variants[0];
+  else S.exchangeVariant[idx] = null;
+  render();
+}
+
+function selectDiffVariant(idx, variantId) {
+  const prod = S.exchangeProduct[idx];
+  S.exchangeVariant[idx] = prod?.variants?.find(v=>String(v.id)===String(variantId))||null;
+  render();
+}
+
+function handleMedia(idx, input) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  S.media[idx] = files;
+  S.mediaUrls[idx] = [];
+  files.forEach(f => {
+    const reader = new FileReader();
+    reader.onload = e => { S.mediaUrls[idx].push(e.target.result); if(S.mediaUrls[idx].length===files.length) render(); };
+    reader.readAsDataURL(f);
+  });
+}
+
+function editAddress() {
+  const a = S.address || S.order?.address || S.order?.shipping_address || {};
+  // Shopify can send name as first_name+last_name or as name field
+  const fullName = a.name || [a.first_name,a.last_name].filter(Boolean).join(' ') || S.order?.customer_name || '';
+  const phone    = a.phone || S.order?.customer_phone || '';
+  document.getElementById('am-name').value  = fullName;
+  document.getElementById('am-addr1').value = a.address1 || '';
+  document.getElementById('am-addr2').value = a.address2 || '';
+  document.getElementById('am-city').value  = a.city || '';
+  document.getElementById('am-state').value = a.province || a.state || '';
+  document.getElementById('am-zip').value   = a.zip || a.pincode || '';
+  document.getElementById('am-phone').value = phone;
+  document.getElementById('am-err').style.display='none';
+  document.getElementById('addr-edit-modal').classList.add('open');
+}
+function closeAddrModal() {
+  document.getElementById('addr-edit-modal').classList.remove('open');
+}
+function saveAddrModal() {
+  const addr1 = document.getElementById('am-addr1').value.trim();
+  const city   = document.getElementById('am-city').value.trim();
+  const state  = document.getElementById('am-state').value.trim();
+  const zip    = document.getElementById('am-zip').value.trim();
+  const errEl  = document.getElementById('am-err');
+  if(!addr1||!city||!state||!zip){
+    errEl.textContent='Please fill in Address, City, State, and Pincode.';
+    errEl.style.display='block';return;
+  }
+  if(!/^\d{6}$/.test(zip)){
+    errEl.textContent='Pincode must be 6 digits.';
+    errEl.style.display='block';return;
+  }
+  errEl.style.display='none';
+  S.address = {
+    name:    document.getElementById('am-name').value.trim(),
+    address1:addr1,
+    address2:document.getElementById('am-addr2').value.trim(),
+    city, province:state, zip,
+    phone:   document.getElementById('am-phone').value.trim(),
+    country:'India'
+  };
+  closeAddrModal();
+  render(); // re-render so address card shows updated address
+}
 
 async function submitRequest() {
-  document.getElementById('btn-submit').disabled=true;
-  const items = S.queue.map(q => ({ id: q.item.id, title: q.item.title, variant_id: q.item.variant_id, price: q.item.price, action: q.action, qty: S.qtys[q.idx]||1, reason: S.reasons[q.idx]||'', exchange_variant_id: S.exchangeVariant[q.idx]?.id, exchange_variant_title: S.exchangeVariant[q.idx]?.title }));
+  const btn = document.getElementById('btn-submit');
+  if (btn) { btn.disabled=true; btn.textContent='Submitting...'; }
+  const o = S.order;
+  const items = S.queue.map(q => {
+    const item = q.item;
+    const ev   = S.exchangeVariant[q.idx];
+    const ep   = S.exchangeProduct[q.idx];
+    const diff = ev ? (parseFloat(ev.price||0) - parseFloat(item.price||0)).toFixed(2) : '0';
+    return {
+      id: item.id, title: item.title, variant_title: item.variant_title||'',
+      variant_id: item.variant_id, price: item.price,
+      action: q.action, qty: S.qtys[q.idx]||1,
+      reason: S.reasons[q.idx]||'',
+      exchange_variant_id: ev?.id||null,
+      exchange_variant_title: ev?.title||null,
+      exchange_product_title: ep?.title||null,
+      price_diff: diff
+    };
+  });
+  const mediaUrls = Object.values(S.mediaUrls).flat();
   try {
-    const res = await fetch(`${BACKEND}/api/returns/request`,{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ order_id: S.order.id, order_number: S.order.order_number, items, refund_method: S.refundMethod||'store_credit', address: S.address, shipping_preference: 'pickup' }) }).then(r=>r.json());
-    if (res.success) { S.screen='success'; render(); } else { alert('Error: '+res.error); document.getElementById('btn-submit').disabled=false; }
-  } catch(e) { alert('Network error'); document.getElementById('btn-submit').disabled=false; }
+    const res = await fetch(`${BACKEND}/api/returns/request`,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        order_id: o.id, order_number: o.order_number,
+        items, refund_method: S.refundMethod||'store_credit',
+        customer_note: '', address: S.address||o.address,
+        media_urls: mediaUrls.slice(0,3).map(()=>'[media uploaded]'),
+        shipping_preference: S.logistics
+      })
+    }).then(r=>r.json());
+    if (res.success) {
+      S.refCode = res.ref; S.autoAction = res.auto_action;
+      S.autoApproved = res.status==='approved'||res.auto_action==='auto_approve';
+      S.keepItMsg = res.keep_it_message;
+      S.screen='success'; render();
+    } else {
+      showToast('Error: '+(res.error||'Failed to submit'), 3000);
+      if(btn){btn.disabled=false;btn.textContent='Submit Request →';}
+    }
+  } catch(e) {
+    showToast('Network error. Please try again.', 3000);
+    if(btn){btn.disabled=false;btn.textContent='Submit Request →';}
+  }
 }
 
+function trackFromPortal() { S.screen='track'; render(); }
+
+// ── UTILS ──
+function escHtml(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showToast(msg, dur=2000) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), dur);
+}
+
+// Fetch warehouse address for self-ship
+async function fetchSettings() {
+  try {
+    const s = await fetch(`${BACKEND}/api/settings`).then(r=>r.json());
+    const w = s.warehouse;
+    if (w?.address) window._warehouseAddr = [w.name,w.address,w.city,w.state,w.pincode].filter(Boolean).join(', ');
+    window._returnWindowDays = s.return_window_days||30;
+  } catch(e) {}
+}
+
+// Close address modal on bg click
+document.getElementById('addr-edit-modal').addEventListener('click', e => {
+  if(e.target === document.getElementById('addr-edit-modal')) closeAddrModal();
+});
+
+fetchSettings();
 render();
 </script>
 </body>
