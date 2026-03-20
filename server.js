@@ -60,6 +60,7 @@ const DELHIVERY_BASE      = 'https://track.delhivery.com';
 // ── Easebuzz ──
 const EASEBUZZ_KEY  = process.env.EASEBUZZ_KEY  || '';
 const EASEBUZZ_SALT = process.env.EASEBUZZ_SALT || '';
+const EASEBUZZ_MID  = process.env.EASEBUZZ_MID  || '';
 const EASEBUZZ_ENV  = process.env.EASEBUZZ_ENV  || 'prod';
 const EASEBUZZ_BASE = EASEBUZZ_ENV === 'test' ? 'https://testpay.easebuzz.in' : 'https://pay.easebuzz.in';
 
@@ -1895,6 +1896,7 @@ app.post('/api/payments/initiate', async (req,res)=>{
       furl: `${BACKEND_URL}/api/payments/callback/failure`,
       udf1: String(order_id), udf2:'', udf3:'', udf4:'', udf5:''
     };
+    if (EASEBUZZ_MID) p.mid = EASEBUZZ_MID;
     p.hash = ebHash(p);
     console.log(`[payments/initiate] txnid=${txnid} amt=${amtStr} order=${order_id}`);
     const r = await fetch(`${EASEBUZZ_BASE}/payment/initiateLink`,{
