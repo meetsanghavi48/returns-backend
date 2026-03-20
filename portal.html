@@ -1391,15 +1391,15 @@ function renderTrack() {
     return `
     <div class="logo">↩ Returns Portal</div>
     <div class="card">
-      <div class="card-title" style="margin-bottom:4px">Track your request</div>
-      <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Enter your order details to see the status</div>
-      <div class="field-label">ORDER NUMBER</div>
-      <input class="input" id="trk-order" placeholder="e.g. 916808" type="tel"
-        style="margin-bottom:12px" onkeydown="if(event.key==='Enter')document.getElementById('trk-pin').focus()">
-      <div class="field-label">DELIVERY PINCODE</div>
-      <input class="input" id="trk-pin" placeholder="6-digit delivery pincode" type="tel" maxlength="6"
-        style="margin-bottom:16px" onkeydown="if(event.key==='Enter')lookupTrack()">
-      <button class="btn btn-black" style="width:100%" onclick="lookupTrack()">Track Request →</button>
+      <div style="font-family:var(--serif);font-size:20px;margin-bottom:4px">Track your request</div>
+      <div style="color:var(--muted);font-size:13px;margin-bottom:20px">Enter your order details to see the status</div>
+      <label class="label">ORDER NUMBER</label>
+      <input class="inp" id="trk-order" placeholder="e.g. 916808" inputmode="numeric" autocomplete="off"
+        style="margin-bottom:14px" onkeydown="if(event.key==='Enter')document.getElementById('trk-pin').focus()">
+      <label class="label">DELIVERY PINCODE</label>
+      <input class="inp" id="trk-pin" placeholder="6-digit delivery pincode" inputmode="numeric" maxlength="6"
+        style="margin-bottom:20px" onkeydown="if(event.key==='Enter')lookupTrack()">
+      <button class="btn btn-black" id="btn-track-lookup" onclick="lookupTrack()">Track Request →</button>
     </div>
     <button class="btn btn-outline" style="width:100%;margin-top:10px" onclick="S.screen='lookup';render()">← Back</button>`;
   }
@@ -1465,7 +1465,7 @@ async function lookupTrack() {
   const pin      = (document.getElementById('trk-pin')?.value||'').trim();
   if (!orderNum) { showToast('Enter your order number', 2000); return; }
   if (!/^\d{6}$/.test(pin)) { showToast('Enter a valid 6-digit pincode', 2000); return; }
-  const btn = document.querySelector('#trk-order')?.closest('.card')?.querySelector('button');
+  const btn = document.getElementById('btn-track-lookup');
   if (btn) { btn.disabled = true; btn.textContent = 'Searching…'; }
   try {
     const res = await fetch(`${BACKEND}/api/portal/order?order_number=${encodeURIComponent(orderNum)}&pincode=${encodeURIComponent(pin)}`).then(r=>r.json());
