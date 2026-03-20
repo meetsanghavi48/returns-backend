@@ -539,11 +539,26 @@ function filterBrowse(val) {
   if (el) el.innerHTML = _browsCards(S.browseIdx);
 }
 
+// Category sort order for browse grid
+const BROWSE_ORDER = ['jeans','chinos','wallet','watch','cargo','shirt','polo','tshirt','t-shirt'];
+function _browseRank(title) {
+  const t = title.toLowerCase();
+  for (let i = 0; i < BROWSE_ORDER.length; i++) { if (t.includes(BROWSE_ORDER[i])) return i; }
+  return BROWSE_ORDER.length;
+}
+
 function _browsCards(idx) {
   if (S.browseLoading) return '<div style="grid-column:1/-1;text-align:center;padding:40px 0;color:var(--muted);font-size:13px">⏳ Loading products…</div>';
   if (!S.browseProducts) return '<div style="grid-column:1/-1;text-align:center;padding:40px 0;color:var(--muted);font-size:13px">⏳ Loading…</div>';
   const q = (S.browseFilter||'').toLowerCase();
-  const list = q ? S.browseProducts.filter(p=>p.title.toLowerCase().includes(q)) : S.browseProducts;
+  // Get the product_id of the item being exchanged (to hide it from the grid)
+  const currentItem = S.order && S.order.line_items ? (S.order.line_items[idx]||null) : null;
+  const currentProdId = currentItem ? String(currentItem.product_id||'') : '';
+  let list = q ? S.browseProducts.filter(p=>p.title.toLowerCase().includes(q)) : S.browseProducts.slice();
+  // Hide the product the customer is currently exchanging (the original order item's product)
+  if (currentProdId) list = list.filter(p => String(p.id) !== currentProdId);
+  // Sort by category priority
+  list = list.slice().sort((a,b) => _browseRank(a.title) - _browseRank(b.title));
   if (!list.length) return '<div style="grid-column:1/-1;text-align:center;padding:30px 0;color:var(--muted);font-size:13px">No products found</div>';
   const selProdId = (S.exchangeProduct[idx]||{}).id;
   return list.map(p=>{

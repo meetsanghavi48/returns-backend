@@ -342,6 +342,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
       <div class="tab-row" id="status-tabs">
         <button class="tab-btn active" onclick="switchTab('pending',this)">Requested <span class="tab-count" id="tc-pending">0</span></button>
         <button class="tab-btn" onclick="switchTab('approved',this)">Approved <span class="tab-count" id="tc-approved">0</span></button>
+        <button class="tab-btn" onclick="switchTab('pickup_created',this)">Pickup Created <span class="tab-count" id="tc-pickup_created">0</span></button>
         <button class="tab-btn" onclick="switchTab('in_transit',this)">In Transit <span class="tab-count" id="tc-in_transit">0</span></button>
         <button class="tab-btn" onclick="switchTab('delivered',this)">Delivered <span class="tab-count" id="tc-delivered">0</span></button>
         <button class="tab-btn" onclick="switchTab('exchange_fulfilled',this)">Exchanged <span class="tab-count" id="tc-exchange_fulfilled">0</span></button>
@@ -759,8 +760,14 @@ function switchTab(status, el) {
   } else if (status === 'mixed') {
     filtered = filtered.filter(function(o){ return o.request_type==='mixed'; });
   } else if (status === 'approved') {
+    // Approved but no AWB yet (waiting for pickup to be created) — includes non-serviceable
     filtered = filtered.filter(function(o){
-      return (o.requests||[]).some(function(r){ return r.status==='approved'||r.status==='pickup_scheduled'; });
+      return (o.requests||[]).some(function(r){ return (r.status==='approved'||r.status==='pickup_scheduled') && !r.awb; });
+    });
+  } else if (status === 'pickup_created') {
+    // Approved + AWB generated but not yet picked up
+    filtered = filtered.filter(function(o){
+      return (o.requests||[]).some(function(r){ return (r.status==='approved'||r.status==='pickup_scheduled') && !!r.awb; });
     });
   } else if (status === 'in_transit') {
     filtered = filtered.filter(function(o){
@@ -871,7 +878,8 @@ function updateStats() {
   if(el('badge-exc'))el('badge-exc').textContent=exc;
   var tc = function(id,v){ var e=el('tc-'+id);if(e)e.textContent=v; };
   tc('all',ws.length); tc('pending',pending);
-  tc('approved',ws.filter(function(o){ return (o.requests||[]).some(function(r){ return r.status==='approved'||r.status==='pickup_scheduled'; }); }).length);
+  tc('approved',ws.filter(function(o){ return (o.requests||[]).some(function(r){ return (r.status==='approved'||r.status==='pickup_scheduled')&&!r.awb; }); }).length);
+  tc('pickup_created',ws.filter(function(o){ return (o.requests||[]).some(function(r){ return (r.status==='approved'||r.status==='pickup_scheduled')&&!!r.awb; }); }).length);
   tc('in_transit',ws.filter(function(o){ return (o.requests||[]).some(function(r){ return r.status==='picked_up'; }); }).length);
   tc('delivered',ws.filter(function(o){ return (o.requests||[]).some(function(r){ return r.status==='delivered'; }); }).length);
   tc('refunded',ws.filter(function(o){ return o.return_status==='refunded'; }).length);
