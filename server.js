@@ -4,6 +4,7 @@ const cors     = require('cors');
 const fetch    = require('node-fetch');
 const path     = require('path');
 const fs       = require('fs');
+const crypto   = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
@@ -55,6 +56,25 @@ loadAuthFromSupabase();
 const DELHIVERY_TOKEN     = process.env.DELHIVERY_TOKEN     || 'bcfa63601f1cf0a2eaee2b06caa25e2134496770';
 const DELHIVERY_WAREHOUSE = process.env.DELHIVERY_WAREHOUSE || 'Blakc';
 const DELHIVERY_BASE      = 'https://track.delhivery.com';
+
+// ── Easebuzz ──
+const EASEBUZZ_KEY  = process.env.EASEBUZZ_KEY  || '';
+const EASEBUZZ_SALT = process.env.EASEBUZZ_SALT || '';
+const EASEBUZZ_ENV  = process.env.EASEBUZZ_ENV  || 'prod';
+const EASEBUZZ_BASE = EASEBUZZ_ENV === 'test' ? 'https://testpay.easebuzz.in' : 'https://pay.easebuzz.in';
+
+function ebHash(p) {
+  const str = [p.key,p.txnid,p.amount,p.productinfo,p.firstname,p.email,
+    p.udf1||'',p.udf2||'',p.udf3||'',p.udf4||'',p.udf5||'',
+    '','','','','',EASEBUZZ_SALT].join('|');
+  return crypto.createHash('sha512').update(str).digest('hex');
+}
+function ebVerify(p) {
+  const str = [EASEBUZZ_SALT,p.status,
+    p.udf5||'',p.udf4||'',p.udf3||'',p.udf2||'',p.udf1||'',
+    p.email,p.firstname,p.productinfo,p.amount,p.txnid,p.key].join('|');
+  return crypto.createHash('sha512').update(str).digest('hex');
+}
 
 let RETURN_WINDOW_DAYS = parseInt(process.env.RETURN_WINDOW_DAYS) || 30;
 const STORE_CREDIT_BONUS = 0; // No bonus — store credit = exact refund amount
@@ -1841,6 +1861,79 @@ app.post('/api/admin/repair-tags', async (req,res)=>{
     }
     res.json({ success:true, fixed, total:reqs?.length||0 });
   } catch(e){ res.status(500).json({ error:e.message }); }
+});
+
+// ══════════════════════════════════════════
+// EASEBUZZ PAYMENT ROUTES
+// ══════════════════════════════════════════
+
+// Popup callback HTML helpers
+const _payHtml = (ok, txnid) => `<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>body{font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;background:${ok?'#f0fdf4':'#fef2f2'};gap:14px}
+.icon{font-size:60px}.msg{font-size:18px;font-weight:700;color:${ok?'#16a34a':'#dc2626'}}.sub{font-size:13px;color:#6b7280}</style></head>
+<body><div class="icon">${ok?'✅':'❌'}</div>
+<div class="msg">${ok?'Payment Successful!':'Payment Failed'}</div>
+<div class="sub">Closing window…</div>
+<script>
+  try{if(window.opener)window.opener.postMessage({type:'${ok?'PAYMENT_SUCCESS':'PAYMENT_FAILED'}',txnid:${JSON.stringify(txnid)}},'*');}catch(e){}
+  setTimeout(()=>window.close(),1200);
+</script></body></html>`;
+
+app.post('/api/payments/initiate', async (req,res)=>{
+  try {
+    const { amount, order_id, firstname, email, phone } = req.body;
+    if (!EASEBUZZ_KEY||!EASEBUZZ_SALT) return res.json({ success:false, error:'Payment not configured' });
+    const txnid  = `BLK${String(order_id).slice(-6)}_${Date.now()}`;
+    const amtStr = parseFloat(amount).toFixed(2);
+    const p = {
+      key: EASEBUZZ_KEY, txnid, amount: amtStr,
+      productinfo: `Exchange Upgrade - Order #${order_id}`,
+      firstname: (firstname||'Customer').replace(/[^a-zA-Z\s]/g,'').slice(0,50)||'Customer',
+      email: email||'customer@blakc.store',
+      phone: String(phone||'').replace(/\D/g,'').slice(-10).padStart(10,'9'),
+      surl: `${BACKEND_URL}/api/payments/callback/success`,
+      furl: `${BACKEND_URL}/api/payments/callback/failure`,
+      udf1: String(order_id), udf2:'', udf3:'', udf4:'', udf5:''
+    };
+    p.hash = ebHash(p);
+    console.log(`[payments/initiate] txnid=${txnid} amt=${amtStr} order=${order_id}`);
+    const r = await fetch(`${EASEBUZZ_BASE}/payment/initiateLink`,{
+      method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body: new URLSearchParams(p).toString()
+    });
+    const data = await r.json();
+    if (data.status === 1) {
+      await supabase.from('payments').insert({ txnid, order_id:String(order_id), amount:parseFloat(amtStr), status:'pending' }).throwOnError();
+      res.json({ success:true, txnid, payment_url:`${EASEBUZZ_BASE}/pay/${data.data}` });
+    } else {
+      console.error('[payments/initiate] EB error:', data);
+      res.json({ success:false, error: data.error_desc||data.message||'Initiation failed' });
+    }
+  } catch(e) { console.error('[payments/initiate]',e.message); res.json({ success:false, error:e.message }); }
+});
+
+app.post('/api/payments/callback/success', express.urlencoded({extended:true}), async (req,res)=>{
+  const p = req.body;
+  console.log('[payments/callback/success]', p.txnid, p.status);
+  try {
+    const expected = ebVerify(p);
+    const valid = expected === p.hash;
+    await supabase.from('payments').update({ status: valid?'paid':'hash_mismatch', txn_response:p }).eq('txnid', p.txnid||'');
+  } catch(e) { console.error('[payments/callback/success]', e.message); }
+  res.send(_payHtml(true, p.txnid||''));
+});
+
+app.post('/api/payments/callback/failure', express.urlencoded({extended:true}), async (req,res)=>{
+  const p = req.body;
+  console.log('[payments/callback/failure]', p.txnid, p.status);
+  try { await supabase.from('payments').update({ status:'failed', txn_response:p }).eq('txnid', p.txnid||''); }
+  catch(e) { console.error('[payments/callback/failure]', e.message); }
+  res.send(_payHtml(false, p.txnid||''));
+});
+
+app.get('/api/payments/status/:txnid', async (req,res)=>{
+  const { data } = await supabase.from('payments').select('status,amount').eq('txnid',req.params.txnid).single();
+  res.json({ status: data?.status||'unknown', amount: data?.amount||0 });
 });
 
 const PORT=process.env.PORT||3000;

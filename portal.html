@@ -241,6 +241,10 @@ const S = {
   browseIdx:       0,
   // Payment
   is_cod:       false,
+  payState:     null,   // null | 'initiating' | 'awaiting' | 'success' | 'failed' | 'skipped'
+  payTxnid:     null,
+  payDiff:      0,
+  _payPoll:     null,
   // Tracking
   trackingReqId: null,
   trackingData:  null,
@@ -425,9 +429,10 @@ async function doLookup() {
       return;
     }
 
-    // Success — store order
+    // Success — store order, reset payment state
     S.order  = res.order;
     S.is_cod = res.order.is_cod || false;
+    S.payState = null; S.payTxnid = null; S.payDiff = 0;
 
     const sa = res.order.address;
     S.address = sa ? {
@@ -802,6 +807,19 @@ function saveAddrModal() {
 }
 
 async function submitRequest() {
+  // Calculate total price difference across all exchange items
+  const totalDiff = (S.queue||[]).reduce((sum, q) => {
+    const ev = S.exchangeVariant[q.idx];
+    if (!ev) return sum;
+    return sum + (parseFloat(ev.price||0) - parseFloat(q.item.price||0));
+  }, 0);
+
+  // If payment required and not yet done — intercept
+  if (totalDiff > 0.5 && S.payState !== 'success' && S.payState !== 'skipped') {
+    initiatePayment(Math.round(totalDiff));
+    return;
+  }
+
   const btn = document.getElementById('btn-submit');
   if (btn) { btn.disabled=true; btn.textContent='Submitting...'; }
   const o = S.order;
@@ -832,7 +850,9 @@ async function submitRequest() {
         items, refund_method: S.refundMethod||'store_credit',
         customer_note: '', address: S.address||o.address,
         media_urls: mediaUrls.slice(0,3).map(()=>'[media uploaded]'),
-        shipping_preference: S.logistics
+        shipping_preference: S.logistics,
+        payment_txnid: S.payTxnid || null,
+        payment_status: S.payState === 'success' ? 'paid' : S.payState === 'skipped' ? 'pending' : null
       })
     }).then(r=>r.json());
     if (res.success) {
@@ -840,9 +860,11 @@ async function submitRequest() {
       S.autoAction  = res.auto_action;
       S.autoApproved= res.status==='approved'||res.auto_action==='auto_approve';
       S.keepItMsg   = res.keep_it_message;
-      S.merged      = res.merged || false;  // was appended to existing request
+      S.merged      = res.merged || false;
       S.trackingReqId = res.req_id;
       S.trackingData  = { request:{ req_id:res.req_id, status:res.status||'pending', request_type:res.type }, scans:[] };
+      // Reset payment state for next use
+      S.payState = null; S.payTxnid = null; S.payDiff = 0;
       S.screen='success'; render();
       startTrackingPoll();
     } else {
@@ -856,6 +878,73 @@ async function submitRequest() {
 }
 
 function trackFromPortal() { S.screen='track'; render(); }
+
+// ── EASEBUZZ PAYMENT ──
+// One-time message listener for payment popup callbacks
+window.addEventListener('message', function(e) {
+  if (!e.data || !e.data.type) return;
+  if (e.data.type === 'PAYMENT_SUCCESS') {
+    clearInterval(S._payPoll); S._payPoll = null;
+    S.payState = 'success'; S.payTxnid = e.data.txnid || S.payTxnid;
+    render();
+    // Auto-submit after brief success flash
+    setTimeout(() => submitRequest(), 800);
+  } else if (e.data.type === 'PAYMENT_FAILED') {
+    clearInterval(S._payPoll); S._payPoll = null;
+    S.payState = 'failed'; render();
+  }
+});
+
+async function initiatePayment(diff) {
+  S.payState = 'initiating'; S.payDiff = diff; render();
+  try {
+    const o = S.order;
+    const res = await fetch(`${BACKEND}/api/payments/initiate`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: diff,
+        order_id: o.id,
+        firstname: (o.customer_name||'Customer').split(' ')[0],
+        email: o.customer_email || '',
+        phone: o.customer_phone || ''
+      })
+    }).then(r => r.json());
+
+    if (!res.success) {
+      S.payState = 'failed'; render();
+      showToast('Payment error: ' + (res.error || 'Try again'), 3000); return;
+    }
+    S.payTxnid = res.txnid;
+    S.payState = 'awaiting'; render();
+    // Open payment popup
+    const popup = window.open(res.payment_url, 'eb_pay',
+      'width=500,height=700,left=' + Math.round((screen.width-500)/2) + ',top=' + Math.round((screen.height-700)/2));
+    // Poll as backup (popup blocker / no postMessage)
+    S._payPoll = setInterval(async () => {
+      try {
+        const st = await fetch(`${BACKEND}/api/payments/status/${res.txnid}`).then(r=>r.json());
+        if (st.status === 'paid') {
+          clearInterval(S._payPoll); S._payPoll = null;
+          if (popup && !popup.closed) popup.close();
+          S.payState = 'success'; render();
+          setTimeout(() => submitRequest(), 800);
+        } else if (st.status === 'failed') {
+          clearInterval(S._payPoll); S._payPoll = null;
+          S.payState = 'failed'; render();
+        }
+      } catch(e) {}
+    }, 3000);
+  } catch(e) {
+    S.payState = 'failed'; render();
+    showToast('Network error. Please retry.', 3000);
+  }
+}
+
+function skipPayment() {
+  clearInterval(S._payPoll); S._payPoll = null;
+  S.payState = 'skipped'; render();
+  submitRequest();
+}
 
 // ── UTILS ──
 function escHtml(str) {
@@ -1209,10 +1298,76 @@ function renderLogistics() {
     ${fmtAddr(addr)?`<div style="font-size:13px;line-height:1.9;color:var(--text)">${escHtml(fmtAddr(addr))}</div><button style="font-size:12px;color:var(--accent);background:none;border:none;cursor:pointer;margin-top:6px;text-decoration:underline" onclick="editAddress()">Edit address</button>`:
     `<div style="font-size:13px;color:var(--muted)">No address on file</div>`}
   </div>
-  <div style="display:flex;gap:10px;margin-top:4px">
-    <button class="btn btn-outline" style="flex:0.4" onclick="if(S.queue.some(q=>q.action==='return')){S.screen='refund';}else{S.screen='process';S.qIdx=S.queue.length-1;}render()">← Back</button>
-    <button class="btn btn-black" style="flex:1" id="btn-submit" onclick="submitRequest()">Submit Request \u2192</button>
-  </div>`;
+  ${(()=>{
+    // Calculate total price diff across all queued exchange items
+    const diff = (S.queue||[]).reduce((sum,q)=>{
+      const ev = S.exchangeVariant[q.idx];
+      return ev ? sum + (parseFloat(ev.price||0) - parseFloat(q.item.price||0)) : sum;
+    }, 0);
+    const diffRounded = Math.round(diff);
+
+    // Cheaper item → show refund note
+    const refundNote = diffRounded < 0
+      ? `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">
+           <span style="font-size:20px">💚</span>
+           <div>
+             <div style="font-size:13px;font-weight:700;color:#16a34a">₹${Math.abs(diffRounded)} Refund on Delivery</div>
+             <div style="font-size:12px;color:#15803d;margin-top:2px">Added as store credit when your exchange is picked up</div>
+           </div>
+         </div>` : '';
+
+    // Payment states
+    let payBlock = '';
+    if (diffRounded > 0) {
+      if (!S.payState || S.payState === 'failed') {
+        const retryLabel = S.payState === 'failed' ? '🔄 Retry Payment' : '💳 Pay ₹'+diffRounded;
+        const failNote = S.payState === 'failed'
+          ? `<div style="font-size:12px;color:#dc2626;margin-bottom:8px;font-weight:600">⚠️ Payment failed. Please retry or skip to pay later.</div>` : '';
+        payBlock = `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px;margin-bottom:12px">
+          <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:4px">💰 Price Difference</div>
+          <div style="font-size:12px;color:#78350f;margin-bottom:10px">Your new item costs <strong>₹${diffRounded} more</strong>. Pay now to confirm your exchange.</div>
+          ${failNote}
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-black" style="flex:1;font-size:13px" onclick="initiatePayment(${diffRounded})">${retryLabel}</button>
+            <button class="btn btn-outline" style="flex:0.6;font-size:12px;color:var(--muted)" onclick="skipPayment()">Pay later</button>
+          </div>
+        </div>`;
+      } else if (S.payState === 'initiating') {
+        payBlock = `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;margin-bottom:12px;text-align:center">
+          <div style="font-size:13px;font-weight:600;color:#1d4ed8">⏳ Opening payment…</div>
+        </div>`;
+      } else if (S.payState === 'awaiting') {
+        payBlock = `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;margin-bottom:12px">
+          <div style="font-size:13px;font-weight:700;color:#1d4ed8;margin-bottom:4px">💳 Complete Payment in Popup</div>
+          <div style="font-size:12px;color:#3b82f6;margin-bottom:10px">A payment window has opened. Complete your payment there. This page will update automatically.</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline" style="flex:1;font-size:12px" onclick="initiatePayment(${diffRounded})">Reopen window</button>
+            <button class="btn btn-outline" style="flex:0.6;font-size:12px;color:var(--muted)" onclick="skipPayment()">Pay later</button>
+          </div>
+        </div>`;
+      } else if (S.payState === 'success') {
+        payBlock = `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">
+          <span style="font-size:20px">✅</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#16a34a">Payment of ₹${diffRounded} received!</div>
+            <div style="font-size:12px;color:#15803d;margin-top:2px">Submitting your request…</div>
+          </div>
+        </div>`;
+      } else if (S.payState === 'skipped') {
+        payBlock = `<div style="background:#fafafa;border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:12px">
+          <div style="font-size:12px;color:var(--muted)">💰 ₹${diffRounded} balance marked as <strong>payment pending</strong>. Our team will contact you.</div>
+        </div>`;
+      }
+    }
+
+    const submitDisabled = S.payState === 'success' || S.payState === 'initiating' || S.payState === 'awaiting' ? 'disabled' : '';
+    const submitLabel = S.payState === 'success' ? 'Submitting…' : 'Submit Request →';
+    return `${refundNote}${payBlock}
+    <div style="display:flex;gap:10px;margin-top:4px">
+      <button class="btn btn-outline" style="flex:0.4" onclick="if(S.queue.some(q=>q.action==='return')){S.screen='refund';}else{S.screen='process';S.qIdx=S.queue.length-1;}render()">← Back</button>
+      <button class="btn btn-black" style="flex:1" id="btn-submit" onclick="submitRequest()" ${submitDisabled}>${submitLabel}</button>
+    </div>`;
+  })()}`;
 }
 
 function renderSuccess() {
