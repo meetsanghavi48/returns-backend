@@ -91,7 +91,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .browse-card .b-ph{width:100%;aspect-ratio:3/4;background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:32px}
 .b-price{position:absolute;top:7px;left:7px;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:3px 7px;border-radius:20px}
 .b-check{position:absolute;top:7px;right:7px;width:22px;height:22px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700}
-.b-name{padding:5px 7px 7px;font-size:11px;font-weight:600;line-height:1.3;color:var(--text);background:#fff}
+.b-name{padding:5px 7px 5px;font-size:11px;font-weight:600;line-height:1.3;color:var(--text);background:#fff}
+.b-diff{padding:2px 7px 7px;font-size:11px;font-weight:700;background:#fff}
+.b-diff.pay{color:#16a34a}.b-diff.save{color:#16a34a}.b-diff.same{color:var(--muted)}
 /* Bottom sheet overlay */
 .b-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:flex-end;animation:fadeIn .2s ease}
 .b-sheet{background:#fff;border-radius:20px 20px 0 0;padding:20px 20px 32px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 -4px 24px rgba(0,0,0,.15)}
@@ -543,35 +545,49 @@ function filterBrowse(val) {
 const BROWSE_ORDER = ['jeans','chinos','wallet','watch','cargo','shirt','polo','tshirt','t-shirt'];
 function _browseRank(title) {
   const t = title.toLowerCase();
-  for (let i = 0; i < BROWSE_ORDER.length; i++) { if (t.includes(BROWSE_ORDER[i])) return i; }
-  return BROWSE_ORDER.length;
+  // Women / high-rise products always sorted after men's equivalents
+  const isWomen = t.includes('women') || t.includes('high rise') || t.includes('for women') || t.includes('girl');
+  for (let i = 0; i < BROWSE_ORDER.length; i++) {
+    if (t.includes(BROWSE_ORDER[i])) return (isWomen ? 100 : 0) + i;
+  }
+  return (isWomen ? 150 : 50) + BROWSE_ORDER.length;
 }
 
 function _browsCards(idx) {
   if (S.browseLoading) return '<div style="grid-column:1/-1;text-align:center;padding:40px 0;color:var(--muted);font-size:13px">⏳ Loading products…</div>';
   if (!S.browseProducts) return '<div style="grid-column:1/-1;text-align:center;padding:40px 0;color:var(--muted);font-size:13px">⏳ Loading…</div>';
   const q = (S.browseFilter||'').toLowerCase();
-  // Get the product_id of the item being exchanged (to hide it from the grid)
+  // Get the product_id and original price of the item being exchanged
   const currentItem = S.order && S.order.line_items ? (S.order.line_items[idx]||null) : null;
   const currentProdId = currentItem ? String(currentItem.product_id||'') : '';
+  const currentPrice = currentItem ? parseFloat(currentItem.price||0) : 0;
   let list = q ? S.browseProducts.filter(p=>p.title.toLowerCase().includes(q)) : S.browseProducts.slice();
-  // Hide the product the customer is currently exchanging (the original order item's product)
+  // Hide the product the customer is currently exchanging
   if (currentProdId) list = list.filter(p => String(p.id) !== currentProdId);
-  // Sort by category priority
+  // Sort by category priority (women's last)
   list = list.slice().sort((a,b) => _browseRank(a.title) - _browseRank(b.title));
   if (!list.length) return '<div style="grid-column:1/-1;text-align:center;padding:30px 0;color:var(--muted);font-size:13px">No products found</div>';
   const selProdId = (S.exchangeProduct[idx]||{}).id;
   return list.map(p=>{
     const isSel = selProdId === p.id;
     const minPrice = Math.min(...(p.variants||[{price:'0'}]).map(v=>parseFloat(v.price||0)));
+    // Price difference vs item being returned
+    let diffHTML = '';
+    if (currentPrice > 0) {
+      const diff = minPrice - currentPrice;
+      if (diff > 0) diffHTML = `<div class="b-diff pay">Pay +₹${diff.toFixed(0)}</div>`;
+      else if (diff < 0) diffHTML = `<div class="b-diff save">Save ₹${Math.abs(diff).toFixed(0)}</div>`;
+      else diffHTML = `<div class="b-diff same">Same price</div>`;
+    }
     const imgHTML = p.image
       ? `<img src="${escHtml(p.image)}" alt="${escHtml(p.title)}" loading="lazy" style="width:100%;aspect-ratio:3/4;object-fit:cover;display:block;background:#f3f4f6">`
       : `<div class="b-ph">👗</div>`;
     return `<div class="browse-card ${isSel?'sel':''}" onclick="openBrowseSheet(${idx},${JSON.stringify(p).replace(/\\/g,'\\\\').replace(/"/g,'&quot;').replace(/'/g,'&#39;')})">
       ${imgHTML}
-      <div class="b-price">₹${minPrice.toFixed(0)} ↓</div>
+      <div class="b-price">₹${minPrice.toFixed(0)}</div>
       ${isSel?'<div class="b-check">✓</div>':''}
       <div class="b-name">${escHtml(p.title)}</div>
+      ${diffHTML}
     </div>`;
   }).join('');
 }
@@ -640,12 +656,22 @@ function renderDiffProduct(idx) {
 
   // ── Already confirmed a selection ──
   if (selProd && selVariant) {
+    const selPrice = parseFloat(selVariant.price||0);
+    const baseItem = S.order?.line_items?.[idx]||null;
+    const basePrice = baseItem ? parseFloat(baseItem.price||0) : 0;
+    const diff = basePrice > 0 ? selPrice - basePrice : null;
+    const diffBadge = diff === null ? '' : diff > 0
+      ? `<div style="margin-top:4px;font-size:12px;font-weight:700;color:#16a34a">Pay +₹${diff.toFixed(0)}</div>`
+      : diff < 0
+      ? `<div style="margin-top:4px;font-size:12px;font-weight:700;color:#16a34a">Save ₹${Math.abs(diff).toFixed(0)}</div>`
+      : `<div style="margin-top:4px;font-size:12px;color:var(--muted)">Same price</div>`;
     return `<div style="border:1.5px solid var(--accent);border-radius:10px;padding:12px;background:rgba(200,75,49,.03)">
       <div style="display:flex;align-items:center;gap:10px">
         ${selProd.image?`<img src="${escHtml(selProd.image)}" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0">`:'<div style="width:56px;height:56px;background:#f3f4f6;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:24px">👗</div>'}
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;font-size:14px;line-height:1.3">${escHtml(selProd.title)}</div>
-          <div style="font-size:13px;color:var(--success);margin-top:3px;font-weight:600">✓ ${escHtml(selVariant.title)} — ₹${parseFloat(selVariant.price||0).toFixed(2)}</div>
+          <div style="font-size:13px;color:var(--success);margin-top:3px;font-weight:600">✓ ${escHtml(selVariant.title)} — ₹${selPrice.toFixed(0)}</div>
+          ${diffBadge}
         </div>
         <button onclick="S.exchangeProduct[${idx}]=null;S.exchangeVariant[${idx}]=null;S.exchangeOpts[${idx}]={};render()" style="background:none;border:1.5px solid var(--border);border-radius:7px;padding:5px 10px;font-size:12px;color:var(--muted);cursor:pointer;flex-shrink:0;font-family:var(--font)">Change</button>
       </div>
@@ -686,7 +712,19 @@ function renderDiffProduct(idx) {
             </div>
           </div>`;
         }).join('')}
-        ${S.browseSheetVariant?`<div style="padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600;color:#16a34a">✓ ${escHtml(S.browseSheetVariant.title)} — ₹${parseFloat(S.browseSheetVariant.price||0).toFixed(2)}</div>`:''}
+        ${(()=>{
+          if (!S.browseSheetVariant) return '';
+          const vPrice = parseFloat(S.browseSheetVariant.price||0);
+          const baseItem = S.order?.line_items?.[idx]||null;
+          const basePrice = baseItem ? parseFloat(baseItem.price||0) : 0;
+          const diff = basePrice > 0 ? vPrice - basePrice : null;
+          const diffTag = diff === null ? '' : diff > 0
+            ? `<span style="margin-left:10px;color:#16a34a;font-weight:700">Pay +₹${diff.toFixed(0)}</span>`
+            : diff < 0
+            ? `<span style="margin-left:10px;color:#16a34a;font-weight:700">Save ₹${Math.abs(diff).toFixed(0)}</span>`
+            : `<span style="margin-left:10px;color:var(--muted)">Same price</span>`;
+          return `<div style="padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;margin-bottom:16px;font-size:13px;font-weight:600;color:#16a34a;display:flex;align-items:center;flex-wrap:wrap">✓ ${escHtml(S.browseSheetVariant.title)} — ₹${vPrice.toFixed(0)}${diffTag}</div>`;
+        })()}
         <div style="display:flex;gap:10px">
           <button class="btn btn-black" style="flex:1;font-size:13px;letter-spacing:.3px" onclick="confirmBrowseSelection(${idx})" ${!S.browseSheetVariant?'disabled':''}>CONTINUE</button>
           <button class="btn btn-outline" style="flex:1;font-size:13px;letter-spacing:.3px" onclick="closeBrowseSheet()">+ ADD MORE</button>
