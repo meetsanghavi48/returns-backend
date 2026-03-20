@@ -1386,6 +1386,24 @@ function renderSuccess() {
 }
 
 function renderTrack() {
+  // No order loaded yet — show a lookup form first
+  if (!S.order) {
+    return `
+    <div class="logo">↩ Returns Portal</div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:4px">Track your request</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Enter your order details to see the status</div>
+      <div class="field-label">ORDER NUMBER</div>
+      <input class="input" id="trk-order" placeholder="e.g. 916808" type="tel"
+        style="margin-bottom:12px" onkeydown="if(event.key==='Enter')document.getElementById('trk-pin').focus()">
+      <div class="field-label">DELIVERY PINCODE</div>
+      <input class="input" id="trk-pin" placeholder="6-digit delivery pincode" type="tel" maxlength="6"
+        style="margin-bottom:16px" onkeydown="if(event.key==='Enter')lookupTrack()">
+      <button class="btn btn-black" style="width:100%" onclick="lookupTrack()">Track Request →</button>
+    </div>
+    <button class="btn btn-outline" style="width:100%;margin-top:10px" onclick="S.screen='lookup';render()">← Back</button>`;
+  }
+
   const o = S.order;
   const status = o?.return_status;
   const type   = o?.request_type||'return';
@@ -1440,6 +1458,29 @@ function renderTrack() {
     <button class="btn btn-outline" style="flex:1" onclick="S.screen='lookup';render()">\u2190 Search Another</button>
     <button class="btn btn-black" style="flex:1" onclick="S.screen='order';render()">New Request</button>
   </div>`;
+}
+
+async function lookupTrack() {
+  const orderNum = (document.getElementById('trk-order')?.value||'').trim().replace(/^#/,'');
+  const pin      = (document.getElementById('trk-pin')?.value||'').trim();
+  if (!orderNum) { showToast('Enter your order number', 2000); return; }
+  if (!/^\d{6}$/.test(pin)) { showToast('Enter a valid 6-digit pincode', 2000); return; }
+  const btn = document.querySelector('#trk-order')?.closest('.card')?.querySelector('button');
+  if (btn) { btn.disabled = true; btn.textContent = 'Searching…'; }
+  try {
+    const res = await fetch(`${BACKEND}/api/portal/order?order_number=${encodeURIComponent(orderNum)}&pincode=${encodeURIComponent(pin)}`).then(r=>r.json());
+    if (!res.order) { showToast(res.error||'Order not found', 3000); if(btn){btn.disabled=false;btn.textContent='Track Request →';} return; }
+    S.order = res.order; S.orderNum = orderNum;
+    // If no return request yet, let them start one
+    if (!res.order.return_status) {
+      S.screen = 'order'; render();
+      showToast('No return request found for this order', 3000); return;
+    }
+    render(); // re-render track with order loaded
+  } catch(e) {
+    showToast('Network error. Please retry.', 3000);
+    if (btn) { btn.disabled = false; btn.textContent = 'Track Request →'; }
+  }
 }
 
 // Close address modal on bg click
