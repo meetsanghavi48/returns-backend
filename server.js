@@ -1002,8 +1002,25 @@ app.get('/api/portal/tracking/:req_id', async (req,res)=>{
 // SUBMIT RETURN REQUEST
 // ══════════════════════════════════════════
 app.post('/api/returns/request', async (req,res)=>{
-  const { order_id, order_number, items, refund_method, customer_note, address, shipping_preference } = req.body;
+  const { order_id, order_number, items, refund_method, customer_note, address, shipping_preference, payment_txnid, payment_status } = req.body;
   if (!order_id||!items?.length) return res.status(400).json({ error:'Missing required fields' });
+
+  // Block exchange requests that have a price difference but no confirmed payment
+  const totalPriceDiff = (items||[]).reduce((sum,i)=>{
+    const diff = parseFloat(i.price_diff||0);
+    return sum + (diff > 0 ? diff : 0);
+  }, 0);
+  if (totalPriceDiff > 0.5 && payment_status !== 'paid') {
+    // Verify payment actually exists in DB
+    if (payment_txnid) {
+      const { data:pmnt } = await supabase.from('payments').select('status').eq('txnid',payment_txnid).single();
+      if (!pmnt || pmnt.status !== 'paid') {
+        return res.status(402).json({ error:`Payment of ₹${Math.round(totalPriceDiff)} required to complete this exchange.`, payment_required:true });
+      }
+    } else {
+      return res.status(402).json({ error:`Payment of ₹${Math.round(totalPriceDiff)} required to complete this exchange.`, payment_required:true });
+    }
+  }
   try {
     const fresh=await shopifyREST('GET',`orders/${order_id}.json?fields=created_at,tags,note,payment_gateway,customer,line_items,shipping_address`);
     const fo=fresh?.order||{};
@@ -1888,10 +1905,10 @@ app.post('/api/payments/initiate', async (req,res)=>{
     const amtStr = parseFloat(amount).toFixed(2);
     const p = {
       key: EASEBUZZ_KEY, txnid, amount: amtStr,
-      productinfo: `Exchange Upgrade - Order #${order_id}`,
-      firstname: (firstname||'Customer').replace(/[^a-zA-Z\s]/g,'').slice(0,50)||'Customer',
-      email: email||'customer@blakc.store',
-      phone: String(phone||'').replace(/\D/g,'').slice(-10).padStart(10,'9'),
+      productinfo: `BLAKC Exchange Upgrade Order ${order_id}`,
+      firstname: (firstname||'Customer').replace(/[^a-zA-Z\s]/g,'').trim().slice(0,50)||'Customer',
+      email: email && email.includes('@') ? email : 'customer@blakc.store',
+      phone: String(phone||'').replace(/\D/g,'').slice(-10).padStart(10,'0'),
       surl: `${BACKEND_URL}/api/payments/callback/success`,
       furl: `${BACKEND_URL}/api/payments/callback/failure`,
       udf1: String(order_id), udf2:'', udf3:'', udf4:'', udf5:''
@@ -1906,10 +1923,11 @@ app.post('/api/payments/initiate', async (req,res)=>{
     const data = await r.json();
     if (data.status === 1) {
       await supabase.from('payments').insert({ txnid, order_id:String(order_id), amount:parseFloat(amtStr), status:'pending' }).throwOnError();
+      console.log(`[payments/initiate] ✅ access_key obtained for ${txnid}`);
       res.json({ success:true, txnid, payment_url:`${EASEBUZZ_BASE}/pay/${data.data}` });
     } else {
-      console.error('[payments/initiate] EB error:', data);
-      res.json({ success:false, error: data.error_desc||data.message||'Initiation failed' });
+      console.error('[payments/initiate] ❌ EB error:', JSON.stringify(data));
+      res.json({ success:false, error: data.error_desc || data.message || data.error || JSON.stringify(data) });
     }
   } catch(e) { console.error('[payments/initiate]',e.message); res.json({ success:false, error:e.message }); }
 });

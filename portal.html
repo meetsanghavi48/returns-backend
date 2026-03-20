@@ -814,8 +814,8 @@ async function submitRequest() {
     return sum + (parseFloat(ev.price||0) - parseFloat(q.item.price||0));
   }, 0);
 
-  // If payment required and not yet done — intercept
-  if (totalDiff > 0.5 && S.payState !== 'success' && S.payState !== 'skipped') {
+  // If payment required and not yet done — block submit
+  if (totalDiff > 0.5 && S.payState !== 'success') {
     initiatePayment(Math.round(totalDiff));
     return;
   }
@@ -852,7 +852,7 @@ async function submitRequest() {
         media_urls: mediaUrls.slice(0,3).map(()=>'[media uploaded]'),
         shipping_preference: S.logistics,
         payment_txnid: S.payTxnid || null,
-        payment_status: S.payState === 'success' ? 'paid' : S.payState === 'skipped' ? 'pending' : null
+        payment_status: S.payState === 'success' ? 'paid' : null
       })
     }).then(r=>r.json());
     if (res.success) {
@@ -940,11 +940,7 @@ async function initiatePayment(diff) {
   }
 }
 
-function skipPayment() {
-  clearInterval(S._payPoll); S._payPoll = null;
-  S.payState = 'skipped'; render();
-  submitRequest();
-}
+// skipPayment removed — payment is mandatory for price differences
 
 // ── UTILS ──
 function escHtml(str) {
@@ -1316,57 +1312,55 @@ function renderLogistics() {
            </div>
          </div>` : '';
 
-    // Payment states
+    // Payment block — shown only when diff > 0
     let payBlock = '';
+    let submitRow = '';
+    const backBtn = `<button class="btn btn-outline" style="flex:0.4" onclick="if(S.queue.some(q=>q.action==='return')){S.screen='refund';}else{S.screen='process';S.qIdx=S.queue.length-1;}render()">← Back</button>`;
+
     if (diffRounded > 0) {
+      // Payment required — replace submit button with pay button
       if (!S.payState || S.payState === 'failed') {
-        const retryLabel = S.payState === 'failed' ? '🔄 Retry Payment' : '💳 Pay ₹'+diffRounded;
-        const failNote = S.payState === 'failed'
-          ? `<div style="font-size:12px;color:#dc2626;margin-bottom:8px;font-weight:600">⚠️ Payment failed. Please retry or skip to pay later.</div>` : '';
-        payBlock = `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px;margin-bottom:12px">
-          <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:4px">💰 Price Difference</div>
-          <div style="font-size:12px;color:#78350f;margin-bottom:10px">Your new item costs <strong>₹${diffRounded} more</strong>. Pay now to confirm your exchange.</div>
-          ${failNote}
-          <div style="display:flex;gap:8px">
-            <button class="btn btn-black" style="flex:1;font-size:13px" onclick="initiatePayment(${diffRounded})">${retryLabel}</button>
-            <button class="btn btn-outline" style="flex:0.6;font-size:12px;color:var(--muted)" onclick="skipPayment()">Pay later</button>
-          </div>
+        const isRetry = S.payState === 'failed';
+        payBlock = `<div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:12px;padding:16px;margin-bottom:12px">
+          <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:3px">💰 Price Difference — ₹${diffRounded}</div>
+          <div style="font-size:12px;color:#78350f;line-height:1.6;margin-bottom:${isRetry?'10':'0'}px">Your new item costs <strong>₹${diffRounded} more</strong>. Complete payment to confirm your exchange.</div>
+          ${isRetry ? `<div style="font-size:12px;color:#dc2626;font-weight:600;margin-bottom:8px">⚠️ Payment failed or was cancelled. Please try again.</div>` : ''}
+        </div>`;
+        submitRow = `<div style="display:flex;gap:10px;margin-top:4px">
+          ${backBtn}
+          <button class="btn btn-black" style="flex:1;font-size:13px" onclick="initiatePayment(${diffRounded})">${isRetry ? '🔄 Retry Payment' : '💳 Pay ₹'+diffRounded+' & Confirm'}</button>
         </div>`;
       } else if (S.payState === 'initiating') {
-        payBlock = `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;margin-bottom:12px;text-align:center">
-          <div style="font-size:13px;font-weight:600;color:#1d4ed8">⏳ Opening payment…</div>
+        payBlock = `<div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:16px;margin-bottom:12px;text-align:center">
+          <div style="font-size:13px;font-weight:600;color:#1d4ed8">⏳ Opening payment window…</div>
         </div>`;
+        submitRow = `<div style="display:flex;gap:10px;margin-top:4px">${backBtn}<button class="btn btn-black" style="flex:1;opacity:.5" disabled>Please wait…</button></div>`;
       } else if (S.payState === 'awaiting') {
-        payBlock = `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;margin-bottom:12px">
-          <div style="font-size:13px;font-weight:700;color:#1d4ed8;margin-bottom:4px">💳 Complete Payment in Popup</div>
-          <div style="font-size:12px;color:#3b82f6;margin-bottom:10px">A payment window has opened. Complete your payment there. This page will update automatically.</div>
-          <div style="display:flex;gap:8px">
-            <button class="btn btn-outline" style="flex:1;font-size:12px" onclick="initiatePayment(${diffRounded})">Reopen window</button>
-            <button class="btn btn-outline" style="flex:0.6;font-size:12px;color:var(--muted)" onclick="skipPayment()">Pay later</button>
-          </div>
+        payBlock = `<div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:16px;margin-bottom:12px">
+          <div style="font-size:13px;font-weight:700;color:#1d4ed8;margin-bottom:5px">💳 Complete Payment in the Popup</div>
+          <div style="font-size:12px;color:#3b82f6;line-height:1.6;margin-bottom:10px">A payment window has opened. Pay ₹${diffRounded} there — this page will update automatically once done.</div>
+          <button class="btn btn-outline" style="width:100%;font-size:12px" onclick="initiatePayment(${diffRounded})">Popup blocked? Click to reopen</button>
         </div>`;
+        submitRow = `<div style="display:flex;gap:10px;margin-top:4px">${backBtn}<button class="btn btn-black" style="flex:1;opacity:.5" disabled>Waiting for payment…</button></div>`;
       } else if (S.payState === 'success') {
-        payBlock = `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">
-          <span style="font-size:20px">✅</span>
+        payBlock = `<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px">
+          <span style="font-size:28px">✅</span>
           <div>
             <div style="font-size:13px;font-weight:700;color:#16a34a">Payment of ₹${diffRounded} received!</div>
             <div style="font-size:12px;color:#15803d;margin-top:2px">Submitting your request…</div>
           </div>
         </div>`;
-      } else if (S.payState === 'skipped') {
-        payBlock = `<div style="background:#fafafa;border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:12px">
-          <div style="font-size:12px;color:var(--muted)">💰 ₹${diffRounded} balance marked as <strong>payment pending</strong>. Our team will contact you.</div>
-        </div>`;
+        submitRow = `<div style="display:flex;gap:10px;margin-top:4px">${backBtn}<button class="btn btn-black" style="flex:1;opacity:.5" disabled>Submitting…</button></div>`;
       }
+    } else {
+      // No payment needed — normal submit
+      submitRow = `<div style="display:flex;gap:10px;margin-top:4px">
+        ${backBtn}
+        <button class="btn btn-black" style="flex:1" id="btn-submit" onclick="submitRequest()">Submit Request →</button>
+      </div>`;
     }
 
-    const submitDisabled = S.payState === 'success' || S.payState === 'initiating' || S.payState === 'awaiting' ? 'disabled' : '';
-    const submitLabel = S.payState === 'success' ? 'Submitting…' : 'Submit Request →';
-    return `${refundNote}${payBlock}
-    <div style="display:flex;gap:10px;margin-top:4px">
-      <button class="btn btn-outline" style="flex:0.4" onclick="if(S.queue.some(q=>q.action==='return')){S.screen='refund';}else{S.screen='process';S.qIdx=S.queue.length-1;}render()">← Back</button>
-      <button class="btn btn-black" style="flex:1" id="btn-submit" onclick="submitRequest()" ${submitDisabled}>${submitLabel}</button>
-    </div>`;
+    return `${refundNote}${payBlock}${submitRow}`;
   })()}`;
 }
 
