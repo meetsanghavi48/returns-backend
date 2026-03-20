@@ -1,0 +1,2383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Returns Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F5F7;--card:#FFFFFF;--border:#E5E7EB;--text:#111827;--muted:#6B7280;--muted2:#9CA3AF;
+  --primary:#16A34A;--primary-bg:#DCFCE7;--primary-light:#F0FDF4;
+  --blue:#2563EB;--blue-bg:#DBEAFE;
+  --amber:#D97706;--amber-bg:#FEF3C7;
+  --red:#DC2626;--red-bg:#FEE2E2;
+  --purple:#7C3AED;--purple-bg:#EDE9FE;
+  --font:'Plus Jakarta Sans',sans-serif;
+  --sidebar:236px;--topbar:56px;--radius:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex;height:100vh;overflow:hidden;font-size:14px}
+
+/* ═══ SIDEBAR ═══ */
+#sidebar{width:var(--sidebar);background:var(--card);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+.sb-logo{padding:18px 18px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+.sb-logo-icon{width:34px;height:34px;background:var(--primary);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.sb-logo-name{font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.3px}
+.sb-logo-sub{font-size:10px;color:var(--muted);font-weight:500}
+.sb-group{padding:16px 12px 4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted2)}
+.sb-item{display:flex;align-items:center;gap:9px;padding:8px 12px;border-radius:8px;margin:1px 6px;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);transition:.12s;text-decoration:none;position:relative}
+.sb-item:hover{background:#F9FAFB;color:var(--text)}
+.sb-item.active{background:var(--primary-bg);color:var(--primary);font-weight:600}
+.sb-item .icon{width:17px;text-align:center;font-size:15px;flex-shrink:0}
+.sb-badge{margin-left:auto;background:var(--primary);color:#fff;font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px;min-width:20px;text-align:center}
+.sb-badge.amber{background:var(--amber)}
+.sb-divider{border:none;border-top:1px solid var(--border);margin:10px 12px}
+.sb-shop{padding:12px 14px;margin:auto 8px 8px;border-radius:9px;background:var(--bg);border:1px solid var(--border);font-size:12px}
+.sb-shop-dot{width:7px;height:7px;border-radius:50%;background:var(--primary);display:inline-block;margin-right:5px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ═══ MAIN ═══ */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#topbar{height:var(--topbar);background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 22px;gap:12px;flex-shrink:0}
+.tb-title{font-size:16px;font-weight:700;flex:1}
+.tb-search{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 12px;width:240px}
+.tb-search input{background:none;border:none;outline:none;font-family:var(--font);font-size:13px;color:var(--text);width:100%}
+.tb-search input::placeholder{color:var(--muted2)}
+.btn{padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;border:none;transition:.12s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:#15803d}
+.btn-outline{background:var(--card);border:1px solid var(--border);color:var(--text)}.btn-outline:hover{border-color:#9CA3AF;background:#F9FAFB}
+.btn-ghost{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:6px 10px;border-radius:7px}.btn-ghost:hover{background:var(--bg);color:var(--text)}
+.btn-danger{background:var(--red-bg);border:1px solid #FECACA;color:var(--red)}
+.btn-sm{padding:5px 10px;font-size:12px}
+
+/* ═══ PAGE ═══ */
+.pg-wrap{flex:1;overflow-y:auto;padding:22px 24px}
+.pg-hidden{display:none!important}
+.pg-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.pg-title{font-size:20px;font-weight:800;letter-spacing:-.4px}
+.pg-sub{font-size:13px;color:var(--muted);margin-top:2px}
+
+/* ═══ STAT CARDS ═══ */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;transition:.15s}
+.stat-card:hover{border-color:#D1D5DB;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.stat-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.stat-icon{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.stat-val{font-size:28px;font-weight:800;letter-spacing:-.5px;line-height:1}
+.stat-label{font-size:12px;color:var(--muted);font-weight:500;margin-top:3px}
+.stat-change{font-size:11px;font-weight:600;margin-top:8px;display:flex;align-items:center;gap:4px}
+.stat-change.up{color:var(--primary)}.stat-change.dn{color:var(--red)}
+
+/* ═══ TABLE ═══ */
+.tbl-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.tbl-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tbl-title{font-size:14px;font-weight:700;margin-right:4px}
+.tbl-search{display:flex;align-items:center;gap:7px;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:6px 11px;min-width:200px}
+.tbl-search input{background:none;border:none;outline:none;font-family:var(--font);font-size:13px;color:var(--text);width:100%}
+.filter-pill{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);color:var(--muted);background:var(--card);transition:.12s}
+.filter-pill:hover{border-color:#9CA3AF;color:var(--text)}
+.filter-pill.on{border-color:var(--primary);color:var(--primary);background:var(--primary-bg)}
+table{width:100%;border-collapse:collapse}
+thead tr{background:#FAFAFA}
+th{padding:9px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted2);text-align:left;border-bottom:1px solid var(--border)}
+td{padding:12px 14px;font-size:13px;border-bottom:1px solid #F3F4F6;vertical-align:middle}
+tbody tr{cursor:pointer;transition:.1s}
+tbody tr:hover td{background:#FAFAFA}
+tbody tr:last-child td{border-bottom:none}
+
+/* ═══ STATUS PILLS ═══ */
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
+.pill::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+.pill.pending{background:var(--amber-bg);color:var(--amber)}
+.pill.approved,.pill.paid,.pill.fulfilled,.pill.active{background:var(--primary-bg);color:var(--primary)}
+.pill.rejected,.pill.voided,.pill.failed{background:var(--red-bg);color:var(--red)}
+.pill.unfulfilled,.pill.exchange-pending{background:var(--blue-bg);color:var(--blue)}
+.pill.refunded{background:#F3F4F6;color:var(--muted)}
+.type-tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;display:inline-block}
+.type-return{background:#FFF7ED;color:#C2410C;border:1px solid #FED7AA}
+.type-exchange{background:var(--blue-bg);color:var(--blue);border:1px solid #BFDBFE}
+.type-mixed{background:var(--amber-bg);color:var(--amber);border:1px solid #FDE68A}
+
+/* ═══ DETAIL PANEL ═══ */
+#detail-panel{position:fixed;inset:0;z-index:600;display:none;background:#F4F5F7;overflow-y:auto;font-family:var(--font);font-size:14px}
+.dp-bar{background:var(--card);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:10}
+.dp-back{display:flex;align-items:center;gap:5px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;border:1px solid var(--border);background:var(--card);border-radius:7px;padding:6px 12px;transition:.12s}
+.dp-back:hover{color:var(--text);border-color:#9CA3AF}
+.dp-breadcrumb{font-size:13px;color:var(--muted);flex:1}
+.dp-body{max-width:1080px;margin:0 auto;padding:22px;display:grid;grid-template-columns:1fr 300px;gap:18px;align-items:start}
+.dp-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px}
+.dp-section{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted2);margin-bottom:12px}
+.dp-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #F3F4F6;font-size:13px}
+.dp-row:last-child{border-bottom:none}
+.dp-row .lbl{color:var(--muted)}
+.dp-row .val{font-weight:600}
+.action-btn{width:100%;padding:10px;border-radius:8px;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;border:none;transition:.12s;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:7px}
+.action-btn:last-child{margin-bottom:0}
+.ab-green{background:var(--primary);color:#fff}.ab-green:hover{background:#15803d}
+.ab-blue{background:var(--blue);color:#fff}.ab-blue:hover{background:#1d4ed8}
+.ab-purple{background:var(--purple);color:#fff}.ab-purple:hover{background:#6d28d9}
+.ab-outline{background:var(--card);border:1.5px solid var(--border);color:var(--text)}.ab-outline:hover{border-color:#9CA3AF}
+.ab-red{background:var(--red-bg);border:1px solid #FECACA;color:var(--red)}.ab-red:hover{background:#FEE2E2}
+.action-result{font-size:11px;margin-top:4px;margin-bottom:6px;padding:7px 10px;border-radius:7px;background:#F9FAFB;border:1px solid var(--border);color:var(--muted);display:none}
+
+/* ═══ TIMELINE ═══ */
+.timeline{display:flex;gap:0;margin-bottom:16px}
+.tl-step{flex:1;position:relative}
+.tl-step::after{content:'';position:absolute;top:13px;left:50%;width:100%;height:2px;background:#E5E7EB;z-index:0}
+.tl-step:last-child::after{display:none}
+.tl-dot{width:26px;height:26px;border-radius:50%;background:#E5E7EB;display:flex;align-items:center;justify-content:center;font-size:11px;margin:0 auto 6px;position:relative;z-index:1;transition:.3s}
+.tl-dot.done{background:var(--primary);color:#fff}
+.tl-dot.active{background:var(--primary);color:#fff;box-shadow:0 0 0 4px var(--primary-bg)}
+.tl-label{font-size:10px;text-align:center;color:var(--muted);font-weight:500}
+
+/* ═══ ADDRESS EDIT ═══ */
+.addr-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.inp-field{padding:8px 11px;border:1.5px solid var(--border);border-radius:7px;font-family:var(--font);font-size:13px;color:var(--text);background:var(--bg);width:100%;transition:.15s}
+.inp-field:focus{outline:none;border-color:var(--primary);background:#fff}
+.inp-lbl{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;display:block}
+.inp-wrap{margin-bottom:10px}
+.inp-wrap.col2{grid-column:span 2}
+
+/* ═══ RULES ENGINE ═══ */
+
+/* ═══ AUTOMATION BUILDER ═══ */
+#auto-builder-view .dp-card{background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px}
+.cond-row-AND{text-align:center;margin:-4px 0 4px;z-index:1;position:relative}
+.cond-AND-badge{background:var(--card);border:1.5px solid #818CF8;color:#6366F1;padding:2px 12px;border-radius:20px;font-size:10px;font-weight:800;letter-spacing:.4px}
+.rule-card{background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:10px;transition:.15s}
+.rule-card:hover{border-color:#9CA3AF}
+.rule-card.disabled{opacity:.55}
+.cond-tag{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:6px;background:var(--bg);border:1px solid var(--border);font-size:12px;margin:2px 3px 2px 0}
+.action-pill{padding:4px 11px;border-radius:6px;font-size:12px;font-weight:700}
+.ap-approve{background:var(--primary-bg);color:var(--primary)}
+.ap-keep{background:var(--blue-bg);color:var(--blue)}
+.ap-flag{background:var(--amber-bg);color:var(--amber)}
+.ap-reject{background:var(--red-bg);color:var(--red)}
+.ap-exchange{background:var(--purple-bg);color:var(--purple)}
+.ap-refund{background:#F3E8FF;color:#9333EA}
+.toggle{position:relative;width:38px;height:21px;cursor:pointer;display:inline-block}
+.toggle input{opacity:0;width:0;height:0;position:absolute}
+.tog-slider{position:absolute;inset:0;border-radius:21px;background:#D1D5DB;transition:.2s}
+.tog-slider::before{content:'';position:absolute;width:15px;height:15px;border-radius:50%;background:#fff;left:3px;top:3px;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle input:checked+.tog-slider{background:var(--primary)}
+.toggle input:checked+.tog-slider::before{transform:translateX(17px)}
+
+/* ═══ SETTINGS ═══ */
+.setting-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.setting-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.setting-title{font-size:14px;font-weight:700;margin-bottom:3px}
+.setting-desc{font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.5}
+
+/* ═══ ANALYTICS ═══ */
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.bar-lbl{font-size:12px;color:var(--text);min-width:130px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.bar-track{flex:1;height:7px;background:var(--bg);border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px}
+
+/* ═══ AUDIT ═══ */
+.audit-row{display:flex;align-items:center;gap:0;padding:10px 16px;border-bottom:1px solid #F3F4F6;font-size:12px;transition:.1s}
+.audit-row:hover{background:#FAFAFA}
+.audit-action{font-weight:600;min-width:180px}
+.audit-order{color:var(--blue);font-weight:600;min-width:80px}
+.audit-time{color:var(--muted2);min-width:120px}
+.audit-detail{color:var(--muted);flex:1}
+.audit-actor{padding:2px 8px;border-radius:6px;background:var(--bg);border:1px solid var(--border);font-weight:500;color:var(--text);flex-shrink:0}
+
+/* ═══ MODALS ═══ */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:700;display:none;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--card);border-radius:12px;width:min(540px,95vw);max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15)}
+.modal-h{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:16px;font-weight:700}
+.modal-x{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:2px 6px;border-radius:6px}.modal-x:hover{background:var(--bg);color:var(--text)}
+.modal-body{padding:20px}
+.modal-foot{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
+select.inp-field{-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236B7280' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;background-color:var(--bg)}
+
+/* ═══ TOAST ═══ */
+#toast{position:fixed;bottom:24px;right:24px;padding:12px 18px;border-radius:9px;font-size:13px;font-weight:500;z-index:999;opacity:0;transform:translateY(6px);transition:.25s;pointer-events:none;max-width:340px;box-shadow:0 4px 16px rgba(0,0,0,.12)}
+#toast.show{opacity:1;transform:translateY(0)}
+#toast.ok{background:#111827;color:#fff}
+#toast.success{background:var(--primary);color:#fff}
+#toast.error{background:var(--red);color:#fff}
+
+/* ═══ MISC ═══ */
+
+/* ═══ STATUS TABS ═══ */
+.tab-row{display:flex;align-items:center;gap:0;border-bottom:2px solid var(--border);margin-bottom:0;overflow-x:auto}
+.tab-btn{padding:11px 18px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;border:none;background:none;white-space:nowrap;position:relative;transition:.12s;font-family:var(--font);border-bottom:2px solid transparent;margin-bottom:-2px}
+.tab-btn:hover{color:var(--text);background:#F9FAFB}
+.tab-btn.active{color:var(--primary);border-bottom-color:var(--primary)}
+.tab-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-size:10px;font-weight:700;background:var(--bg);color:var(--muted);margin-left:5px}
+.tab-btn.active .tab-count{background:var(--primary-bg);color:var(--primary)}
+
+/* ═══ BULK ACTIONS BAR ═══ */
+.bulk-bar{position:sticky;top:0;z-index:20;background:#1F2937;color:#fff;padding:10px 18px;display:none;align-items:center;gap:12px;border-radius:0}
+.bulk-bar.show{display:flex}
+.bulk-count{font-size:13px;font-weight:700;flex:1}
+.bulk-btn{padding:6px 14px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;border:none;transition:.12s;font-family:var(--font)}
+.bb-green{background:var(--primary);color:#fff}
+.bb-blue{background:var(--blue);color:#fff}
+.bb-purple{background:var(--purple);color:#fff}
+.bb-red{background:#DC2626;color:#fff}
+.bb-clear{background:rgba(255,255,255,.15);color:#fff}
+
+/* ═══ CHECKBOXES ═══ */
+.row-cb{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--border);cursor:pointer;accent-color:var(--primary);flex-shrink:0}
+.cb-all{width:16px;height:16px;border-radius:4px;accent-color:var(--primary)}
+.empty{padding:52px 24px;text-align:center;color:var(--muted2)}
+.empty-ico{font-size:38px;margin-bottom:12px}
+.empty-title{font-size:15px;font-weight:600;color:var(--muted);margin-bottom:6px}
+hr{border:none;border-top:1px solid var(--border);margin:12px 0}
+
+/* ═══ DETAIL PANEL - Redesigned ═══ */
+.dp-sub-bar{background:var(--card);border-bottom:1px solid var(--border);padding:4px 20px;display:flex;gap:0;align-items:center;flex-wrap:wrap;position:sticky;top:56px;z-index:9}
+.dp-sub-link{font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;padding:5px 10px;border-radius:6px;border:none;background:none;font-family:var(--font);transition:.12s;text-decoration:none}
+.dp-sub-link:hover{color:var(--text);background:var(--bg)}.dp-sub-link.danger{color:var(--red)}.dp-sub-link.danger:hover{background:var(--red-bg)}
+.dp-sub-divider{width:1px;height:14px;background:var(--border);margin:0 2px;flex-shrink:0}
+.dp-status-icon{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;font-weight:700}
+.dp-ship-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;padding-top:14px;margin-top:14px;border-top:1px solid var(--border)}
+.ship-lbl{font-size:11px;color:var(--muted2);margin-bottom:5px;font-weight:500}
+.ship-val{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+.ship-sub{font-size:11px;color:var(--muted2);margin-top:3px}
+.dp-item-row{display:flex;gap:12px;align-items:center;padding:12px 0}
+.dp-item-row+.dp-item-row{border-top:1px solid #F3F4F6}
+.dp-item-badge{width:20px;height:20px;border-radius:50%;background:var(--text);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.dp-calc-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;font-size:13px;border-bottom:1px solid #F3F4F6}
+.dp-calc-row:last-child{border-bottom:none}
+.dp-calc-total{font-weight:700;font-size:14px;border-top:2px solid var(--border);padding-top:10px;margin-top:2px;border-bottom:none}
+.dp-sidebar-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.dp-sidebar-title{font-size:11px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.4px}
+.dp-edit-link{font-size:12px;font-weight:600;color:var(--blue);background:none;border:none;cursor:pointer;padding:0;font-family:var(--font)}.dp-edit-link:hover{text-decoration:underline}
+/* Column Picker */
+.col-picker-wrap{position:relative}
+.col-picker-dd{position:fixed;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:6px;min-width:170px;z-index:500;box-shadow:0 4px 16px rgba(0,0,0,.1);display:none}
+.col-picker-dd.open{display:block}
+.col-picker-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:13px;user-select:none}
+.col-picker-item:hover{background:var(--bg)}.col-picker-item input{accent-color:var(--primary);width:14px;height:14px;flex-shrink:0}
+
+/* ═══ RETURNS TABLE ═══ */
+.ret-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.ret-tbl th{padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted2);border-bottom:2px solid var(--border);background:#FAFAFA;white-space:nowrap}
+.ret-tbl td{padding:11px 14px;border-bottom:1px solid #F3F4F6;vertical-align:middle}
+.ret-tbl tbody tr:hover{background:#FAFAFA}
+.ret-tbl tbody tr:last-child td{border-bottom:none}
+.filter-pill{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;transition:.12s;font-family:var(--font)}
+.filter-pill:hover,.filter-pill.on{background:var(--primary-bg);color:var(--primary);border-color:var(--primary)}
+.btn-danger{background:var(--red-bg);border:1px solid #FECACA;color:var(--red)}
+.btn-sm{padding:4px 10px;font-size:12px}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ SIDEBAR ═══════════════ -->
+<div id="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-icon">↩</div>
+    <div><div class="sb-logo-name">Returns</div><div class="sb-logo-sub">Manager v3</div></div>
+  </div>
+
+  <div class="sb-group">Returns</div>
+  <a class="sb-item active" id="nav-returns" onclick="showPage('returns')"><span class="icon">📋</span> Requests <span class="sb-badge" id="badge-ret">0</span></a>
+  <a class="sb-item" id="nav-allorders" onclick="showPage('allorders')"><span class="icon">📦</span> All Orders</a>
+
+  <div class="sb-group">Insights</div>
+  <a class="sb-item" id="nav-analytics" onclick="showPage('analytics')"><span class="icon">📊</span> Analytics</a>
+  <a class="sb-item" id="nav-audit" onclick="showPage('audit')"><span class="icon">📜</span> Audit Trail</a>
+
+  <div class="sb-group">Automation</div>
+  <a class="sb-item" id="nav-rules" onclick="showPage('rules')"><span class="icon">⚡</span> Automation</a>
+  <a class="sb-item" id="nav-logistics" onclick="showPage('logistics')"><span class="icon">🚚</span> Logistics</a>
+
+  <div class="sb-group">Settings</div>
+  <a class="sb-item" id="nav-settings" onclick="showPage('settings')"><span class="icon">⚙️</span> Settings</a>
+  <a class="sb-item" id="nav-notifications" onclick="showPage('notifications')"><span class="icon">🔔</span> Notifications</a>
+
+  <hr>
+  <div class="sb-shop" id="shop-chip">
+    <span class="sb-shop-dot"></span>
+    <span id="shop-name" style="font-size:12px;font-weight:600;color:var(--text)">Connecting…</span>
+    <div style="font-size:11px;color:var(--muted);margin-top:2px">Shopify Store</div>
+  </div>
+</div>
+
+<!-- ═══════════════ MAIN ═══════════════ -->
+<div id="main">
+
+  <!-- TOPBAR -->
+  <div id="topbar">
+    <div class="tb-title" id="topbar-title">Requests</div>
+    <div class="tb-search">
+      <span style="color:var(--muted2);font-size:13px">🔍</span>
+      <input id="global-search" placeholder="Search orders, products…" oninput="handleSearch(this.value)">
+    </div>
+    <div style="display:flex;gap:8px;margin-left:8px">
+      <button class="btn btn-outline" onclick="syncOrders()">↺ Sync</button>
+      <button class="btn btn-sm" style="background:#16A34A;color:#fff;font-weight:700" onclick="openManualRequestModal()">+ New Request</button>
+      <button class="btn btn-outline" onclick="openConfig()">🚚 Delhivery</button>
+      <button class="btn btn-outline" id="del-sync-btn" onclick="syncDelhiveryNow(this)" title="Sync all pending AWB statuses from Delhivery">🔄 Sync AWBs</button>
+      <button class="btn btn-primary" onclick="window.open('portal.html','_blank')">↗ Open Portal</button>
+    </div>
+  </div>
+
+  <!-- ═══ RETURNS PAGE ═══ -->
+  <div class="pg-wrap" id="pg-returns">
+    <div class="stats-row" id="stats-row">
+      <div class="stat-card">
+        <div class="stat-top"><div><div class="stat-val" id="st-total">—</div><div class="stat-label">Total Requests</div></div><div class="stat-icon" style="background:#F0FDF4">📬</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-top"><div><div class="stat-val" id="st-pending">—</div><div class="stat-label">Pending Review</div></div><div class="stat-icon" style="background:var(--amber-bg)">⏳</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-top"><div><div class="stat-val" id="st-approved">—</div><div class="stat-label">Approved</div></div><div class="stat-icon" style="background:var(--primary-bg)">✅</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-top"><div><div class="stat-val" id="st-revenue">—</div><div class="stat-label">Revenue at Risk</div></div><div class="stat-icon" style="background:var(--red-bg)">💰</div></div>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <!-- Status Tabs -->
+      <div class="tab-row" id="status-tabs">
+        <button class="tab-btn active" onclick="switchTab('pending',this)">Requested <span class="tab-count" id="tc-pending">0</span></button>
+        <button class="tab-btn" onclick="switchTab('approved',this)">Approved <span class="tab-count" id="tc-approved">0</span></button>
+        <button class="tab-btn" onclick="switchTab('in_transit',this)">In Transit <span class="tab-count" id="tc-in_transit">0</span></button>
+        <button class="tab-btn" onclick="switchTab('delivered',this)">Delivered <span class="tab-count" id="tc-delivered">0</span></button>
+        <button class="tab-btn" onclick="switchTab('exchange_fulfilled',this)">Exchanged <span class="tab-count" id="tc-exchange_fulfilled">0</span></button>
+        <button class="tab-btn" onclick="switchTab('refunded',this)">Refunded <span class="tab-count" id="tc-refunded">0</span></button>
+        <button class="tab-btn" onclick="switchTab('mixed',this)">Mixed <span class="tab-count" id="tc-mixed">0</span></button>
+        <button class="tab-btn" onclick="switchTab('archived',this)">Archived <span class="tab-count" id="tc-archived">0</span></button>
+        <button class="tab-btn" onclick="switchTab('rejected',this)">Rejected <span class="tab-count" id="tc-rejected">0</span></button>
+        <button class="tab-btn" onclick="switchTab('all',this)">All <span class="tab-count" id="tc-all">0</span></button>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px;padding:6px 14px">
+          <div class="tbl-search"><span style="color:var(--muted2)">🔍</span><input placeholder="Search…" oninput="filterTable(this.value)"></div>
+          <button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ Export</button>
+          <div class="col-picker-wrap" onclick="event.stopPropagation()">
+            <button class="btn btn-outline btn-sm" onclick="toggleColPicker(this)">⚙ Columns</button>
+            <div id="col-picker-dd" class="col-picker-dd">
+              <label class="col-picker-item"><input type="checkbox" onchange="toggleCol('customer',this.checked)" checked> Customer</label>
+              <label class="col-picker-item"><input type="checkbox" onchange="toggleCol('type',this.checked)" checked> Type</label>
+              <label class="col-picker-item"><input type="checkbox" onchange="toggleCol('items',this.checked)" checked> Items</label>
+              <label class="col-picker-item"><input type="checkbox" onchange="toggleCol('status',this.checked)" checked> Status</label>
+              <label class="col-picker-item"><input type="checkbox" onchange="toggleCol('amount',this.checked)" checked> Return Amt</label>
+              <label class="col-picker-item"><input type="checkbox" onchange="toggleCol('date',this.checked)" checked> Date</label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Bulk Actions Bar -->
+      <div class="bulk-bar" id="bulk-bar">
+        <span class="bulk-count" id="bulk-count-label">0 selected</span>
+        <button class="bulk-btn bb-green" onclick="bulkApprove()">✓ Approve All</button>
+        <button class="bulk-btn bb-blue" onclick="bulkCreateExchange()">🛍️ Create Exchange</button>
+        <button class="bulk-btn bb-purple" onclick="bulkRefund()">💰 Refund All</button>
+        <button class="bulk-btn bb-red" onclick="bulkReject()">✗ Reject All</button>
+        <button class="bulk-btn bb-clear" onclick="clearSelection()">✕ Clear</button>
+      </div>
+      <div id="ret-table-wrap"><div class="empty"><div class="empty-ico">⏳</div><div class="empty-title">Loading…</div></div></div>
+    </div>
+  </div>
+
+  <!-- ═══ EXCHANGES PAGE ═══ -->
+  <div class="pg-wrap pg-hidden" id="pg-exchanges">
+    <div class="tbl-wrap">
+      <div class="tbl-head"><span class="tbl-title">Exchange Requests</span></div>
+      <div id="exc-table-wrap"><div class="empty"><div class="empty-ico">🔄</div><div class="empty-title">Loading…</div></div></div>
+    </div>
+  </div>
+
+  <!-- ═══ ALL ORDERS ═══ -->
+  <div class="pg-wrap pg-hidden" id="pg-allorders">
+    <div class="tbl-wrap">
+      <div class="tbl-head">
+        <span class="tbl-title">All Orders</span>
+        <div class="tbl-search"><span style="color:var(--muted2)">🔍</span><input id="ao-inp" placeholder="Search…" oninput="filterAllOrders(this.value)"></div>
+        <span id="ao-count" style="margin-left:auto;font-size:12px;color:var(--muted)"></span>
+      </div>
+      <div id="ao-table-wrap"><div class="empty"><div class="empty-ico">📦</div><div class="empty-title">Loading orders…</div></div></div>
+    </div>
+  </div>
+
+  <!-- ═══ ANALYTICS ═══ -->
+  <div class="pg-wrap pg-hidden" id="pg-analytics">
+    <div class="pg-header"><div><div class="pg-title">Analytics</div><div class="pg-sub">Return prevention & refund intelligence</div></div></div>
+    <div id="analytics-content"><div class="empty"><div class="empty-ico">📊</div><div class="empty-title">Loading…</div></div></div>
+  </div>
+
+  <!-- ═══ AUDIT ═══ -->
+  <div class="pg-wrap pg-hidden" id="pg-audit">
+    <div class="pg-header"><div><div class="pg-title">Audit Trail</div><div class="pg-sub">Every action logged with timestamp and actor</div></div><button class="btn btn-outline btn-sm" onclick="loadAudit()">↺ Refresh</button></div>
+    <div class="tbl-wrap">
+      <div class="tbl-head"><span class="tbl-title">System Log</span><div class="tbl-search"><span style="color:var(--muted2)">🔍</span><input placeholder="Filter…" oninput="filterAudit(this.value)"></div></div>
+      <div id="audit-content"><div class="empty"><div class="empty-ico">📜</div><div class="empty-title">Loading…</div></div></div>
+    </div>
+  </div>
+
+  <!-- ═══ AUTOMATION (Rules Engine) ═══ -->
+  <div class="pg-wrap pg-hidden" id="pg-rules">
+    <!-- LIST VIEW -->
+    <div id="auto-list-view">
+      <div class="pg-header">
+        <div><div class="pg-title">⚡ Automation Rules</div><div class="pg-sub">Automate approvals, refunds, exchanges, pickups. First matching rule wins unless marked otherwise.</div></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline" onclick="showTemplates()">📋 Use Template</button>
+          <button class="btn btn-primary" onclick="openBuilder()">+ New Rule</button>
+        </div>
+      </div>
+      <!-- Category tabs -->
+      <div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap">
+        <button class="filter-pill on" id="cat-all" onclick="filterCategory('all',this)">All Rules</button>
+        <button class="filter-pill" id="cat-on_submit" onclick="filterCategory('on_submit',this)">📥 On Submit</button>
+        <button class="filter-pill" id="cat-on_carrier" onclick="filterCategory('on_carrier',this)">🚚 On Carrier Event</button>
+        <button class="filter-pill" id="cat-on_approve" onclick="filterCategory('on_approve',this)">✅ On Approval</button>
+        <button class="filter-pill" id="cat-on_inspect" onclick="filterCategory('on_inspect',this)">🔍 On Inspection</button>
+      </div>
+      <div id="rules-list"><div class="empty"><div class="empty-ico">⚡</div><div class="empty-title">Loading…</div></div></div>
+    </div>
+
+    <!-- BUILDER VIEW (full page) -->
+    <div id="auto-builder-view" style="display:none">
+      <div class="pg-header" style="margin-bottom:6px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <button class="dp-back" onclick="closeBuilder()">← Back</button>
+          <div><div class="pg-title" id="builder-title">New Automation Rule</div><div class="pg-sub">Set conditions and the action to perform</div></div>
+        </div>
+        <button class="btn btn-primary" onclick="saveRule()">💾 Save Rule</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 340px;gap:18px;align-items:start">
+        <!-- LEFT: builder -->
+        <div>
+          <!-- Name + Priority -->
+          <div class="dp-card">
+            <div class="dp-section">RULE DETAILS</div>
+            <div class="inp-wrap"><label class="inp-lbl">Rule Name <span style="color:var(--red)">*</span></label>
+              <input class="inp-field" id="rm-name" placeholder="e.g. Auto-approve size issues"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="inp-wrap"><label class="inp-lbl">Category</label>
+                <select class="inp-field" id="rm-category">
+                  <option value="on_submit">📥 On Request Submit</option>
+                  <option value="on_carrier">🚚 On Carrier Event</option>
+                  <option value="on_approve">✅ On Approval</option>
+                  <option value="on_inspect">🔍 On Inspection</option>
+                </select></div>
+              <div class="inp-wrap"><label class="inp-lbl">Priority (1 = first)</label>
+                <input class="inp-field" id="rm-priority" type="number" min="1" value="1"></div>
+            </div>
+          </div>
+
+          <!-- Conditions -->
+          <div class="dp-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <div class="dp-section" style="margin:0">CONDITIONS</div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:12px;color:var(--muted)">Match</span>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px;font-weight:600">
+                  <input type="radio" name="matchmode" id="rm-matchmode-all" value="all" checked onchange="document.getElementById('rm-matchmode').value='all';renderMatchBadge()">
+                  <span id="badge-all" style="padding:3px 10px;border-radius:6px;background:var(--primary-bg);color:var(--primary)">ALL</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px;font-weight:600">
+                  <input type="radio" name="matchmode" id="rm-matchmode-any" value="any" onchange="document.getElementById('rm-matchmode').value='any';renderMatchBadge()">
+                  <span id="badge-any" style="padding:3px 10px;border-radius:6px;background:var(--bg);color:var(--muted)">ANY</span>
+                </label>
+                <input type="hidden" id="rm-matchmode" value="all">
+              </div>
+            </div>
+            <div id="rm-conditions-wrap"></div>
+            <button class="btn btn-outline btn-sm" style="margin-top:4px;width:100%" onclick="addCondition()">＋ Add condition</button>
+          </div>
+
+          <!-- Action -->
+          <div class="dp-card">
+            <div class="dp-section">THEN — ACTION</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="inp-wrap" style="grid-column:span 2">
+                <label class="inp-lbl">Choose action <span style="color:var(--red)">*</span></label>
+                <select class="inp-field" id="rm-action" onchange="renderActionParams()">
+                  <optgroup label="Approval">
+                    <option value="auto_approve">✅ Approve the request</option>
+                    <option value="auto_reject">❌ Reject the request</option>
+                    <option value="flag_review">🚩 Flag for manual review</option>
+                  </optgroup>
+                  <optgroup label="Refund & Credit">
+                    <option value="keep_it">📦 Keep It (refund without return)</option>
+                    <option value="auto_refund">💰 Issue refund to original payment</option>
+                    <option value="issue_store_credit">🎁 Issue store credit</option>
+                  </optgroup>
+                  <optgroup label="Exchange & Logistics">
+                    <option value="auto_exchange">🔄 Create exchange order</option>
+                    <option value="schedule_pickup">🚚 Schedule Delhivery reverse pickup</option>
+                  </optgroup>
+                  <optgroup label="Workflow">
+                    <option value="mark_received">📦 Mark as received at warehouse</option>
+                    <option value="add_tag">🏷️ Add tag to order</option>
+                  </optgroup>
+                </select>
+              </div>
+            </div>
+            <div id="rm-action-params"></div>
+          </div>
+        </div>
+
+        <!-- RIGHT: info panel -->
+        <div>
+          <div class="dp-card" style="background:var(--primary-light);border-color:#BBF7D0">
+            <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--primary)">💡 How rules work</div>
+            <div style="font-size:12px;color:#166534;line-height:1.8">
+              • Rules run top-down by priority<br>
+              • <strong>On Submit</strong>: fires when customer submits request<br>
+              • <strong>On Carrier Event</strong>: fires when Delhivery updates AWB<br>
+              • <strong>On Approval</strong>: fires when you approve a request<br>
+              • <strong>On Inspection</strong>: fires when item marked as inspected<br>
+              • <strong>Match ALL</strong>: every condition must be true<br>
+              • <strong>Match ANY</strong>: at least one condition must be true
+            </div>
+          </div>
+          <div class="dp-card">
+            <div style="font-size:13px;font-weight:700;margin-bottom:10px">📋 Available conditions</div>
+            <div style="font-size:12px;color:var(--muted);line-height:2">
+              <strong style="color:var(--text)">Request type</strong> — return / exchange / mixed<br>
+              <strong style="color:var(--text)">Return reason</strong> — text the customer selected<br>
+              <strong style="color:var(--text)">Request stage</strong> — pending / approved / received…<br>
+              <strong style="color:var(--text)">Carrier event</strong> — pickup / in_transit / delivered<br>
+              <strong style="color:var(--text)">Order value</strong> — total order amount (₹)<br>
+              <strong style="color:var(--text)">Product price</strong> — price of returned item (₹)<br>
+              <strong style="color:var(--text)">Payment method</strong> — COD or Prepaid<br>
+              <strong style="color:var(--text)">Refund method</strong> — what customer chose<br>
+              <strong style="color:var(--text)">Return count</strong> — how many times customer returned<br>
+              <strong style="color:var(--text)">Days since order</strong> — age of the order
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEMPLATES MODAL -->
+    <div id="templates-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:800;align-items:center;justify-content:center">
+      <div style="background:var(--card);border-radius:14px;width:min(860px,95vw);max-height:88vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.15)">
+        <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--card);z-index:1">
+          <div><div style="font-size:18px;font-weight:800">📋 Automation Templates</div><div style="font-size:12px;color:var(--muted);margin-top:2px">Pre-built rules for common scenarios — click to add</div></div>
+          <button onclick="hideTemplates()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">✕</button>
+        </div>
+        <div id="templates-grid" style="padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:12px"></div>
+      </div>
+    </div>
+
+    <!-- Data Store Status Card -->
+    <div style="margin-top:18px">
+      <div class="dp-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div>
+            <div style="font-size:14px;font-weight:700">💾 Data Store</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">All settings, rules and requests are saved to disk and survive server restarts</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline btn-sm" onclick="checkStoreStatus()">↻ Refresh</button>
+            <button class="btn btn-outline btn-sm" onclick="exportBackup()">⬇ Export Backup</button>
+          </div>
+        </div>
+        <div id="store-status-wrap">
+          <div style="font-size:13px;color:var(--muted)">Click Refresh to check status…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ LOGISTICS ═══ -->
+  <div class="pg-wrap pg-hidden" id="pg-logistics">
+    <div class="pg-header"><div><div class="pg-title">🚚 Logistics</div><div class="pg-sub">Manage carrier integrations</div></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="setting-card">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="font-size:28px">🚚</div>
+          <div><div class="setting-title">Delhivery</div><div id="del-status-chip" style="font-size:12px;color:var(--muted)">Not configured</div></div>
+          <div style="margin-left:auto"><span id="del-connected-badge" style="display:none" class="pill approved">Connected</span></div>
+        </div>
+        <div class="inp-wrap"><label class="inp-lbl">API Token</label><input class="inp-field" id="cfg-token" placeholder="Token XXXXXXXX…" style="font-family:monospace;font-size:12px"></div>
+        <div class="inp-wrap"><label class="inp-lbl">Warehouse Name (exact)</label><input class="inp-field" id="cfg-warehouse" placeholder="e.g. Mumbai-Warehouse-1"></div>
+        <div class="inp-wrap"><label class="inp-lbl">Mode</label><select class="inp-field" id="cfg-mode"><option value="staging">Staging (Test)</option><option value="production">Production (Live)</option></select></div>
+        <button class="btn btn-primary" onclick="saveConfig()" style="width:100%">Save Delhivery Config</button>
+      </div>
+      <div class="setting-card">
+        <div class="setting-title" style="margin-bottom:4px">📦 Warehouse Address</div>
+        <div class="setting-desc">Shown to customers for self-ship returns</div>
+        <div class="inp-wrap"><label class="inp-lbl">Warehouse Name</label><input class="inp-field" id="set-wh-name" placeholder="Main Warehouse"></div>
+        <div class="inp-wrap"><label class="inp-lbl">Address Line 1</label><input class="inp-field" id="set-wh-addr" placeholder="Street, Building"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="inp-wrap"><label class="inp-lbl">City</label><input class="inp-field" id="set-wh-city"></div>
+          <div class="inp-wrap"><label class="inp-lbl">State</label><input class="inp-field" id="set-wh-state"></div>
+          <div class="inp-wrap"><label class="inp-lbl">Pincode</label><input class="inp-field" id="set-wh-pin"></div>
+          <div class="inp-wrap"><label class="inp-lbl">Phone</label><input class="inp-field" id="set-wh-phone"></div>
+        </div>
+        <button class="btn btn-primary" onclick="saveSettings()" style="width:100%">Save Warehouse</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SETTINGS ═══ -->
+  <div class="pg-wrap pg-hidden" id="pg-settings">
+    <div class="pg-header"><div class="pg-title">Settings</div><button class="btn btn-primary" onclick="saveSettings()">Save All Settings</button></div>
+    <div class="setting-grid">
+      <div class="setting-card">
+        <div class="setting-title">📅 Return Window</div>
+        <div class="setting-desc">Days a customer has to submit a return after order fulfillment</div>
+        <div class="inp-wrap"><label class="inp-lbl">Return window (days)</label><input class="inp-field" id="set-window" type="number" min="1" max="365" value="30"></div>
+        <div class="inp-wrap"><label class="inp-lbl">Exchange window (days)</label><input class="inp-field" id="set-exch-window" type="number" min="1" max="365" value="30"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ DETAIL PANEL (full-screen overlay) ═══ -->
+  <div id="detail-panel">
+    <div class="dp-bar">
+      <button class="dp-back" onclick="closeDetail()">← All Returns</button>
+      <div style="margin:0 10px;min-width:0">
+        <div id="dp-req-id" style="font-size:11px;font-weight:700;color:var(--muted2);line-height:1.3">—</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span id="dp-breadcrumb-order" style="font-size:17px;font-weight:800;letter-spacing:-.3px">—</span>
+          <a id="dp-shopify-link" href="#" target="_blank" style="color:var(--blue);font-size:13px;text-decoration:none;display:none" title="Open in Shopify">↗</a>
+          <span id="dp-status-pill" class="pill"></span>
+        </div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+        <div id="dp-top-actions" style="display:flex;gap:6px;align-items:center"></div>
+        <button class="btn btn-outline btn-sm" onclick="navDetail(-1)" title="Previous">‹</button>
+        <button class="btn btn-outline btn-sm" onclick="navDetail(1)" title="Next">›</button>
+      </div>
+    </div>
+    <div id="dp-sub-bar" class="dp-sub-bar"></div>
+    <div class="dp-body">
+      <div id="dp-left"></div>
+      <div id="dp-right"></div>
+    </div>
+  </div>
+
+  <!-- ═══ ADDRESS EDIT MODAL ═══ -->
+  <div class="modal-bg" id="addr-modal">
+    <div style="background:#fff;border-radius:16px;padding:28px;width:480px;max-width:95vw">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div style="font-size:18px;font-weight:800">✏️ Edit Pickup Address</div>
+        <button onclick="closeAddrModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted2)">✕</button>
+      </div>
+      <div class="addr-grid">
+        <div class="inp-wrap col2"><label class="inp-lbl">Name</label><input class="inp-field" id="am-name" placeholder="Customer name"></div>
+        <div class="inp-wrap col2"><label class="inp-lbl">Address Line 1</label><input class="inp-field" id="am-addr1" placeholder="Street, building"></div>
+        <div class="inp-wrap col2"><label class="inp-lbl">Address Line 2</label><input class="inp-field" id="am-addr2" placeholder="Apt, floor (optional)"></div>
+        <div class="inp-wrap"><label class="inp-lbl">City</label><input class="inp-field" id="am-city"></div>
+        <div class="inp-wrap"><label class="inp-lbl">State</label><input class="inp-field" id="am-state"></div>
+        <div class="inp-wrap"><label class="inp-lbl">Pincode</label><input class="inp-field" id="am-zip"></div>
+        <div class="inp-wrap"><label class="inp-lbl">Phone</label><input class="inp-field" id="am-phone"></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:20px">
+        <button class="btn btn-outline" style="flex:.4" onclick="closeAddrModal()">Cancel</button>
+        <button class="btn btn-primary" style="flex:1" onclick="saveAddr()">Save Address</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ DELHIVERY CONFIG MODAL ═══ -->
+  <div class="modal-bg" id="config-modal">
+    <div style="background:#fff;border-radius:16px;padding:28px;width:440px;max-width:95vw">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div style="font-size:18px;font-weight:800">🚚 Delhivery Config</div>
+        <button onclick="document.getElementById('config-modal').classList.remove('open')" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted2)">✕</button>
+      </div>
+      <div class="inp-wrap"><label class="inp-lbl">API Token</label><input class="inp-field" id="cfg-token" placeholder="Token XXXXXXXX…" style="font-family:monospace;font-size:12px"></div>
+      <div class="inp-wrap"><label class="inp-lbl">Warehouse Name (exact)</label><input class="inp-field" id="cfg-warehouse" placeholder="e.g. Mumbai-Warehouse-1"></div>
+      <div class="inp-wrap"><label class="inp-lbl">Mode</label><select class="inp-field" id="cfg-mode"><option value="staging">Staging (Test)</option><option value="production">Production (Live)</option></select></div>
+      <div style="display:flex;gap:10px;margin-top:20px">
+        <button class="btn btn-outline" style="flex:.4" onclick="document.getElementById('config-modal').classList.remove('open')">Cancel</button>
+        <button class="btn btn-primary" style="flex:1" onclick="saveConfig()">Save Config</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TOAST ═══ -->
+  <div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// CORE GLOBALS
+// ═══════════════════════════════════════════
+const BACKEND = '';
+let ALL_ORDERS = [];
+let FILTERED = [];
+let CURRENT_TAB = 'pending';
+let selectedOrder = null;
+let RULES_DATA = [];
+let AUDIT_DATA = [];
+let cachedAddr = {};
+let editingOrderId = null;
+let currentPage = 'returns';
+let SELECTED_IDS = new Set();
+let EDIT_RULE_ID = null;
+let condIdx = 0;
+let CURRENT_DETAIL_ID = null;
+let COL_VISIBILITY = JSON.parse(localStorage.getItem('ret_cols') || '{"customer":true,"type":true,"items":true,"status":true,"amount":true,"date":true}');
+
+// ═══════════════════════════════════════════
+// LOAD ORDERS
+// ═══════════════════════════════════════════
+async function loadOrders() {
+  try {
+    const wrap = document.getElementById('ret-table-wrap');
+    if (wrap) wrap.innerHTML = '<div class="empty"><div class="empty-ico">⏳</div><div class="empty-title">Loading…</div></div>';
+    const data = await fetch(BACKEND+'/api/orders').then(r=>r.json());
+    if (data.error) { showError('Failed to load', data.error); return; }
+    ALL_ORDERS = data.orders || [];
+    updateStats();
+    switchTab(CURRENT_TAB);
+    renderExchanges();
+    renderAllOrders();
+    const shopEl = document.getElementById('shop-name');
+    if (shopEl && data.shop) shopEl.textContent = data.shop;
+  } catch(e) { showError('Connection error', e.message); }
+}
+
+function syncOrders() { loadOrders(); showToast('Syncing…','ok'); }
+
+// ═══════════════════════════════════════════
+// TAB SWITCHING & FILTERING
+// ═══════════════════════════════════════════
+function switchTab(status, el) {
+  CURRENT_TAB = status;
+  if (el) {
+    document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+    el.classList.add('active');
+  } else {
+    document.querySelectorAll('.tab-btn').forEach(function(b){
+      if (b.getAttribute('onclick') && b.getAttribute('onclick').indexOf("'"+status+"'") !== -1) b.classList.add('active');
+    });
+  }
+  var filtered = ALL_ORDERS.filter(function(o){ return o.return_status != null; });
+
+  if (status === 'all') {
+    // all with any return status
+  } else if (status === 'pending') {
+    filtered = filtered.filter(function(o){ return o.return_status==='pending'||o.return_status==='exchange-pending'; });
+  } else if (status === 'mixed') {
+    filtered = filtered.filter(function(o){ return o.request_type==='mixed'; });
+  } else if (status === 'approved') {
+    filtered = filtered.filter(function(o){
+      return (o.requests||[]).some(function(r){ return r.status==='approved'||r.status==='pickup_scheduled'; });
+    });
+  } else if (status === 'in_transit') {
+    filtered = filtered.filter(function(o){
+      return (o.requests||[]).some(function(r){ return r.status==='picked_up'; });
+    });
+  } else if (status === 'delivered') {
+    filtered = filtered.filter(function(o){ return (o.requests||[]).some(function(r){ return r.awb&&(r.awb_status||'').toLowerCase()==='delivered'; }); });
+  } else if (status === 'exchange_fulfilled') {
+    filtered = filtered.filter(function(o){ return o.return_status==='fulfilled'||o.return_status==='exchange_fulfilled'; });
+  } else if (status === 'archived') {
+    filtered = ALL_ORDERS.filter(function(o){ return o.return_status==='archived'; });
+  } else {
+    filtered = filtered.filter(function(o){ return o.return_status===status; });
+  }
+  FILTERED = filtered;
+  renderRetTable();
+}
+
+function filterTable(q) { switchTab(CURRENT_TAB); }
+
+function handleSearch(q) {
+  var lq = q.toLowerCase();
+  FILTERED = ALL_ORDERS.filter(function(o){
+    return o.return_status!=null&&(
+      String(o.order_number).indexOf(lq)!==-1||
+      (o.customer_name||'').toLowerCase().indexOf(lq)!==-1||
+      (o.customer_email||'').toLowerCase().indexOf(lq)!==-1
+    );
+  });
+  renderRetTable();
+}
+
+// ═══════════════════════════════════════════
+// RENDER RETURNS TABLE
+// ═══════════════════════════════════════════
+function renderRetTable() {
+  var wrap = document.getElementById('ret-table-wrap');
+  if (!wrap) return;
+  if (!FILTERED.length) {
+    wrap.innerHTML = '<div class="empty"><div class="empty-ico">📭</div><div class="empty-title">No requests found</div><div style="font-size:13px;color:var(--muted2);margin-top:4px">Try a different tab or search</div></div>';
+    return;
+  }
+  var rows = FILTERED.map(function(o){
+    var isPending = o.return_status==='pending'||o.return_status==='exchange-pending';
+    var latestReq = (o.requests&&o.requests.length) ? o.requests[o.requests.length-1] : null;
+    var isCod = (o.requests||[]).some(function(r){ return r.is_cod; });
+    var typeClass = o.request_type==='exchange'?'type-exchange':o.request_type==='mixed'?'type-mixed':'type-return';
+    var typeLabel = o.request_type==='exchange'?'🔄 Exchange':o.request_type==='mixed'?'↩🔄 Mixed':'↩ Return';
+    var awbVal = (latestReq && latestReq.awb) ? latestReq.awb : '';
+    var retItems = latestReq ? (latestReq.items||[]).filter(function(i){ return i.action==='return'; }) : [];
+    var refundAmt = retItems.reduce(function(s,i){ return s+parseFloat(i.price||0)*(parseInt(i.qty)||1); }, 0).toFixed(2);
+    var itemCount = latestReq ? (latestReq.items||[]).length : (o.line_items||[]).length;
+    var isSelected = SELECTED_IDS.has(String(o.id));
+    var idE = esc(o.id);
+    var rowStyle = 'cursor:pointer' + (isSelected ? ';background:#F0FDF4' : '');
+    var awbHtml = awbVal
+      ? '<span style="font-size:11px;color:var(--blue);font-weight:600">AWB: '+esc(awbVal)+'</span>'
+      : '<input id="manual-awb-'+idE+'" placeholder="AWB number" style="border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:12px;width:110px;font-family:var(--font)">'
+        +'<button class="btn btn-sm" data-awb-id="'+idE+'" onclick="attachManualAWB(this.dataset.awbId)" style="background:var(--text);color:#fff;padding:3px 8px;font-size:11px;white-space:nowrap">Set AWB</button>';
+    var approveBtn = isPending
+      ? '<button class="btn btn-sm btn-primary" data-appr-id="'+idE+'" onclick="approveReturn(this.dataset.apprId,event)" style="padding:3px 10px;font-size:12px">✓ Approve</button>'
+      : '';
+    var cv2=COL_VISIBILITY;
+    return '<tr data-id="'+idE+'" onclick="openDetail(this.dataset.id)" style="'+rowStyle+'">'+
+      '<td onclick="event.stopPropagation()" style="width:32px"><input type="checkbox" class="row-cb" data-id="'+idE+'" '+(isSelected?'checked':'')+' onchange="toggleRowSelect(this.dataset.id,this.checked)"></td>'+
+      '<td><span style="font-weight:700;color:var(--blue)">#'+esc(o.order_number)+'</span></td>'+
+      (cv2.customer!==false?'<td>'+esc(o.customer_name||'Guest')+(isCod?'<span style="font-size:9px;background:#FEF3C7;color:#D97706;padding:1px 6px;border-radius:4px;margin-left:5px;font-weight:700">COD</span>':'')+'</td>':'')+
+      (cv2.type!==false?'<td><span class="type-tag '+typeClass+'">'+typeLabel+'</span></td>':'')+
+      (cv2.items!==false?'<td style="color:var(--muted);font-size:12px">'+itemCount+' item'+(itemCount!==1?'s':'')+'</td>':'')+
+      (cv2.status!==false?'<td><span class="pill '+(o.return_status||'')+'">'+cap(o.return_status||'—')+'</span></td>':'')+
+      (cv2.amount!==false?'<td style="font-weight:600">₹'+refundAmt+'</td>':'')+
+      (cv2.date!==false?'<td style="color:var(--muted);font-size:12px">'+new Date(o.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})+'</td>':'')+
+      '<td onclick="event.stopPropagation()"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'+awbHtml+approveBtn+'</div></td>'+
+    '</tr>';
+  }).join('');
+
+  const cv=COL_VISIBILITY;
+  const thead='<th><input type="checkbox" class="cb-all" onchange="toggleSelectAll(this.checked)"></th>'+
+    '<th>Order</th>'+
+    (cv.customer!==false?'<th>Customer</th>':'')+
+    (cv.type!==false?'<th>Type</th>':'')+
+    (cv.items!==false?'<th>Items</th>':'')+
+    (cv.status!==false?'<th>Status</th>':'')+
+    (cv.amount!==false?'<th>Return Amt</th>':'')+
+    (cv.date!==false?'<th>Date</th>':'')+
+    '<th>AWB / Actions</th>';
+  wrap.innerHTML='<table class="ret-tbl"><thead><tr>'+thead+'</tr></thead><tbody>'+rows+'</tbody></table>';
+}
+
+// ═══════════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════════
+function updateStats() {
+  var ws = ALL_ORDERS.filter(function(o){ return o.return_status!=null; });
+  var pending = ws.filter(function(o){ return o.return_status==='pending'||o.return_status==='exchange-pending'; }).length;
+  var approved = ws.filter(function(o){ return o.return_status==='approved'; }).length;
+  var revenue = ws.reduce(function(s,o){
+    var req = o.requests&&o.requests.length ? o.requests[o.requests.length-1] : null;
+    return s+(req ? (req.items||[]).filter(function(i){ return i.action==='return'; }).reduce(function(a,i){ return a+parseFloat(i.price||0)*(parseInt(i.qty)||1); },0) : 0);
+  },0);
+  var el = function(id){ return document.getElementById(id); };
+  if(el('st-total'))el('st-total').textContent=ws.length;
+  if(el('st-pending'))el('st-pending').textContent=pending;
+  if(el('st-approved'))el('st-approved').textContent=approved;
+  if(el('st-revenue'))el('st-revenue').textContent='₹'+revenue.toLocaleString('en-IN',{maximumFractionDigits:0});
+  if(el('badge-ret'))el('badge-ret').textContent=pending;
+  var exc = ALL_ORDERS.filter(function(o){ return o.request_type==='exchange'||o.request_type==='mixed'; }).length;
+  if(el('badge-exc'))el('badge-exc').textContent=exc;
+  var tc = function(id,v){ var e=el('tc-'+id);if(e)e.textContent=v; };
+  tc('all',ws.length); tc('pending',pending);
+  tc('approved',ws.filter(function(o){ return (o.requests||[]).some(function(r){ return r.status==='approved'||r.status==='pickup_scheduled'; }); }).length);
+  tc('in_transit',ws.filter(function(o){ return (o.requests||[]).some(function(r){ return r.status==='picked_up'; }); }).length);
+  tc('delivered',ws.filter(function(o){ return (o.requests||[]).some(function(r){ return r.status==='delivered'; }); }).length);
+  tc('refunded',ws.filter(function(o){ return o.return_status==='refunded'; }).length);
+  tc('rejected',ws.filter(function(o){ return o.return_status==='rejected'; }).length);
+  tc('exchange_fulfilled',ws.filter(function(o){ return o.return_status==='exchange_fulfilled'||o.return_status==='fulfilled'; }).length);
+  tc('mixed',ws.filter(function(o){ return o.request_type==='mixed'; }).length);
+  tc('archived',ws.filter(function(o){ return o.return_status==='archived'; }).length);
+}
+
+// ═══════════════════════════════════════════
+// EXCHANGES
+// ═══════════════════════════════════════════
+function renderExchanges() {
+  var wrap = document.getElementById('exc-table-wrap');
+  if(!wrap) return;
+  var excs = ALL_ORDERS.filter(function(o){ return o.request_type==='exchange'||o.request_type==='mixed'; });
+  if(!excs.length){ wrap.innerHTML='<div class="empty"><div class="empty-ico">🔄</div><div class="empty-title">No exchange requests</div></div>'; return; }
+  var rows = excs.map(function(o){
+    var lr = o.requests&&o.requests.length ? o.requests[o.requests.length-1] : null;
+    var ei = lr ? (lr.items||[]).filter(function(i){ return i.action==='exchange'; }) : [];
+    var eon = lr&&lr.exchange_order_name ? lr.exchange_order_name : '';
+    var idE = esc(o.id);
+    return '<tr data-id="'+idE+'" onclick="openDetail(this.dataset.id)" style="cursor:pointer">'+
+      '<td><span style="font-weight:700;color:var(--blue)">#'+esc(o.order_number)+'</span></td>'+
+      '<td>'+esc(o.customer_name||'Guest')+'</td>'+
+      '<td><span class="type-tag '+(o.request_type==='mixed'?'type-mixed':'type-exchange')+'">'+(o.request_type==='mixed'?'↩🔄 Mixed':'🔄 Exchange')+'</span></td>'+
+      '<td><span class="pill '+(o.return_status||'')+'">'+cap(o.return_status||'—')+'</span></td>'+
+      '<td style="font-size:12px;color:var(--muted)">'+ei.length+' item'+(ei.length!==1?'s':'')+'</td>'+
+      '<td>'+(eon?'<span style="color:var(--blue);font-weight:700">'+esc(eon)+'</span>':'<span style="color:var(--muted2)">—</span>')+'</td>'+
+      '<td style="font-size:12px;color:var(--muted)">'+new Date(o.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})+'</td>'+
+    '</tr>';
+  }).join('');
+  wrap.innerHTML='<table class="ret-tbl"><thead><tr><th>Order</th><th>Customer</th><th>Type</th><th>Status</th><th>Exchange Items</th><th>Exchange Order</th><th>Date</th></tr></thead><tbody>'+rows+'</tbody></table>';
+}
+
+// ═══════════════════════════════════════════
+// ALL ORDERS
+// ═══════════════════════════════════════════
+function renderAllOrders() {
+  var wrap = document.getElementById('ao-table-wrap');
+  if(!wrap) return;
+  var q = ((document.getElementById('ao-inp')||{}).value||'').toLowerCase();
+  var orders = q ? ALL_ORDERS.filter(function(o){ return String(o.order_number).indexOf(q)!==-1||(o.customer_name||'').toLowerCase().indexOf(q)!==-1; }) : ALL_ORDERS;
+  var cnt = document.getElementById('ao-count'); if(cnt) cnt.textContent=orders.length+' orders';
+  if(!orders.length){ wrap.innerHTML='<div class="empty"><div class="empty-ico">📦</div><div class="empty-title">No orders</div></div>'; return; }
+  var rows = orders.map(function(o){
+    var idE = esc(o.id);
+    return '<tr data-id="'+idE+'" onclick="openDetail(this.dataset.id)" style="cursor:pointer">'+
+      '<td><span style="font-weight:700;color:var(--blue)">#'+esc(o.order_number)+'</span></td>'+
+      '<td>'+esc(o.customer_name||'Guest')+'</td>'+
+      '<td><span class="pill '+(o.fulfillment_status||'unfulfilled')+'">'+cap(o.fulfillment_status||'Unfulfilled')+'</span></td>'+
+      '<td style="font-size:12px;color:var(--muted)">'+esc(o.financial_status||'—')+'</td>'+
+      '<td style="font-weight:600">₹'+parseFloat(o.total_price||0).toLocaleString('en-IN',{maximumFractionDigits:2})+'</td>'+
+      '<td>'+(o.return_status?'<span class="pill '+esc(o.return_status)+'">'+cap(o.return_status)+'</span>':'<span style="color:var(--muted2)">—</span>')+'</td>'+
+      '<td style="font-size:12px;color:var(--muted)">'+new Date(o.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})+'</td>'+
+    '</tr>';
+  }).join('');
+  wrap.innerHTML='<table class="ret-tbl"><thead><tr><th>Order</th><th>Customer</th><th>Fulfillment</th><th>Payment</th><th>Total</th><th>Return Status</th><th>Date</th></tr></thead><tbody>'+rows+'</tbody></table>';
+}
+function filterAllOrders(){ renderAllOrders(); }
+
+// ═══════════════════════════════════════════
+// BULK ACTIONS
+// ═══════════════════════════════════════════
+function toggleRowSelect(id, checked) {
+  if(checked) SELECTED_IDS.add(String(id)); else SELECTED_IDS.delete(String(id));
+  var bar=document.getElementById('bulk-bar'); var lbl=document.getElementById('bulk-count-label');
+  if(SELECTED_IDS.size>0){ if(bar)bar.classList.add('show'); if(lbl)lbl.textContent=SELECTED_IDS.size+' selected'; }
+  else{ if(bar)bar.classList.remove('show'); }
+}
+function toggleSelectAll(checked) {
+  SELECTED_IDS.clear();
+  document.querySelectorAll('.row-cb').forEach(function(cb){ cb.checked=checked; if(checked)SELECTED_IDS.add(String(cb.dataset.id)); });
+  var bar=document.getElementById('bulk-bar'); var lbl=document.getElementById('bulk-count-label');
+  if(checked&&SELECTED_IDS.size>0){ if(bar)bar.classList.add('show'); if(lbl)lbl.textContent=SELECTED_IDS.size+' selected'; }
+  else{ if(bar)bar.classList.remove('show'); }
+}
+function clearSelection() {
+  SELECTED_IDS.clear();
+  document.querySelectorAll('.row-cb,.cb-all').forEach(function(c){ c.checked=false; });
+  var bar=document.getElementById('bulk-bar'); if(bar)bar.classList.remove('show');
+}
+async function bulkApprove() {
+  if(!SELECTED_IDS.size) return;
+  if(!confirm('Approve '+SELECTED_IDS.size+' request(s)?')) return;
+  var ids=[...SELECTED_IDS];
+  for(var id of ids){ await fetch(BACKEND+'/api/returns/'+id+'/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({actor:'merchant'})}).catch(function(){}); }
+  clearSelection(); loadOrders(); showToast('Approved '+ids.length+' request(s)','success');
+}
+async function bulkReject() {
+  if(!SELECTED_IDS.size) return;
+  var reason=prompt('Rejection reason (optional):','')||''; if(reason===null) return;
+  var ids=[...SELECTED_IDS];
+  for(var id of ids){ await fetch(BACKEND+'/api/returns/'+id+'/reject',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason:reason,actor:'merchant'})}).catch(function(){}); }
+  clearSelection(); loadOrders(); showToast('Rejected '+ids.length+' request(s)','ok');
+}
+async function bulkRefund() {
+  if(!SELECTED_IDS.size) return;
+  if(!confirm('Refund '+SELECTED_IDS.size+' order(s)?')) return;
+  var ids=[...SELECTED_IDS];
+  for(var id of ids){ await fetch(BACKEND+'/api/shopify/refund/'+id,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({refund_method:'original'})}).catch(function(){}); }
+  clearSelection(); loadOrders(); showToast('Refunds created','success');
+}
+async function bulkCreateExchange() { showToast('Open each order to create exchange orders','ok'); }
+
+// ═══════════════════════════════════════════
+// CONFIG MODAL & MISC
+// ═══════════════════════════════════════════
+function openConfig() { var m=document.getElementById('config-modal'); if(m)m.classList.add('open'); }
+function updateCreditPreview() {}
+
+// ═══════════════════════════════════════════
+// RULES BUILDER
+// ═══════════════════════════════════════════
+function openBuilder(id) {
+  EDIT_RULE_ID=id||null; condIdx=0;
+  document.getElementById('auto-list-view').style.display='none';
+  document.getElementById('auto-builder-view').style.display='block';
+  document.getElementById('rm-conditions-wrap').innerHTML='';
+  if(id) {
+    var r=RULES_DATA.find(function(x){ return x.id===id; });
+    if(r) {
+      document.getElementById('rm-name').value=r.name||'';
+      document.getElementById('rm-priority').value=r.priority||1;
+      document.getElementById('rm-category').value=r.category||'on_submit';
+      document.getElementById('rm-action').value=r.action||'auto_approve';
+      var mm=r.match_mode||'all';
+      document.getElementById('rm-matchmode').value=mm;
+      var mmEl=document.getElementById(mm==='any'?'rm-matchmode-any':'rm-matchmode-all');
+      if(mmEl)mmEl.checked=true;
+      (r.conditions||[]).forEach(function(cond){ addCondition(cond); });
+      renderActionParams(r.action_params);
+    }
+  } else {
+    document.getElementById('rm-name').value='';
+    document.getElementById('rm-priority').value=(RULES_DATA.length||0)+1;
+    renderActionParams();
+  }
+  renderMatchBadge();
+}
+function closeBuilder() {
+  document.getElementById('auto-builder-view').style.display='none';
+  document.getElementById('auto-list-view').style.display='block';
+}
+function addCondition(existing) {
+  var i=condIdx++;
+  var div=document.createElement('div');
+  div.id='cond-'+i; div.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:8px';
+  div.innerHTML='<select class="inp-field" id="cf-'+i+'" style="flex:1.5">'+
+    '<option value="return_reason">Return Reason</option><option value="request_type">Request Type</option>'+
+    '<option value="payment_method">Payment Method</option><option value="refund_method">Refund Method</option>'+
+    '<option value="order_value">Order Value</option><option value="days_since_order">Days Since Order</option>'+
+    '<option value="item_count">Item Count</option><option value="customer_return_count">Return Count</option>'+
+    '</select>'+
+    '<select class="inp-field" id="co-'+i+'" style="flex:1">'+
+    '<option value="eq">is</option><option value="neq">is not</option>'+
+    '<option value="contains">contains</option><option value="gt">&gt;</option>'+
+    '<option value="lt">&lt;</option><option value="gte">≥</option>'+
+    '</select>'+
+    '<input class="inp-field" id="cv-'+i+'" style="flex:2" placeholder="value">'+
+    '<button data-cond-id="cond-'+i+'" onclick="removeCondition(this.dataset.condId)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:20px;padding:0 4px;line-height:1">×</button>';
+  var wrap=document.getElementById('rm-conditions-wrap');
+  if(wrap.children.length>0) {
+    var sep=document.createElement('div'); sep.className='cond-row-AND';
+    sep.innerHTML='<span class="cond-AND-badge" style="background:var(--card);border:1.5px solid #818CF8;color:#6366F1;padding:2px 12px;border-radius:20px;font-size:10px;font-weight:800;letter-spacing:.4px">AND</span>';
+    wrap.appendChild(sep);
+  }
+  wrap.appendChild(div);
+  if(existing) {
+    var f=document.getElementById('cf-'+i); var oo=document.getElementById('co-'+i); var v=document.getElementById('cv-'+i);
+    if(f)f.value=existing.field||'return_reason'; if(oo)oo.value=existing.op||'eq'; if(v)v.value=existing.value||'';
+  }
+  renderMatchBadge();
+}
+function removeCondition(id) {
+  var el=document.getElementById(id); if(!el) return;
+  var prev=el.previousElementSibling; if(prev&&prev.classList.contains('cond-row-AND'))prev.remove();
+  var next=el.nextElementSibling; if(!prev&&next&&next.classList.contains('cond-row-AND'))next.remove();
+  el.remove();
+}
+function renderMatchBadge() {
+  var m=(document.getElementById('rm-matchmode')||{value:'all'}).value;
+  document.querySelectorAll('.cond-AND-badge').forEach(function(b){ b.textContent=m.toUpperCase(); });
+}
+function renderActionParams(existing) {}
+async function saveRule() {
+  var name=((document.getElementById('rm-name')||{}).value||'').trim();
+  if(!name){ showToast('Rule name required','error'); return; }
+  var conditions=[].slice.call(document.querySelectorAll('[id^="cf-"]')).map(function(cf){
+    var i=cf.id.slice(3);
+    return {field:cf.value, op:(document.getElementById('co-'+i)||{value:'eq'}).value, value:(document.getElementById('cv-'+i)||{value:''}).value};
+  }).filter(function(c){ return c.value; });
+  var rule={name:name, priority:parseInt((document.getElementById('rm-priority')||{value:1}).value)||1,
+    category:(document.getElementById('rm-category')||{value:'on_submit'}).value,
+    match_mode:(document.getElementById('rm-matchmode')||{value:'all'}).value,
+    conditions:conditions, action:(document.getElementById('rm-action')||{value:'auto_approve'}).value,
+    action_params:{}, enabled:true};
+  var url=EDIT_RULE_ID?BACKEND+'/api/rules/'+EDIT_RULE_ID:BACKEND+'/api/rules';
+  var method=EDIT_RULE_ID?'PUT':'POST';
+  var r=await fetch(url,{method:method,headers:{'Content-Type':'application/json'},body:JSON.stringify(rule)}).then(function(r){ return r.json(); }).catch(function(e){ return {error:e.message}; });
+  if(r&&r.error){ showToast('Error: '+r.error,'error'); return; }
+  showToast('Rule saved','success'); closeBuilder(); loadRules();
+}
+function showTemplates() {
+  var ov=document.getElementById('templates-overlay'); if(ov)ov.style.display='flex';
+  var tmpl=[
+    {name:'Auto-approve all returns',cat:'on_submit',action:'auto_approve',conds:[{field:'request_type',op:'eq',value:'return'}]},
+    {name:'Auto-approve exchanges',cat:'on_submit',action:'auto_approve',conds:[{field:'request_type',op:'eq',value:'exchange'}]},
+    {name:'Reject after 30 days',cat:'on_submit',action:'auto_reject',conds:[{field:'days_since_order',op:'gt',value:'30'}]},
+    {name:'Auto-refund on delivery',cat:'on_carrier',action:'auto_refund',conds:[{field:'carrier_event',op:'eq',value:'delivered'}]},
+  ];
+  var tg=document.getElementById('templates-grid');
+  if(tg) tg.innerHTML=tmpl.map(function(t){
+    return '<div style="border:1.5px solid var(--border);border-radius:10px;padding:16px;cursor:pointer" onmouseover="this.style.borderColor=\'var(--primary)\'" onmouseout="this.style.borderColor=\'var(--border)\'" onclick="useTemplate(this.dataset.t)" data-t="'+esc(JSON.stringify(t))+'"><div style="font-size:14px;font-weight:700;margin-bottom:4px">'+esc(t.name)+'</div><div style="font-size:12px;color:var(--muted)">'+t.cat+' → '+t.action+'</div></div>';
+  }).join('');
+}
+function hideTemplates() { var ov=document.getElementById('templates-overlay'); if(ov)ov.style.display='none'; }
+function useTemplate(tStr) {
+  var t=typeof tStr==='string'?JSON.parse(tStr):tStr;
+  hideTemplates(); EDIT_RULE_ID=null; condIdx=0;
+  document.getElementById('auto-list-view').style.display='none';
+  document.getElementById('auto-builder-view').style.display='block';
+  document.getElementById('rm-conditions-wrap').innerHTML='';
+  document.getElementById('rm-name').value=t.name||'';
+  document.getElementById('rm-category').value=t.cat||'on_submit';
+  document.getElementById('rm-action').value=t.action||'auto_approve';
+  document.getElementById('rm-priority').value=(RULES_DATA.length||0)+1;
+  (t.conds||[]).forEach(function(c){ addCondition(c); });
+  renderMatchBadge();
+}
+
+// ═══════════════════════════════════════════
+// STORE STATUS
+// ═══════════════════════════════════════════
+async function checkStoreStatus() {
+  var wrap=document.getElementById('store-status-wrap');
+  if(wrap)wrap.innerHTML='<div style="font-size:13px;color:var(--muted)">⏳ Checking…</div>';
+  try {
+    var d=await fetch(BACKEND+'/api/settings').then(function(r){ return r.json(); });
+    var stats=[
+      ['Rules',RULES_DATA.length,'⚡'],['Requests',ALL_ORDERS.filter(function(o){ return o.return_status; }).length,'📋'],
+      ['Delhivery',d.delhivery&&d.delhivery.configured?'Connected':'Not set','🚚'],
+      ['Warehouse',d.warehouse&&d.warehouse.address?'Configured':'Not set','🏭'],
+      ['Return window',(d.return_window_days||30)+'d','📅'],['Store credit','No bonus','🎁']
+    ];
+    if(wrap)wrap.innerHTML='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'+
+      stats.map(function(s){ return '<div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px"><div style="font-size:18px">'+s[2]+'</div><div style="font-size:14px;font-weight:700;margin:2px 0">'+s[1]+'</div><div style="font-size:11px;color:var(--muted)">'+s[0]+'</div></div>'; }).join('')+
+      '</div>';
+  } catch(e) { if(wrap)wrap.innerHTML='<div style="color:var(--red);font-size:13px">Error: '+e.message+'</div>'; }
+}
+
+// ═══════════════════════════════════════════
+// INITIAL LOAD
+// ═══════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function() {
+  loadOrders(); loadSettings();
+  // Init column picker checkboxes from saved state
+  const cv=COL_VISIBILITY;
+  document.querySelectorAll('.col-picker-item input').forEach(cb=>{const col=cb.getAttribute('onchange').match(/'(\w+)'/)?.[1];if(col&&cv[col]===false)cb.checked=false;});
+  // Close col picker on outside click
+  document.addEventListener('click',function(e){const dd=document.getElementById('col-picker-dd');if(dd&&dd.classList.contains('open')&&!dd.contains(e.target)&&!e.target.closest('.col-picker-wrap'))dd.classList.remove('open');});
+});
+</script>
+
+
+
+<script>
+function exportBackup(){window.open(BACKEND+'/api/store/export','_blank');}
+
+
+// ── APPROVE / REJECT ──
+async function approveReturn(id,e){
+  if(e?.stopPropagation)e.stopPropagation();
+  const order=ALL_ORDERS.find(o=>String(o.id)===String(id));
+  showToast('Approving…','ok');
+  const res=await fetch(BACKEND+'/api/returns/'+id+'/approve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:order?.request_type||'return',actor:'merchant'})}).then(r=>r.json()).catch(e=>({error:e.message}));
+  if(res.error){showToast('Error: '+res.error,'error');return;}
+  if(order)order.return_status='approved';
+  updateStats();renderRetTable();renderExchanges();showToast('✅ Approved!','success');
+  if(selectedOrder&&String(selectedOrder.id)===String(id)){selectedOrder.return_status='approved';renderDetailPanel(selectedOrder);}
+}
+
+async function rejectReturn(id,e,reason){
+  if(e?.stopPropagation)e.stopPropagation();
+  const order=ALL_ORDERS.find(o=>String(o.id)===String(id));
+  const res=await fetch(BACKEND+'/api/returns/'+id+'/reject',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:order?.request_type||'return',reason:reason||'',actor:'merchant'})}).then(r=>r.json()).catch(e=>({error:e.message}));
+  if(res.error){showToast('Error: '+res.error,'error');return;}
+  if(order)order.return_status='rejected';
+  updateStats();renderRetTable();renderExchanges();showToast('Rejected.','ok');
+  if(selectedOrder&&String(selectedOrder.id)===String(id)){selectedOrder.return_status='rejected';renderDetailPanel(selectedOrder);}
+}
+
+// ── DETAIL PANEL ──
+function openDetail(id){
+  CURRENT_DETAIL_ID=String(id);
+  selectedOrder=ALL_ORDERS.find(o=>String(o.id)===String(id));
+  if(!selectedOrder)return;
+  document.getElementById('detail-panel').style.display='block';
+  document.body.style.overflow='hidden';
+  renderDetailPanel(selectedOrder);
+}
+function closeDetail(){document.getElementById('detail-panel').style.display='none';document.body.style.overflow='';selectedOrder=null;CURRENT_DETAIL_ID=null;}
+function navDetail(dir){const idx=FILTERED.findIndex(o=>String(o.id)===CURRENT_DETAIL_ID);const ni=idx+dir;if(ni>=0&&ni<FILTERED.length)openDetail(FILTERED[ni].id);}
+function toggleColPicker(btn){const dd=document.getElementById('col-picker-dd');if(dd.classList.contains('open')){dd.classList.remove('open');return;}const r=btn.getBoundingClientRect();dd.style.top=(r.bottom+4)+'px';dd.style.left=Math.max(4,r.right-170)+'px';dd.classList.add('open');}
+function toggleCol(col,show){COL_VISIBILITY[col]=show;localStorage.setItem('ret_cols',JSON.stringify(COL_VISIBILITY));renderRetTable();}
+async function archiveRequest(reqId){if(!reqId)return;try{await fetch(BACKEND+'/api/requests/'+reqId+'/archive',{method:'POST'});showToast('Archived','ok');closeDetail();loadOrders();}catch(e){showToast('Error: '+e.message,'error');}}
+async function unarchiveRequest(reqId){if(!reqId)return;try{await fetch(BACKEND+'/api/requests/'+reqId+'/unarchive',{method:'POST'});showToast('Unarchived','ok');closeDetail();loadOrders();}catch(e){showToast('Error: '+e.message,'error');}}
+
+function renderDetailPanel(o){
+  const tags=Array.isArray(o.tags)?o.tags:String(o.tags||'').split(',').map(t=>t.trim()).filter(Boolean);
+  const isPending=['pending','exchange-pending'].includes(o.return_status);
+  const isApproved=o.return_status==='approved';
+  const isReturn=o.request_type==='return'||o.request_type==='mixed';
+  const isExchange=o.request_type==='exchange'||o.request_type==='mixed';
+  const isRefunded=(o.requests||[]).some(r=>r.refund_id)||o.return_status==='refunded';
+  const isExFulfilled=o.return_status==='exchange_fulfilled'||o.return_status==='fulfilled';
+  const isRejected=o.return_status==='rejected';
+  const isArchived=o.return_status==='archived';
+  const parsed=parseNote(o.note);
+  const awbMatches=[...((o.note||'').matchAll(/DELHIVERY AWB:\s*([\w\-]+)/g))].map(m=>m[1]);
+  const isCod=(o.requests||[]).some(r=>r.is_cod);
+  const latestReqObj=(o.requests&&o.requests.length>0)?o.requests[o.requests.length-1]:null;
+  const latestReqId=latestReqObj?.req_id||null;
+  const reqItemsList=latestReqObj?.items||[];
+  const reqAwbs=(o.requests||[]).map(r=>r.awb).filter(Boolean);
+  const allAwbs=[...new Set([...awbMatches,...reqAwbs])];
+  const awb=allAwbs[allAwbs.length-1]||'';
+  const timeAgo=d=>{if(!d)return '';const diff=Date.now()-new Date(d);const m=Math.floor(diff/60000);if(m<60)return m+'m ago';const h=Math.floor(m/60);if(h<24)return h+'h ago';return Math.floor(h/24)+' days ago';};
+
+  // ── TOP BAR ──
+  const reqIdEl=document.getElementById('dp-req-id');
+  if(reqIdEl)reqIdEl.textContent=latestReqId||'';
+  document.getElementById('dp-breadcrumb-order').textContent='#'+o.order_number;
+  const pill=document.getElementById('dp-status-pill');
+  if(pill){pill.className='pill '+(o.return_status||'');pill.textContent=cap(o.return_status||'—');}
+
+  // Top action (primary CTA)
+  const isStuck = isReturn && !isRefunded && !isRejected && !isPending; // approved/picked_up/delivered but not refunded
+  document.getElementById('dp-top-actions').innerHTML=
+    (isPending?`<button class="btn btn-sm btn-primary" onclick="approveReturn('${esc(o.id)}',null)">✓ Approve</button>`:'')+
+    (isApproved&&!isRefunded?`<button class="btn btn-sm" style="background:var(--primary);color:#fff" onclick="markReceived('${esc(latestReqId||'')}')">Mark as received</button>`:'') +
+    (isStuck?`<button class="btn btn-sm" style="background:#16A34A;color:#fff;margin-left:6px" title="Mark item as physically received at warehouse, process refund, then archive" onclick="forceComplete('${esc(latestReqId||'')}')">✓ Mark Received & Refund</button>`:'');
+
+  // Sub-bar action links
+  const subLinks=[];
+  if(isArchived)subLinks.push(`<button class="dp-sub-link" onclick="unarchiveRequest('${esc(latestReqId||'')}')">Unarchive</button>`);
+  else if(!isPending&&!isRejected)subLinks.push(`<button class="dp-sub-link" onclick="archiveRequest('${esc(latestReqId||'')}')">Archive</button>`);
+  if(isReturn&&!isRefunded&&!isRejected)subLinks.push(`<span class="dp-sub-divider"></span><button class="dp-sub-link" onclick="openRefundModal('${esc(o.id)}','${esc(latestReqId||'')}',${isCod})">Refund</button>`);
+  if(awb)subLinks.push(`<span class="dp-sub-divider"></span><button class="dp-sub-link" onclick="createDelhiveryPickup('${esc(o.id)}')">Regenerate Pickup</button>`);
+  subLinks.push(`<span class="dp-sub-divider"></span><button class="dp-sub-link danger" onclick="deleteRequest('${esc(latestReqId||'')}')">Delete</button>`);
+  if(!isRejected&&!isExFulfilled&&!isRefunded)subLinks.push(`<span class="dp-sub-divider"></span><button class="dp-sub-link danger" onclick="rejectFinal('${esc(latestReqId||'')}')">Reject</button>`);
+  const subBar=document.getElementById('dp-sub-bar');
+  if(subBar)subBar.innerHTML=subLinks.join('');
+
+  const card=(h,mb='12px')=>`<div class="dp-card" style="margin-bottom:${mb}">${h}</div>`;
+  let L='';
+
+  // ── AUTO-ERROR BANNER ──
+  if(latestReqObj?.auto_error){
+    L+=`<div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:14px 16px;margin-bottom:12px;display:flex;gap:10px;align-items:flex-start">
+      <span style="font-size:18px;flex-shrink:0">🔴</span>
+      <div><div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:3px">OMG! Wonder Bot failed to automatically execute the rule but you can manually approve the request after fixing the error.</div>
+      <div style="font-size:12px;color:var(--red);font-family:monospace;background:rgba(220,38,38,.05);padding:6px 8px;border-radius:6px;border:1px solid #FECACA">${esc(latestReqObj.auto_error)}</div></div>
+    </div>`;
+  }
+
+  // ── PRICE DIFFERENCE BANNER (exchange) ──
+  if(isExchange&&!isPending){
+    const exchItems=reqItemsList.filter(i=>i.action==='exchange');
+    const retItems=reqItemsList.filter(i=>i.action==='return');
+    const retTotal=retItems.reduce((s,i)=>s+parseFloat(i.price||0)*(parseInt(i.qty)||1),0);
+    const exchTotal=exchItems.reduce((s,i)=>s+parseFloat(i.price||0)*(parseInt(i.qty)||1),0);
+    const diff=retTotal-exchTotal;
+    if(Math.abs(diff)>0.5)L+=`<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:12px 16px;margin-bottom:12px;font-size:13px;color:var(--blue)">
+      ℹ️ There is a price difference of <strong>₹${Math.abs(diff).toFixed(2)}</strong> in this exchange request.${diff>0?' You can <a onclick="doRefund(\''+esc(o.id)+'\',null)" style="cursor:pointer;font-weight:700;color:var(--blue)">refund</a> the difference amount to customer if required.':''}
+    </div>`;
+  }
+
+  // ── STATUS CARD ──
+  const statusMap={
+    'pending':{icon:'🕐',iconColor:'var(--amber)',iconBg:'var(--amber-bg)',label:'Request Received',desc:'Awaiting review by our team'},
+    'exchange-pending':{icon:'🕐',iconColor:'var(--amber)',iconBg:'var(--amber-bg)',label:'Exchange Requested',desc:'Awaiting review by our team'},
+    'approved':{icon:'✓',iconColor:'var(--primary)',iconBg:'var(--primary-bg)',label:'Approved',desc:`Item sent back to ${parsed.warehouse||'your warehouse'}...`},
+    'picked_up':{icon:'🚚',iconColor:'var(--blue)',iconBg:'var(--blue-bg)',label:'In Transit',desc:'Shipment picked up and in transit'},
+    'rejected':{icon:'✕',iconColor:'var(--red)',iconBg:'var(--red-bg)',label:'Rejected',desc:'Return request was rejected'},
+    'refunded':{icon:'✓',iconColor:'#7C3AED',iconBg:'#EDE9FE',label:'Refunded',desc:'Refund has been processed'},
+    'archived':{icon:'✓',iconColor:'var(--muted)',iconBg:'#F3F4F6',label:'Archived',desc:'This request has been archived'},
+    'fulfilled':{icon:'✓',iconColor:'var(--primary)',iconBg:'var(--primary-bg)',label:'Exchange Fulfilled',desc:'Exchange item has been shipped'},
+  };
+  const sc=statusMap[o.return_status]||{icon:'○',iconColor:'var(--muted)',iconBg:'#F3F4F6',label:cap(o.return_status||'Unknown'),desc:''};
+  const submittedAt=latestReqObj?.submitted_at||latestReqObj?.created_at||o.created_at;
+
+  // Shipment section inside status card
+  const awbStatus=latestReqObj?.awb_status||'';
+  const shipSection=awb?`
+    <div class="dp-ship-grid">
+      <div>
+        <div class="ship-lbl">Shipment Status</div>
+        <div class="ship-val">🚚 <span>${awbStatus||'Requested'}</span>
+          <button onclick="refreshAWBStatus('${esc(o.id)}')" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--muted2)" title="Refresh">🔄</button>
+        </div>
+        ${submittedAt?`<div class="ship-sub">Last updated ${timeAgo(submittedAt)}</div>`:''}
+      </div>
+      <div>
+        <div class="ship-lbl">Logistic Partner</div>
+        <div class="ship-val">Delhivery</div>
+      </div>
+      <div>
+        <div class="ship-lbl">Tracking ID</div>
+        <div class="ship-val">
+          <span style="font-size:12px;word-break:break-all">${esc(awb)}</span>
+          <a href="https://www.delhivery.com/track/package/${esc(awb)}" target="_blank" style="color:var(--blue);font-size:11px;text-decoration:none;flex-shrink:0" title="Track">↗</a>
+        </div>
+      </div>
+    </div>`:(isApproved||!isPending)?`
+    <div class="dp-ship-grid" style="grid-template-columns:1fr 1fr">
+      <div>
+        <div class="ship-lbl">AWB Number</div>
+        <div style="display:flex;gap:6px;margin-top:4px">
+          <input id="dp-awb-${esc(o.id)}" placeholder="Enter AWB…" value="${esc(((o.requests||[]).filter(r=>r.awb).slice(-1)[0]||{}).awb||'')}" style="border:1px solid var(--border);border-radius:5px;padding:4px 8px;font-size:12px;flex:1;min-width:0">
+          <button class="btn btn-sm" style="background:var(--text);color:#fff;font-size:11px;white-space:nowrap" onclick="attachManualAWB('${esc(o.id)}', document.getElementById('dp-awb-${esc(o.id)}')?.value)">Set</button>
+        </div>
+      </div>
+      <div>
+        <div class="ship-lbl">Create Pickup</div>
+        <div style="margin-top:4px"><button class="btn btn-sm" style="background:var(--blue);color:#fff" onclick="createDelhiveryPickup('${esc(o.id)}')">🚚 Delhivery Pickup</button></div>
+      </div>
+    </div>`:'';
+
+  L+=card(`<div style="display:flex;align-items:center;gap:14px">
+    <div class="dp-status-icon" style="background:${sc.iconBg};color:${sc.iconColor}">${sc.icon}</div>
+    <div style="flex:1">
+      <div style="font-size:15px;font-weight:700">${sc.label}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:1px">${sc.desc}</div>
+    </div>
+    <div style="font-size:12px;color:var(--muted2);text-align:right;flex-shrink:0">${submittedAt?cap(o.return_status||'')+' '+timeAgo(submittedAt):''}</div>
+  </div>${shipSection}`);
+
+  // ── ITEMS CARD ──
+  const allItems=reqItemsList.length?reqItemsList:(o.line_items||[]).map(li=>({action:'return',price:li.price,qty:li.quantity,title:li.title,variant_title:li.variant_title,image_url:li.image_url}));
+  if(allItems.length){
+    const imgEl=(item,size=56)=>item.image_url
+      ?`<img src="${esc(item.image_url)}" style="width:${size}px;height:${size}px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0">`
+      :`<div style="width:${size}px;height:${size}px;background:var(--bg);border-radius:8px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:${size>40?22:16}px;flex-shrink:0">📦</div>`;
+
+    const exchItems=allItems.filter(i=>i.action==='exchange');
+    const retOnlyItems=allItems.filter(i=>i.action!=='exchange');
+
+    let itemsHTML='';
+
+    // Exchange items → side-by-side layout
+    if(exchItems.length){
+      itemsHTML+=`<div style="margin-bottom:${retOnlyItems.length?'14px':'0'}">
+        ${exchItems.length>1||retOnlyItems.length?`<div style="font-size:11px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Exchange Items</div>`:''}
+        ${exchItems.map((item,idx)=>{
+          const price=parseFloat(item.price||0);
+          const qty=parseInt(item.qty||item.quantity||1);
+          // Build exchanged-item label from stored fields
+          const exchProdTitle = item.exchange_product_title||item.title||'';
+          const exchVarTitle  = item.exchange_variant_title||'';
+          const hasVariant    = !!item.exchange_variant_id;
+          const exchangeFor   = hasVariant
+            ? (exchProdTitle !== item.title ? `${exchProdTitle}${exchVarTitle?' — '+exchVarTitle:''}` : (exchVarTitle||exchProdTitle||'Same product'))
+            : 'No variant selected yet';
+          const exchSubLabel  = hasVariant
+            ? (item.price_diff&&parseFloat(item.price_diff)!==0 ? `Price diff: ₹${parseFloat(item.price_diff).toFixed(2)}` : 'Same price')
+            : 'Customer must resubmit with size/product choice';
+          return `<div style="display:grid;grid-template-columns:1fr 36px 1fr;gap:8px;align-items:center;padding:${idx>0?'14px':'0'} 0 0;${idx>0?'border-top:1px solid var(--border)':''}">
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.3px">Original item</div>
+              <div style="display:flex;gap:10px;align-items:flex-start">
+                ${imgEl(item,48)}
+                <div style="min-width:0">
+                  <div style="font-weight:600;font-size:13px;line-height:1.3">${esc(item.title||'Item')}</div>
+                  ${item.variant_title?`<div style="font-size:12px;color:var(--muted);margin-top:1px">${esc(item.variant_title)}</div>`:''}
+                  <div style="font-size:12px;color:var(--muted);margin-top:3px">₹${price.toFixed(2)} × ${qty}</div>
+                  <div style="font-size:10px;color:var(--muted2)">Price is incl. of discount</div>
+                  ${item.reason?`<div style="margin-top:4px;font-size:11px;color:#C2410C;background:#FFF7ED;padding:2px 8px;border-radius:5px;display:inline-block;border:1px solid #FED7AA">${esc(item.reason)}</div>`:''}
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--muted)">⇄</div>
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.3px">Exchanged item</div>
+              <div style="display:flex;gap:10px;align-items:flex-start">
+                <div style="width:48px;height:48px;background:${hasVariant?'var(--primary-bg)':'#FEF9C3'};border-radius:8px;border:1px solid ${hasVariant?'var(--border)':'#FDE047'};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${hasVariant?'🔄':'⚠️'}</div>
+                <div style="min-width:0">
+                  <div style="font-weight:600;font-size:13px;line-height:1.3;color:${hasVariant?'inherit':'#92400E'}">${esc(exchangeFor)}</div>
+                  <div style="font-size:11px;color:var(--muted2);margin-top:3px">${esc(exchSubLabel)}</div>
+                </div>
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }
+
+    // Return items → normal list
+    if(retOnlyItems.length){
+      if(exchItems.length) itemsHTML+=`<div style="border-top:1px solid var(--border);padding-top:12px;margin-top:2px"><div style="font-size:11px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Return Items</div></div>`;
+      itemsHTML+=retOnlyItems.map((item,idx)=>{
+        const price=parseFloat(item.price||0);
+        const qty=parseInt(item.qty||item.quantity||1);
+        return `<div class="dp-item-row" style="${idx>0?'border-top:1px solid #F3F4F6;':''}">
+          <div class="dp-item-badge">${exchItems.length+idx+1}</div>
+          ${imgEl(item)}
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:13px">${esc(item.title||'Item')}${item.variant_title&&!item.title?.includes(item.variant_title)?` - ${esc(item.variant_title)}`:''}</div>
+            ${item.variant_title?`<div style="font-size:12px;color:var(--muted);margin-top:1px">${esc(item.variant_title)}</div>`:''}
+            ${item.reason?`<div style="margin-top:4px;font-size:11px;color:#C2410C;background:#FFF7ED;padding:2px 8px;border-radius:5px;display:inline-block;border:1px solid #FED7AA">${esc(item.reason)}</div>`:''}
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:13px;font-weight:600">₹${price.toFixed(2)} × ${qty}</div>
+            <div style="font-size:10px;color:var(--muted)">Price incl. of discount & taxes</div>
+            <div style="font-size:15px;font-weight:800;margin-top:2px">₹${(price*qty).toFixed(2)}</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    L+=card(`${itemsHTML}
+      <div style="text-align:center;padding-top:10px;border-top:1px solid #F3F4F6;margin-top:4px">
+        <button onclick="window.open('https://admin.shopify.com/store/blakcindta/orders/${esc(o.id)}','_blank')" style="background:none;border:none;font-size:13px;color:var(--blue);cursor:pointer;font-weight:500">See all items of this order</button>
+      </div>`);
+  }
+
+  // ── REFUND BREAKDOWN ──
+  const retItems=reqItemsList.filter(i=>i.action==='return');
+  if(retItems.length||(!isExchange&&allItems.length)){
+    const calcItems=retItems.length?retItems:allItems.filter(i=>i.action!=='exchange');
+    const origTotal=calcItems.reduce((s,i)=>s+parseFloat(i.original_price||i.price||0)*(parseInt(i.qty||i.quantity)||1),0);
+    const netTotal=calcItems.reduce((s,i)=>s+parseFloat(i.price||0)*(parseInt(i.qty||i.quantity)||1),0);
+    const discTotal=Math.max(0,origTotal-netTotal);
+    const refMethod=latestReqObj?.refund_method||parsed.refund||'';
+    const returnFee=refMethod==='store_credit'?0:100;
+    const totalRefund=Math.max(0,netTotal-returnFee);
+    const refundedAmt=latestReqObj?.refund_amount;
+    L+=card(`
+      <div class="dp-calc-row"><span style="color:var(--muted)">Item price</span><span>₹${origTotal.toFixed(2)} × 1&nbsp;&nbsp;<strong>₹${origTotal.toFixed(2)}</strong></span></div>
+      <div class="dp-calc-row"><span style="color:var(--muted)">Incentive</span><span style="color:var(--muted)">+ ₹0.00</span></div>
+      <div class="dp-calc-row"><span style="color:var(--muted)">Tax</span><span style="color:var(--muted)">+ ₹0.00</span></div>
+      ${discTotal>0.01?`<div class="dp-calc-row"><span style="color:var(--muted)">Discount</span><span>− ₹${discTotal.toFixed(2)}</span></div>`:''}
+      <div class="dp-calc-row"><span style="color:var(--muted)">Return Fee ${!refundedAmt?'<span class="pill pending" style="font-size:10px;padding:1px 6px;margin-left:5px">Pending</span>':''}</span><span>− ₹${returnFee.toFixed(2)}</span></div>
+      <div class="dp-calc-row dp-calc-total"><span>Total (To be refunded)</span><span style="color:var(--primary)">₹${totalRefund.toFixed(2)}</span></div>
+      ${refundedAmt?`<hr style="margin:8px 0">
+      <div class="dp-calc-row"><span style="font-weight:600">Refunded amount</span><span style="font-weight:700">₹${parseFloat(refundedAmt).toFixed(2)}</span></div>
+      ${latestReqObj?.utr_number?`<div style="font-size:11px;color:var(--muted);margin-top:4px">UTR: ${esc(latestReqObj.utr_number)}</div>`:''}
+      <div style="font-size:11px;color:var(--muted2);margin-top:6px">The refund amount was modified manually. Exact breakup will not be available for custom refund amounts.</div>`:''}
+    `);
+  }
+
+  // ── SHOPIFY ACTIONS (approved) ──
+  if(isApproved){
+    const actions=[];
+    if(isReturn)actions.push(`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #F3F4F6">
+      <div><div style="font-weight:700;font-size:13px">${isRefunded?'✓ ':''}💰 Process Refund</div><div style="font-size:12px;color:var(--muted)">${isRefunded?'Refund already created':'Issue refund + restock inventory'}</div></div>
+      ${!isRefunded?`<button class="btn btn-sm" style="background:var(--primary);color:#fff" onclick="createShopifyRefund('${esc(o.id)}')">Create Refund</button>`:''}</div>`);
+    if(isReturn)actions.push(`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0${isExchange?';border-bottom:1px solid #F3F4F6':''}">
+      <div><div style="font-weight:700;font-size:13px">🎁 Issue Store Credit</div><div style="font-size:12px;color:var(--muted)">Create Shopify gift card</div></div>
+      <button class="btn btn-sm" style="background:var(--purple);color:#fff" onclick="issueStoreCredit('${esc(o.id)}')">Issue Credit</button></div>`);
+    if(isExchange){
+      const hasExOrd=(o.requests||[]).some(r=>r.exchange_order_id);
+      const activeReq=(o.requests||[]).filter(r=>!['archived','rejected','deleted'].includes(r.status)).slice(-1)[0];
+      const hasVariants=(activeReq?.items||[]).some(i=>i.action==='exchange'&&i.exchange_variant_id);
+      const canCreate=!isExFulfilled&&!hasExOrd;
+      actions.push(`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0">
+        <div><div style="font-weight:700;font-size:13px">${isExFulfilled||hasExOrd?'✓ ':''}🛍️ Create Exchange Order</div>
+        <div style="font-size:12px;color:var(--muted)">${isExFulfilled||hasExOrd?'Exchange order already created':hasVariants?'Create new Shopify draft order':'⚠️ No variant selected — customer must resubmit with size/product choice'}</div></div>
+        ${canCreate&&hasVariants?`<button class="btn btn-sm" style="background:var(--blue);color:#fff" onclick="createExchangeOrder('${esc(o.id)}')">Create Order</button>`:''}
+      </div>`);
+    }
+    if(actions.length)L+=card(`<div class="dp-section">🛍️ SHOPIFY ACTIONS</div>${actions.join('')}`);
+  }
+
+  // ── MULTI-REQUEST HISTORY ──
+  const allReqs=o.requests||[];
+  if(allReqs.length>1){
+    const reqHTML=allReqs.map((r,i)=>{
+      const retH=(r.items||[]).filter(it=>it.action==='return');
+      const exH=(r.items||[]).filter(it=>it.action==='exchange');
+      const sc2=r.status==='approved'?'var(--primary)':r.status==='rejected'?'var(--red)':r.status==='refunded'?'#7C3AED':'var(--amber)';
+      return `<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden">
+        <div style="padding:8px 12px;background:#f9fafb;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <div><span style="font-size:12px;font-weight:700">${esc(r.req_id||'Request '+(i+1))}</span>${r.awb?`<span style="font-size:11px;color:var(--blue);margin-left:8px">AWB: <strong>${esc(r.awb)}</strong> <button onclick="trackAWB('${esc(r.awb)}')" style="background:none;border:none;color:var(--blue);cursor:pointer;font-size:11px;text-decoration:underline">Track</button></span>`:''}</div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span style="font-size:11px;font-weight:700;color:${sc2}">${cap(r.status||'pending')}</span>
+            <button onclick="openEditItemsModal('${esc(r.req_id)}',${JSON.stringify(r.items||[]).replace(/"/g,'&quot;')})" style="font-size:11px;background:none;border:1px solid var(--border);border-radius:5px;padding:2px 8px;cursor:pointer;color:var(--muted)">✏️ Edit</button>
+          </div>
+        </div>
+        <div style="padding:10px 12px;font-size:12px;color:var(--muted2)">
+          ${retH.map(it=>`<div style="margin-bottom:3px">${esc(it.title||'')} × ${it.qty||1} — ₹${parseFloat(it.price||0).toFixed(2)}</div>`).join('')}
+          ${exH.map(it=>`<div style="margin-bottom:3px">↔ ${esc(it.title||'')} → ${esc(it.exchange_for||'')}</div>`).join('')}
+          ${r.refund_amount?`<div style="color:var(--primary);font-weight:600;margin-top:4px">💰 Refunded ₹${parseFloat(r.refund_amount).toFixed(2)}</div>`:''}
+        </div>
+      </div>`;
+    }).join('');
+    L+=card(`<div class="dp-section">ALL REQUESTS (${allReqs.length})</div>${reqHTML}`);
+  }
+
+  document.getElementById('dp-left').innerHTML=L;
+
+  // ── RIGHT SIDEBAR ──
+  const sCard=(title,content,editFn)=>`<div class="dp-card" style="margin-bottom:10px">
+    <div class="dp-sidebar-hd">
+      <div class="dp-sidebar-title">${title}</div>
+      ${editFn?`<button class="dp-edit-link" onclick="${editFn}">Edit</button>`:''}
+    </div>
+    <div style="font-size:13px;color:var(--text);line-height:1.6">${content}</div>
+  </div>`;
+
+  let R='';
+  const reason=reqItemsList[0]?.reason||parsed.reason||'';
+  R+=sCard('Reason',reason?esc(reason):'<span style="color:var(--muted2)">Not specified</span>','');
+
+  R+=`<div class="dp-card" style="margin-bottom:10px">
+    <div class="dp-sidebar-hd"><div class="dp-sidebar-title">Customer</div><button class="dp-edit-link" onclick="">Edit</button></div>
+    <div><a id="dp-customer-name" href="#" style="font-size:13px;color:var(--blue);font-weight:600;text-decoration:none">${esc(o.customer_name||'—')}</a></div>
+  </div>`;
+
+  R+=`<div class="dp-card" style="margin-bottom:10px">
+    <div class="dp-sidebar-hd"><div class="dp-sidebar-title">Contact Information</div><button class="dp-edit-link" onclick="">Edit</button></div>
+    <div id="dp-customer-email" style="font-size:13px;color:var(--text)${o.customer_email?'':'display:none'}">${o.customer_email?esc(o.customer_email):''}</div>
+    <div id="dp-customer-phone" style="font-size:13px;color:var(--text)${o.customer_phone?'':'display:none'}">${o.customer_phone?esc(o.customer_phone):''}</div>
+  </div>`;
+
+  const refundMap={'store_credit':'🎁 Store Credit','original':'Original Payment Mode','upsell':'🛍️ Shop with Credit','exchange':'🔄 Exchange'};
+  const refundLabel=refundMap[latestReqObj?.refund_method]||refundMap[parsed.refund]||latestReqObj?.refund_method||parsed.refund||'—';
+  const payGw=o.payment_gateway?`<div style="font-size:12px;color:var(--muted);margin-top:3px">Order was originally paid using ${cap((o.payment_gateway||'').replace(/_/g,' '))} payment gateway</div>`:'';
+  R+=sCard('Refund Mode',`${esc(refundLabel)}${payGw}`,'');
+
+  R+=`<div class="dp-card" style="margin-bottom:10px">
+    <div class="dp-sidebar-hd"><div class="dp-sidebar-title">Customer's address</div><button class="dp-edit-link" onclick="openAddrModal('${esc(o.id)}')">Edit</button></div>
+    <div id="addr-display-${esc(o.id)}" style="font-size:12px;color:var(--muted);line-height:1.8"><span style="color:var(--muted2)">Loading…</span></div>
+  </div>`;
+
+  const noteText=latestReqObj?.customer_note||parsed.customerNote||'';
+  R+=sCard('Notes',noteText?`<span style="font-style:italic">"${esc(noteText)}"</span>`:'<span style="color:var(--muted2)">No notes added</span>','');
+
+  const visibleTags=(tags||[]).filter(t=>!t.startsWith('return-')&&!t.startsWith('exchange-')&&!t.startsWith('pickup-'));
+  R+=`<div class="dp-card" style="margin-bottom:10px">
+    <div class="dp-sidebar-title" style="margin-bottom:8px">Tags</div>
+    ${visibleTags.length?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">${visibleTags.map(t=>`<span style="padding:2px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;font-size:11px">${esc(t)}</span>`).join('')}</div>`:''}
+    <div class="tbl-search" style="width:100%"><span style="color:var(--muted2)">🔍</span><input placeholder="Search tags…" style="border:none;outline:none;font-family:var(--font);font-size:13px;background:none;width:100%"></div>
+  </div>`;
+
+  R+=`<div class="dp-card" style="margin-bottom:10px">
+    <div class="dp-sidebar-title" style="margin-bottom:8px">Order Info</div>
+    <div class="dp-row"><span class="lbl">Order</span><span style="font-weight:600;color:var(--blue)">#${esc(o.order_number)}</span></div>
+    <div class="dp-row"><span class="lbl">Order Total</span><span style="font-weight:600">₹${parseFloat(o.total_price||0).toLocaleString('en-IN',{maximumFractionDigits:2})}</span></div>
+    <div class="dp-row"><span class="lbl">Payment</span><span><span class="pill ${o.financial_status||'pending'}">${cap(o.financial_status||'—')}</span></span></div>
+    <div class="dp-row"><span class="lbl">Type</span><span style="font-weight:600">${isCod?'<span class="pill" style="background:#FEF3C7;color:#D97706">COD</span>':'Prepaid'}</span></div>
+  </div>`;
+
+  document.getElementById('dp-right').innerHTML=R;
+  setTimeout(()=>loadCustomerAddr(o.id),80);
+  if(o.customer_name){const el=document.getElementById('dp-customer-name');if(el)el.textContent=o.customer_name;}
+  if(o.customer_email){const el=document.getElementById('dp-customer-email');if(el){el.textContent=o.customer_email;el.style.display='block';}}
+  if(o.customer_phone){const el=document.getElementById('dp-customer-phone');if(el){el.textContent=o.customer_phone;el.style.display='block';}}
+}
+
+async function markReceived(reqId){if(!reqId)return;try{const r=await fetch(BACKEND+'/api/requests/'+reqId+'/status',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'picked_up'})});const d=await r.json();if(d.error)throw new Error(d.error);showToast('Marked as received','success');loadOrders();}catch(e){showToast('Error: '+e.message,'error');}}
+
+async function forceComplete(reqId) {
+  if (!reqId) return;
+  if (!confirm('This will mark the item as received at warehouse, process the refund automatically, and archive the request.\n\nProceed?')) return;
+  try {
+    showToast('Processing…', 'ok');
+    const res = await fetch(BACKEND+'/api/requests/'+reqId+'/force-complete', { method:'POST' }).then(r=>r.json());
+    if (res.success) { showToast('✅ Completed — refunded & archived', 'success'); closeDetail(); loadOrders(); }
+    else showToast('Error: '+(res.error||'Failed'), 'error');
+  } catch(e) { showToast('Error: '+e.message, 'error'); }
+}
+
+// ── ADDRESS ──
+async function loadCustomerAddr(orderId){
+  const el=document.getElementById('addr-display-'+orderId);
+  if(!el)return;
+  // Check cache first
+  if(cachedAddr[orderId]){renderAddr(el,cachedAddr[orderId]);return;}
+  // Try from already-loaded order data before making a network call
+  const cached=ALL_ORDERS.find(o=>String(o.id)===String(orderId));
+  if(cached?.shipping_address&&(cached.shipping_address.address1||cached.shipping_address.city)){
+    cachedAddr[orderId]=cached.shipping_address;
+    renderAddr(el,cached.shipping_address);
+    return;
+  }
+  try{
+    const data=await fetch(BACKEND+'/api/orders/'+orderId+'/details').then(r=>r.json());
+    if(data.error||!data.address){el.innerHTML='<span style="color:var(--muted2)">No address on order</span>';return;}
+    const a=data.address;
+    // Populate name
+    const nameEl=document.getElementById('dp-customer-name');
+    if(nameEl&&(nameEl.textContent==='—'||!nameEl.textContent.trim())&&data.customer_name)nameEl.textContent=data.customer_name;
+    // Populate email
+    if(data.customer_email){
+      const emailEl=document.getElementById('dp-customer-email');
+      if(emailEl){emailEl.textContent='✉ '+data.customer_email;emailEl.style.display='block';}
+    }
+    // Populate phone
+    if(data.customer_phone){
+      const phoneEl=document.getElementById('dp-customer-phone');
+      if(phoneEl){phoneEl.textContent='📞 '+data.customer_phone;phoneEl.style.display='block';}
+    }
+    cachedAddr[orderId]=a;
+    const ord=ALL_ORDERS.find(x=>String(x.id)===String(orderId));
+    if(ord){ord._addr=a;if(data.customer_name)ord.customer_name=data.customer_name;if(data.customer_email)ord.customer_email=data.customer_email;if(data.customer_phone)ord.customer_phone=data.customer_phone;}
+    if(selectedOrder&&String(selectedOrder.id)===String(orderId)){selectedOrder._addr=a;if(data.customer_name)selectedOrder.customer_name=data.customer_name;}
+    renderAddr(el,a);
+  }catch(e){el.innerHTML='<span style="color:var(--red)">Error loading address</span>';}
+}
+
+function renderAddr(el,a){
+  if(!a||(!(a.address1||a.address2||a.city||a.zip||a.name))){el.innerHTML='<span style="color:var(--muted2)">No address on record</span>';return;}
+  const namePart = a.name || [a.first_name,a.last_name].filter(Boolean).join(' ') || '';
+  const lines=[namePart,a.address1,a.address2,[a.city,a.province||a.state,a.zip||a.pincode].filter(Boolean).join(', '),a.country,a.phone||a.mobile].filter(Boolean);
+  el.innerHTML=lines.map(esc).join('<br>');
+}
+
+function openAddrModal(orderId){
+  editingOrderId=orderId;
+  const a=cachedAddr[orderId]||selectedOrder?._addr||{};
+  document.getElementById('am-name').value=a.name||'';
+  document.getElementById('am-addr1').value=a.address1||'';
+  document.getElementById('am-addr2').value=a.address2||'';
+  document.getElementById('am-city').value=a.city||'';
+  document.getElementById('am-state').value=a.province||a.state||'';
+  document.getElementById('am-zip').value=a.zip||a.pincode||'';
+  document.getElementById('am-phone').value=a.phone||'';
+  document.getElementById('addr-modal').classList.add('open');
+}
+function closeAddrModal(){document.getElementById('addr-modal').classList.remove('open');editingOrderId=null;}
+function saveAddr(){
+  const a={name:document.getElementById('am-name').value,address1:document.getElementById('am-addr1').value,address2:document.getElementById('am-addr2').value,city:document.getElementById('am-city').value,province:document.getElementById('am-state').value,zip:document.getElementById('am-zip').value,phone:document.getElementById('am-phone').value,country:'India'};
+  if(!a.address1||!a.zip){showToast('Address line 1 and pincode required','error');return;}
+  cachedAddr[editingOrderId]=a;
+  const ord=ALL_ORDERS.find(x=>String(x.id)===String(editingOrderId));
+  if(ord)ord._addr=a;
+  if(selectedOrder&&String(selectedOrder.id)===String(editingOrderId))selectedOrder._addr=a;
+  const el=document.getElementById('addr-display-'+editingOrderId);
+  if(el)renderAddr(el,a);
+  closeAddrModal();
+  showToast('✅ Address updated','success');
+}
+
+// ── DELHIVERY PICKUP ──
+async function createDelhiveryPickup(orderId){
+  const el=document.getElementById('del-status-'+orderId);
+  if(el)el.textContent='⏳ Fetching address…';
+  const order=ALL_ORDERS.find(o=>String(o.id)===String(orderId));
+  // Use cached/edited address first, fallback to fresh fetch
+  let a=cachedAddr[orderId]||order?._addr;
+  if(!a){
+    const details=await fetch(BACKEND+'/api/orders/'+orderId+'/details').then(r=>r.json()).catch(()=>null);
+    a=details?.address;
+    if(a){cachedAddr[orderId]=a;}
+  }
+  if(!a){showToast('No address found on order','error');if(el)el.textContent='✗ Address not found';return;}
+  if(!a.zip&&!a.pincode){showToast('Pincode missing on address — edit address first','error');if(el)el.textContent='✗ No pincode';return;}
+  if(el)el.textContent='⏳ Creating pickup…';
+  const pin=String(a.zip||a.pincode||'').replace(/\D/g,'');
+  const payload={
+    order_id:orderId, order_number:order?.order_number||orderId,
+    customer_name:a.name||'Customer',
+    customer_phone:String(a.phone||'').replace(/\D/g,'').slice(-10),
+    customer_address:[a.address1,a.address2].filter(Boolean).join(', '),
+    customer_city:a.city||'', customer_state:a.province||a.state||'',
+    customer_pincode:pin,
+    products_desc:(order?.line_items||[]).map(li=>li.title).slice(0,2).join(', ').slice(0,100)||'Return Shipment',
+    total_amount:order?.total_price||'0',
+    quantity:(order?.line_items||[]).reduce((s,li)=>s+(li.quantity||1),0)||1,
+    weight:0.5
+  };
+  const res=await fetch(BACKEND+'/api/delhivery/create-pickup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(r=>r.json()).catch(e=>({error:e.message}));
+  if(res.success&&res.waybill){
+    if(el)el.innerHTML=`✓ AWB: <strong>${res.waybill}</strong>`;
+    showToast('✅ Pickup created! AWB: '+res.waybill,'success');
+    if(order){order.note=(order.note||'')+'\nDELHIVERY AWB: '+res.waybill;}
+    renderDetailPanel(order||selectedOrder);
+  }else{
+    const errMsg=res.error||'Failed to create pickup';
+    if(el)el.innerHTML=`<span style="color:var(--red)">✗ Failed</span>`;
+    // Show prominent error banner in detail panel
+    const isPincode = res.pincode_error || errMsg.toLowerCase().includes('non serviceable') || errMsg.toLowerCase().includes('pincode');
+    const banner = document.getElementById('pickup-error-banner-'+orderId);
+    const bannerHTML=`<div id="pickup-error-banner-${orderId}" style="margin:10px 0;padding:12px 14px;background:#FEF2F2;border:1.5px solid #FCA5A5;border-radius:10px;display:flex;gap:10px;align-items:flex-start">
+      <span style="font-size:20px;flex-shrink:0">${isPincode?'📍':'❌'}</span>
+      <div>
+        <div style="font-weight:700;font-size:13px;color:#DC2626;margin-bottom:3px">${isPincode?'Pincode Not Serviceable':'Pickup Failed'}</div>
+        <div style="font-size:12px;color:#7F1D1D;line-height:1.5">${esc(errMsg)}</div>
+        ${isPincode?`<div style="font-size:11px;color:#991B1B;margin-top:6px">💡 Ask customer to update their address to a serviceable pincode, or use self-ship option.</div>`:''}
+      </div>
+    </div>`;
+    if(banner){ banner.outerHTML=bannerHTML; }
+    else {
+      const statusArea=document.querySelector('.dp-ship-grid');
+      if(statusArea) statusArea.insertAdjacentHTML('afterend',bannerHTML);
+    }
+    showToast(isPincode?'📍 Pincode '+errMsg.match(/\d{6}/)?.[0]+' not serviceable':'Pickup error: '+errMsg,'error',5000);
+  }
+}
+
+async function trackAWB(waybill){
+  document.getElementById('track-modal').classList.add('open');
+  document.getElementById('track-modal-body').innerHTML='<div style="text-align:center;padding:24px;color:var(--muted)">⏳ Loading…</div>';
+  const data=await fetch(BACKEND+'/api/delhivery/track/'+waybill).then(r=>r.json()).catch(()=>({found:false}));
+  if(!data.found){document.getElementById('track-modal-body').innerHTML=`<div style="color:var(--muted);font-size:13px">No tracking data for AWB: ${esc(waybill)}</div>`;return;}
+  const scans=(data.scans||[]).slice(0,8).map(s=>`<div style="display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);font-size:12px"><div style="color:var(--muted2);min-width:100px;flex-shrink:0">${s.date?new Date(s.date).toLocaleDateString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):''}</div><div><div style="font-weight:600">${esc(s.status||'')}</div><div style="color:var(--muted)">${esc(s.detail||'')}${s.location?' — '+esc(s.location):''}</div></div></div>`).join('');
+  document.getElementById('track-modal-body').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px"><div style="padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border)"><div style="font-size:10px;font-weight:700;color:var(--muted2);text-transform:uppercase;margin-bottom:4px">Status</div><div style="font-weight:700">${esc(data.status||'Unknown')}</div></div><div style="padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border)"><div style="font-size:10px;font-weight:700;color:var(--muted2);text-transform:uppercase;margin-bottom:4px">Destination</div><div style="font-weight:700">${esc(data.destination||'—')}</div></div></div><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted2);margin-bottom:8px">Scan History</div>${scans||'<div style="color:var(--muted2);font-size:13px">No scans yet</div>'}`;
+}
+
+// ── SHOPIFY ACTIONS ──
+async function createShopifyRefund(orderId){
+  const el=document.getElementById('refund-status-'+orderId);
+  if(el)el.textContent='⏳ Creating refund…';
+  const res=await fetch(BACKEND+'/api/shopify/refund/'+orderId,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({refund_method:'original',note:'Approved return — Returns Manager'})}).then(r=>r.json()).catch(e=>({error:e.message}));
+  if(res.success){if(el)el.innerHTML=`✓ Refunded ₹${res.amount||''}`;showToast('✅ Refund created!','success');const ord=ALL_ORDERS.find(o=>String(o.id)===String(orderId));if(ord&&ord.tags)ord.tags.push('return-refunded');}
+  else{if(el)el.innerHTML=`<span style="color:var(--red)">✗ ${esc(res.error||'Failed')}</span>`;showToast('Refund error: '+(res.error||''),'error');}
+}
+
+const STORE_CREDIT_BONUS=0;
+async function issueStoreCredit(orderId){
+  const order=ALL_ORDERS.find(o=>String(o.id)===String(orderId));
+  const el=document.getElementById('credit-status-'+orderId);
+  if(el)el.textContent='⏳ Issuing…';
+  const latestReqSC=(order?.requests||[]).slice(-1)[0];const scAmt=(latestReqSC?.items||[]).filter(i=>i.action==='return').reduce((s,i)=>s+parseFloat(i.price||0)*(parseInt(i.qty)||1),0).toFixed(2);const res=await fetch(BACKEND+'/api/shopify/store-credit/'+orderId,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:scAmt,apply_bonus:false,customer_email:order?.customer_email||'',note:'Store credit — Returns Manager'})}).then(r=>r.json()).catch(e=>({error:e.message}));
+  if(res.success){if(el)el.innerHTML=`✓ Code: <strong>${esc(res.code)}</strong> (₹${res.amount})`;showToast('🎁 Credit: '+res.code+' (₹'+res.amount+')','success');}
+  else{if(el)el.innerHTML=`<span style="color:var(--red)">✗ ${esc(res.error||'Failed')}</span>`;showToast('Credit error: '+(res.error||''),'error');}
+}
+
+const _creatingExch={};
+async function createExchangeOrder(orderId){
+  if(_creatingExch[orderId]){showToast('Already creating…','error');return;}
+  _creatingExch[orderId]=true;
+  const el=document.getElementById('exchange-status-'+orderId);
+  if(el)el.textContent='⏳ Creating exchange order…';
+  const order=ALL_ORDERS.find(o=>String(o.id)===String(orderId));
+  // Guard: check if exchange order already exists in loaded data
+  const alreadyHas=(order?.requests||[]).some(r=>r.exchange_order_id);
+  if(alreadyHas){if(el)el.textContent='✓ Exchange order already exists';delete _creatingExch[orderId];return;}
+  // Build exchange items from active request's stored variant IDs
+  const activeReq=(order?.requests||[]).filter(r=>!['archived','rejected','deleted'].includes(r.status)).slice(-1)[0];
+  const exchItems=[];
+  for(const item of(activeReq?.items||[]))
+    if(item.action==='exchange'&&item.exchange_variant_id)
+      exchItems.push({variant_id:String(item.exchange_variant_id),quantity:item.qty||1,price:item.price||'0',title:item.exchange_variant_title||item.title||''});
+  if(!exchItems.length){if(el)el.innerHTML='<span style="color:var(--red)">✗ No variant selected — customer must resubmit choosing a specific size/product</span>';showToast('No variant selected — ask customer to resubmit with product choice','error');delete _creatingExch[orderId];return;}
+  if(el)el.textContent='⏳ Creating order…';
+  const a=cachedAddr[orderId]||order?._addr;
+  const res=await fetch(BACKEND+'/api/shopify/exchange/'+orderId,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({exchange_items:exchItems,order_number:order?.order_number,customer_address:a,req_id:activeReq?.req_id})}).then(r=>r.json()).catch(e=>({error:e.message}));
+  delete _creatingExch[orderId];
+  if(res.success){if(el)el.innerHTML=`✓ Order ${esc(res.new_order_name||'')} created`;showToast('✅ Exchange order '+res.new_order_name,'success');setTimeout(loadOrders,1500);}
+  else{if(el)el.innerHTML=`<span style="color:var(--red)">✗ ${esc(res.error||'Failed')}</span>`;showToast('Exchange error: '+(res.error||''),'error');}
+}
+
+// ── ANALYTICS ──
+async function loadAnalytics(){
+  try{
+    const d=await fetch(BACKEND+'/api/analytics').then(r=>r.json());
+    
+    const prevent=d.prevention_report||[],reasons=d.top_reasons||[];
+    const maxR=Math.max(1,...reasons.map(r=>r.count)),maxP=Math.max(1,...prevent.map(p=>p.count));
+    document.getElementById('analytics-content').innerHTML=`
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-top"><div><div class="stat-val">${d.total_requests||0}</div><div class="stat-label">Total Requests</div></div><div class="stat-icon" style="background:var(--bg)">📬</div></div></div>
+        <div class="stat-card"><div class="stat-top"><div><div class="stat-val">${d.approval_rate||0}%</div><div class="stat-label">Approval Rate</div></div><div class="stat-icon" style="background:var(--primary-bg)">✅</div></div></div>
+        <div class="stat-card"><div class="stat-top"><div><div class="stat-val">${d.auto_approve_rate||0}%</div><div class="stat-label">Auto-Approved</div></div><div class="stat-icon" style="background:var(--blue-bg)">⚡</div></div></div>
+        <div class="stat-card"><div class="stat-top"><div><div class="stat-val">₹${(d.refunded_amount||0).toLocaleString('en-IN',{maximumFractionDigits:0})}</div><div class="stat-label">Total Refunded</div></div><div class="stat-icon" style="background:var(--red-bg)">💰</div></div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="tbl-wrap" style="padding:18px">
+          <div style="font-size:14px;font-weight:700;margin-bottom:4px">📉 Return Prevention</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Most returned products</div>
+          ${prevent.length?prevent.map(p=>`<div class="bar-row"><div class="bar-lbl">${esc(p.product)}</div><div class="bar-track"><div class="bar-fill" style="width:${(p.count/maxP*100).toFixed(0)}%;background:var(--amber)"></div></div><span style="font-size:12px;color:var(--muted);min-width:24px">${p.count}</span></div>`).join(''):'<div style="color:var(--muted2);font-size:13px">No data yet</div>'}
+        </div>
+        <div class="tbl-wrap" style="padding:18px">
+          <div style="font-size:14px;font-weight:700;margin-bottom:4px">📋 Top Return Reasons</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Use to improve listings</div>
+          ${reasons.length?reasons.map(r=>`<div class="bar-row"><div class="bar-lbl">${esc(r.reason)}</div><div class="bar-track"><div class="bar-fill" style="width:${(r.count/maxR*100).toFixed(0)}%;background:var(--red)"></div></div><span style="font-size:12px;color:var(--muted);min-width:24px">${r.count}</span></div>`).join(''):'<div style="color:var(--muted2);font-size:13px">No data yet</div>'}
+        </div>
+      </div>`;
+  }catch(e){document.getElementById('analytics-content').innerHTML='<div class="empty"><div class="empty-title">Could not load analytics</div></div>';}
+}
+
+// ── AUDIT ──
+async function loadAudit(){
+  try{
+    const data=await fetch(BACKEND+'/api/audit').then(r=>r.json());
+    AUDIT_DATA=data.logs||[];renderAudit(AUDIT_DATA);
+  }catch(e){}
+}
+function renderAudit(logs){
+  if(!logs.length){document.getElementById('audit-content').innerHTML='<div class="empty"><div class="empty-ico">📜</div><div class="empty-title">No audit entries yet</div></div>';return;}
+  const cols={'approved':'var(--primary)','rejected':'var(--red)','rule_matched':'var(--blue)','refund_created':'var(--primary)','store_credit_issued':'var(--purple)','exchange_order_created':'var(--blue)','auto_approve':'var(--primary)','keep_it':'var(--blue)','request_submitted':'var(--amber)'};
+  document.getElementById('audit-content').innerHTML=logs.map(l=>`<div class="audit-row">
+    <div class="audit-time">${new Date(l.timestamp).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+    <div class="audit-action" style="color:${cols[l.action]||'var(--text)'}">${esc(l.action.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()))}</div>
+    <div class="audit-order">#${esc(l.order_id)}</div>
+    <div class="audit-detail">${esc(l.details)}</div>
+    <div class="audit-actor">${esc(l.actor)}</div>
+  </div>`).join('');
+}
+function filterAudit(q){if(!q){renderAudit(AUDIT_DATA);return;}const lq=q.toLowerCase();renderAudit(AUDIT_DATA.filter(l=>l.order_id.toLowerCase().includes(lq)||l.action.toLowerCase().includes(lq)||l.details.toLowerCase().includes(lq)));}
+
+// ── RULES ──
+let CATEGORY_FILTER='all';
+async function loadRules(){
+  try{const data=await fetch(BACKEND+'/api/rules').then(r=>r.json());RULES_DATA=data.rules||[];renderRules(RULES_DATA);}catch(e){}
+}
+function filterCategory(cat,el){
+  CATEGORY_FILTER=cat;
+  document.querySelectorAll('[id^="cat-"]').forEach(b=>b.classList.remove('on'));
+  if(el)el.classList.add('on');
+  renderRules(RULES_DATA);
+}
+function renderRules(rules){
+  const filtered=CATEGORY_FILTER==='all'?rules:rules.filter(r=>(r.category||'on_submit')===CATEGORY_FILTER);
+  if(!filtered.length){document.getElementById('rules-list').innerHTML='<div class="empty"><div class="empty-ico">⚡</div><div class="empty-title">No rules in this category. Create one or use a template.</div></div>';return;}
+  const FIELD_LABELS={return_reason:'Return Reason',request_type:'Request Type',request_stage:'Request Stage',carrier_event:'Carrier Event',order_value:'Order Value',product_price:'Product Price',payment_method:'Payment Method',refund_method:'Refund Method Requested',customer_return_count:'Customer Return Count',days_since_order:'Days Since Order',order_tags:'Order Tags',item_count:'Item Count'};
+  const OP_LABELS={eq:'is',neq:'is not',contains:'contains',lt:'<',gt:'>',gte:'≥',lte:'≤'};
+  const ACTION_LABELS={auto_approve:'✅ Approve request',auto_reject:'❌ Reject request',flag_review:'🚩 Flag for review',keep_it:'📦 Keep It (refund without return)',auto_refund:'💰 Issue refund',issue_store_credit:'🎁 Issue store credit',auto_exchange:'🔄 Create exchange order',schedule_pickup:'🚚 Schedule pickup',mark_received:'📦 Mark as received',add_tag:'🏷️ Add tag'};
+  const CAT_LABELS={on_submit:'📥 On Submit',on_carrier:'🚚 On Carrier',on_approve:'✅ On Approval',on_inspect:'🔍 On Inspection'};
+  const ACTION_COLORS={auto_approve:'ap-approve',auto_reject:'ap-reject',flag_review:'ap-flag',keep_it:'ap-keep',auto_refund:'ap-refund',issue_store_credit:'ap-approve',auto_exchange:'ap-exchange',schedule_pickup:'ap-keep',mark_received:'ap-keep',add_tag:'ap-flag'};
+  document.getElementById('rules-list').innerHTML=filtered.sort((a,b)=>a.priority-b.priority).map(r=>`
+    <div class="rule-card ${r.enabled?'':'disabled'}" id="rulecard-${esc(r.id)}">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+          <span style="font-size:10px;background:var(--bg);border:1px solid var(--border);padding:2px 7px;border-radius:5px;color:var(--muted);font-weight:700;flex-shrink:0">#${r.priority}</span>
+          <span style="font-size:10px;padding:2px 8px;border-radius:5px;background:#EFF6FF;color:var(--blue);font-weight:600;flex-shrink:0">${CAT_LABELS[r.category||'on_submit']||r.category}</span>
+          <span style="font-size:14px;font-weight:700;truncate">${esc(r.name)}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <label class="toggle"><input type="checkbox" ${r.enabled?'checked':''} onchange="toggleRule('${esc(r.id)}',this.checked)"><div class="tog-slider"></div></label>
+          <button class="btn btn-outline btn-sm" onclick="openBuilder('${esc(r.id)}')">✏️ Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteRule('${esc(r.id)}')">🗑</button>
+        </div>
+      </div>
+      <div style="margin-top:10px;padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+        <div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+          <span style="font-size:10px;font-weight:800;color:#6366F1;text-transform:uppercase;letter-spacing:.6px;background:#EEF2FF;padding:2px 8px;border-radius:4px">IF</span>
+          <span style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase">${(r.match_mode||'all').toUpperCase()}</span>
+          ${r.conditions.map(cond=>`<span class="cond-tag"><strong>${esc(FIELD_LABELS[cond.field]||cond.field)}</strong> ${esc(OP_LABELS[cond.op]||cond.op)} "<em>${esc(cond.value)}</em>"</span>`).join('')}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:10px;font-weight:800;color:#16A34A;text-transform:uppercase;letter-spacing:.6px;background:#DCFCE7;padding:2px 8px;border-radius:4px">THEN</span>
+          <span class="action-pill ${ACTION_COLORS[r.action]||'ap-flag'}">${esc(ACTION_LABELS[r.action]||r.action)}</span>
+          ${r.action_params?.message?`<span style="font-size:11px;color:var(--muted);font-style:italic">"${esc(r.action_params.message.slice(0,60))}${r.action_params.message.length>60?'…':''}"</span>`:''}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function toggleRule(id,enabled){await fetch(BACKEND+'/api/rules/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled})}).then(r=>r.json());showToast(enabled?'Rule enabled':'Rule disabled','ok');loadRules();}
+async function deleteRule(id){if(!confirm('Delete this rule?'))return;await fetch(BACKEND+'/api/rules/'+id,{method:'DELETE'}).then(r=>r.json());showToast('Rule deleted','ok');loadRules();}
+
+// ── SETTINGS ──
+async function loadSettings(){
+  try{
+    const s=await fetch(BACKEND+'/api/settings').then(r=>r.json());
+    if(s.return_window_days)document.getElementById('set-window').value=s.return_window_days;
+    
+    if(s.restocking_fee_pct!==undefined)document.getElementById('set-restock').value=s.restocking_fee_pct;
+    if(s.warehouse){
+      document.getElementById('set-wh-name').value=s.warehouse.name||'';
+      document.getElementById('set-wh-addr').value=s.warehouse.address||'';
+      document.getElementById('set-wh-city').value=s.warehouse.city||'';
+      document.getElementById('set-wh-state').value=s.warehouse.state||'';
+      document.getElementById('set-wh-pin').value=s.warehouse.pincode||'';
+      document.getElementById('set-wh-phone').value=s.warehouse.phone||'';
+    }
+    if(s.delhivery){
+      if(s.delhivery.configured){
+        document.getElementById('del-connected-badge').style.display='inline-flex';
+        document.getElementById('del-status-chip').textContent='Connected';
+      }
+      document.getElementById('cfg-warehouse').value=s.delhivery.warehouse||'';
+      document.getElementById('cfg-mode').value=s.delhivery.mode||'staging';
+    }
+    updateCreditPreview();
+  }catch(e){}
+}
+async function saveSettings(){
+  const body={
+    return_window_days:parseInt(document.getElementById('set-window').value),
+    // store_credit_bonus removed,
+    restocking_fee_pct:parseFloat(document.getElementById('set-restock').value),
+    warehouse:{name:document.getElementById('set-wh-name').value,address:document.getElementById('set-wh-addr').value,city:document.getElementById('set-wh-city').value,state:document.getElementById('set-wh-state').value,pincode:document.getElementById('set-wh-pin').value,phone:document.getElementById('set-wh-phone').value}
+  };
+  const r=await fetch(BACKEND+'/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json()).catch(()=>null);
+  if(r?.success){showToast('✅ Settings saved','success');const el=document.getElementById('settings-msg');if(el){el.style.display='block';setTimeout(()=>el.style.display='none',3000);}}
+}
+
+async function saveConfig(){
+  const token=document.getElementById('cfg-token').value,warehouse=document.getElementById('cfg-warehouse').value,mode=document.getElementById('cfg-mode').value;
+  if(token==='••••••••••••'){showToast('Token unchanged','ok');return;}
+  const r=await fetch(BACKEND+'/api/delhivery/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,warehouse,mode})}).then(r=>r.json()).catch(()=>null);
+  if(r?.success){showToast('✅ Delhivery saved','success');loadSettings();}
+}
+async function saveConfig2(){
+  const token=document.getElementById('cfg-token2').value,warehouse=document.getElementById('cfg-wh2').value,mode=document.getElementById('cfg-mode2').value;
+  if(token==='••••••••••••'){showToast('Token unchanged','ok');document.getElementById('config-modal').classList.remove('open');return;}
+  const r=await fetch(BACKEND+'/api/delhivery/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,warehouse,mode})}).then(r=>r.json()).catch(()=>null);
+  if(r?.success){showToast('✅ Delhivery saved','success');document.getElementById('config-modal').classList.remove('open');loadSettings();}
+}
+
+// ── PAGE NAV ──
+const PAGE_TITLES={returns:'Requests',exchanges:'Exchanges',allorders:'All Orders',analytics:'Analytics',audit:'Audit Trail',rules:'Rules Engine',logistics:'Logistics',settings:'Settings',notifications:'Notifications'};
+function showPage(p){
+  currentPage=p;
+  document.querySelectorAll('.pg-wrap').forEach(el=>el.classList.add('pg-hidden'));
+  const pg=document.getElementById('pg-'+p);if(pg)pg.classList.remove('pg-hidden');
+  document.querySelectorAll('.sb-item').forEach(el=>el.classList.remove('active'));
+  const nav=document.getElementById('nav-'+p);if(nav)nav.classList.add('active');
+  document.getElementById('topbar-title').textContent=PAGE_TITLES[p]||p;
+  if(p==='analytics')loadAnalytics();
+  if(p==='audit')loadAudit();
+  if(p==='rules')loadRules();
+  if(p==='settings'||p==='logistics')loadSettings();
+}
+
+// ── EXPORT CSV ──
+function exportCSV(){
+  const rows=[['Order','Customer','Type','Status','Amount','Date'],...FILTERED.map(o=>[`#${o.order_number}`,o.customer_name||'Guest',o.request_type||'return',o.return_status||'',o.total_price||'0',new Date(o.created_at).toLocaleDateString()])];
+  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download='returns-export.csv';a.click();
+}
+function copyPortalUrl(){navigator.clipboard?.writeText(BACKEND+'/portal');showToast('✅ Portal URL copied','success');}
+
+// ── PARSE NOTE ──
+function parseNote(note){
+  if(!note)return{items:[],refund:'',customerNote:'',submitted:''};
+  const lines=note.split('\n');
+  const items=[];let inItems=false,refund='',customerNote='',submitted='';
+  for(const l of lines){
+    const t=l.trim();
+    if(t.startsWith('Items:')){ inItems=true;continue; }
+    if(inItems&&(t.startsWith('[RETURN]')||t.startsWith('[EXCHANGE]'))){items.push(t);continue;}
+    if(inItems&&t&&!t.startsWith('[')&&!t.startsWith('-')&&!t.startsWith(' '))inItems=false;
+    if(t.startsWith('Refund Method:'))refund=t.replace('Refund Method:','').trim();
+    if(t.startsWith('Customer Note:'))customerNote=t.replace('Customer Note:','').trim();
+    if(t.startsWith('Submitted:'))submitted=t.replace('Submitted:','').trim();
+  }
+  return{items,refund,customerNote,submitted};
+}
+
+// ── HELPERS ──
+function cap(s){return s?s.charAt(0).toUpperCase()+s.slice(1):''}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function showToast(msg,type,dur=2800){const t=document.getElementById('toast');t.textContent=msg;t.className='show '+(type||'ok');setTimeout(()=>t.className='',dur);}
+function showError(t,sub){document.getElementById('ret-table-wrap').innerHTML=`<div class="empty"><div class="empty-ico">⚠️</div><div class="empty-title">${esc(t)}</div><div style="font-size:13px;color:var(--muted2);margin-top:4px">${esc(sub)}</div><button class="btn btn-outline" style="margin-top:14px" onclick="loadOrders()">↺ Retry</button></div>`;}
+
+document.querySelectorAll('.modal-bg').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+
+// ════════ DELETE / REJECT / REFUND ACTIONS ════════
+async function deleteRequest(reqId) {
+  if (!confirm('Delete this request? The customer will be able to submit a new one.')) return;
+  const orderId = selectedOrder?.id || null;
+  // Use 'NO_REQ_ID' as placeholder if no req_id — server will use order_id fallback
+  const rid = reqId || 'NO_REQ_ID';
+  try {
+    const res = await fetch(BACKEND+'/api/returns/'+encodeURIComponent(rid), {
+      method:'DELETE',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ order_id: String(orderId||'') })
+    }).then(r=>r.json());
+    if (res.success) { showToast('✅ Request deleted', 'success'); closeDetail(); loadOrders(); }
+    else showToast('Error: '+(res.error||'Failed'), 'error');
+  } catch(e) { showToast('Error: '+e.message, 'error'); }
+}
+
+async function rejectFinal(reqId) {
+  if (!confirm('Reject this request? The customer cannot resubmit.')) return;
+  const reason = prompt('Rejection reason (optional):', '') || '';
+  const orderId = selectedOrder?.id || null;
+  const rid = reqId || 'NO_REQ_ID';
+  try {
+    const res = await fetch(BACKEND+'/api/returns/'+encodeURIComponent(rid)+'/reject-final', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ reason, order_id: String(orderId||'') })
+    }).then(r=>r.json());
+    if (res.success) { showToast('✅ Request rejected', 'success'); loadOrders(); }
+    else showToast('Error: '+(res.error||'Failed'), 'error');
+  } catch(e) { showToast('Error: '+e.message, 'error'); }
+}
+
+// ── REFUND CONFIRM MODAL ──
+const RETURN_SHIPPING_FEE_DISPLAY = 100;
+let _refundAction = null;
+
+function closeRefundModal() {
+  document.getElementById('refund-confirm-modal').classList.remove('open');
+  _refundAction = null;
+}
+
+function openRefundModal(orderId, reqId, isCod) {
+  // Default mode: customer's requested method; fallback to original (or store credit for COD)
+  const order = ALL_ORDERS.find(o=>String(o.id)===String(orderId));
+  const req = reqId ? (order?.requests||[]).find(r=>r.req_id===reqId) : (order?.requests||[]).slice(-1)[0];
+  const custMethod = req?.refund_method||'original';
+  const defaultMode = isCod ? 'store_credit' : (custMethod==='store_credit'?'store_credit':'original');
+  showRefundModal(orderId, reqId||null, defaultMode, !!isCod);
+}
+
+function showRefundModal(orderId, reqId, mode, isCod) {
+  const order = ALL_ORDERS.find(o=>String(o.id)===String(orderId));
+  const req = reqId
+    ? (order?.requests||[]).find(r=>r.req_id===reqId)
+    : (order?.requests||[]).slice(-1)[0];
+  const returnItems = (req?.items||[]).filter(i=>i.action==='return');
+  const fee = mode==='original' ? RETURN_SHIPPING_FEE_DISPLAY : 0;
+  const subtotal = returnItems.reduce((s,i)=>s+parseFloat(i.price||0)*(parseInt(i.qty)||1),0);
+  const total = Math.max(0, subtotal - fee);
+
+  const itemRows = returnItems.map(i=>{
+    const origP = parseFloat(i.original_price||i.price||0);
+    const discA = parseFloat(i.discount_allocated||0);
+    const netP  = parseFloat(i.price||0);
+    const qty   = parseInt(i.qty)||1;
+    const hasDisc = discA > 0;
+    return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="font-weight:600;font-size:13px">${esc(i.title||'')}${i.variant_title?` <span style="font-weight:400;color:var(--muted2)">${esc(i.variant_title)}</span>`:''}</div>
+      ${i.reason?`<div style="font-size:11px;color:#C2410C;margin-top:2px">📋 ${esc(i.reason)}</div>`:''}
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted2);margin-top:5px">
+        <span>Item price</span><span>${hasDisc?`<span style="text-decoration:line-through;margin-right:4px">₹${(origP*qty).toFixed(2)}</span>`:''} ₹${(netP*qty).toFixed(2)}</span>
+      </div>
+      ${hasDisc?`<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--green)"><span>Discount applied</span><span>− ₹${discA.toFixed(2)}</span></div>`:''}
+      <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-top:2px"><span>Net (× ${qty})</span><span>₹${(netP*qty).toFixed(2)}</span></div>
+    </div>`;
+  }).join('');
+
+  // Method selector tabs
+  const methTab=(m,label,icon,disabled)=>`<button onclick="switchRefundMode('${orderId}','${reqId||''}',${!!isCod},'${m}')"
+    style="flex:1;padding:10px;border-radius:8px;border:2px solid ${mode===m?'var(--primary)':'var(--border)'};background:${mode===m?'var(--primary-bg)':'#fff'};cursor:${disabled?'not-allowed':'pointer'};opacity:${disabled?.5:1};font-size:12px;font-weight:600;color:${mode===m?'var(--primary)':'var(--muted)'};transition:.15s;display:flex;flex-direction:column;align-items:center;gap:3px">
+    <span style="font-size:18px">${icon}</span>${label}
+    ${disabled?`<span style="font-size:10px;font-weight:400;color:var(--muted2)">COD order</span>`:''}
+  </button>`;
+
+  document.getElementById('refund-modal-body').innerHTML = `
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      ${methTab('original','Original Payment','💳', !!isCod)}
+      ${methTab('store_credit','Store Credit','🎁', false)}
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--muted2);margin-bottom:2px;text-transform:uppercase;letter-spacing:.5px">Return Items</div>
+    ${itemRows||'<div style="padding:10px 0;color:var(--muted);font-size:13px">No return items</div>'}
+    ${fee>0?`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--muted2)"><span>Return Shipping Fee</span><span style="color:var(--red)">− ₹${fee.toFixed(2)}</span></div>`:''}
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-top:1px solid var(--border);margin-top:4px">
+      <span style="font-size:14px;font-weight:700">Refund Amount</span>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:16px;font-weight:700;color:var(--muted2)">₹</span>
+        <input id="refund-amount-input" type="number" min="0" step="0.01" value="${total.toFixed(2)}"
+          style="width:110px;font-size:16px;font-weight:800;color:var(--primary);border:2px solid var(--primary);border-radius:8px;padding:4px 8px;text-align:right;font-family:var(--font)">
+      </div>
+    </div>`;
+
+  document.getElementById('refund-modal-order').textContent = '#'+(order?.order_number||orderId);
+  document.getElementById('refund-confirm-modal').classList.add('open');
+  _refundAction = { orderId, reqId, mode, isCod: !!isCod };
+}
+
+function switchRefundMode(orderId, reqId, isCod, newMode) {
+  if (isCod && newMode==='original') return;
+  _refundAction = { ...(_refundAction||{}), mode: newMode };
+  showRefundModal(orderId, reqId||null, newMode, isCod);
+  // Restore amount if user had edited it
+}
+
+async function confirmRefundAction() {
+  if (!_refundAction) return;
+  const { orderId, reqId, mode } = _refundAction;
+  const amtInput = document.getElementById('refund-amount-input');
+  const amount = parseFloat(amtInput?.value||0).toFixed(2);
+  closeRefundModal();
+  if (mode==='original') {
+    try {
+      const res = await fetch(BACKEND+'/api/shopify/refund/'+orderId, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ refund_method:'original', req_id:reqId||null, amount: parseFloat(amount) })
+      }).then(r=>r.json());
+      if (res.success) { showToast('✅ Refund: ₹'+res.amount,'success'); loadOrders(); }
+      else showToast('Refund error: '+(res.error||'Failed'),'error');
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  } else {
+    try {
+      const res = await fetch(BACKEND+'/api/shopify/store-credit/'+orderId, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ amount, apply_bonus:false, req_id:reqId||null })
+      }).then(r=>r.json());
+      if (res.success) { showToast('✅ Credit: '+res.code+' ₹'+res.amount,'success'); loadOrders(); }
+      else showToast('Credit error: '+(res.error||'Failed'),'error');
+    } catch(e) { showToast('Error: '+e.message,'error'); }
+  }
+}
+
+function doRefund(orderId, reqId) { openRefundModal(orderId, reqId||null, false); }
+function doStoreCredit(orderId, reqId) { showRefundModal(orderId, reqId||null, 'store_credit', false); }
+
+async function syncDelhiveryNow(btn) {
+  if (btn) { btn.disabled=true; btn.textContent='Syncing…'; }
+  try {
+    const res = await fetch(BACKEND+'/api/delhivery/sync-now', { method:'POST' }).then(r=>r.json());
+    if (res.success) { showToast('✅ AWB sync complete','success'); loadOrders(); }
+    else showToast('Sync error: '+(res.error||'Failed'),'error');
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+  finally { if(btn){ btn.disabled=false; btn.textContent='🔄 Sync AWBs'; } }
+}
+
+
+async function attachManualAWB(orderId, awbParam) {
+  const awb = (awbParam || document.getElementById('manual-awb-'+orderId)?.value || '').trim();
+  if (!awb) { showToast('Please enter an AWB number','error'); return; }
+
+  // Find req_id for this order
+  const order = ALL_ORDERS.find(o=>String(o.id)===String(orderId));
+  const reqId = order?.requests?.[order.requests.length-1]?.req_id || null;
+
+  try {
+    const res = await fetch(BACKEND+'/api/returns/attach-awb', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ order_id:String(orderId), req_id:reqId, awb })
+    }).then(r=>r.json());
+
+    if (res.success) {
+      showToast('✅ AWB '+awb+' attached — tracking started','success');
+      if (input) input.value = '';
+      loadOrders();
+    } else {
+      showToast('Error: '+(res.error||'Failed'),'error');
+    }
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+
+
+function toggleManualAwb(orderId) {
+  const row = document.getElementById('manual-awb-row-'+orderId);
+  if (!row) return;
+  const isHidden = row.style.display === 'none' || !row.style.display;
+  row.style.display = isHidden ? 'flex' : 'none';
+  if (isHidden) document.getElementById('manual-awb-'+orderId)?.focus();
+}
+
+</script>
+
+<!-- ════════ MANUAL REQUEST MODAL ════════ -->
+<div class="modal-bg" id="manual-req-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:28px;width:560px;max-width:95vw;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div style="font-size:18px;font-weight:800">+ New Return Request</div>
+      <button onclick="closeManualReqModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted2)">✕</button>
+    </div>
+    <div style="margin-bottom:16px">
+      <label class="form-label">Order Number</label>
+      <input class="form-inp" id="mr-order-num" placeholder="e.g. 916808" oninput="mrSearchOrder()">
+      <div id="mr-order-info" style="margin-top:8px;font-size:13px;color:var(--muted2)"></div>
+    </div>
+    <div id="mr-items-section" style="display:none">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px">Select Items</div>
+      <div id="mr-items-list"></div>
+      <div style="margin-top:16px">
+        <label class="form-label">Refund Method</label>
+        <select class="form-inp" id="mr-refund-method">
+          <option value="store_credit">Store Credit</option>
+          <option value="original">Original Payment</option>
+        </select>
+      </div>
+      <div style="margin-top:12px">
+        <label class="form-label">Note (optional)</label>
+        <textarea class="form-inp" id="mr-note" rows="2" placeholder="Internal note..."></textarea>
+      </div>
+    </div>
+    <div id="mr-error" style="color:var(--red);font-size:13px;margin-top:8px;display:none"></div>
+    <div style="display:flex;gap:10px;margin-top:20px">
+      <button class="btn btn-outline" style="flex:.4" onclick="closeManualReqModal()">Cancel</button>
+      <button class="btn btn-primary" style="flex:1" id="mr-submit-btn" onclick="submitManualRequest()" disabled>Submit Request</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ EDIT LINE ITEMS MODAL ════════ -->
+<div class="modal-bg" id="edit-items-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:28px;width:560px;max-width:95vw;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div style="font-size:18px;font-weight:800">✏️ Edit Line Items</div>
+      <button onclick="closeEditItemsModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted2)">✕</button>
+    </div>
+    <div id="edit-items-list"></div>
+    <div style="margin-top:12px">
+      <button onclick="addManualLineItem()" style="background:none;border:1.5px dashed var(--border);border-radius:8px;padding:10px;width:100%;cursor:pointer;color:var(--muted2);font-size:13px">+ Add Item Manually</button>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px">
+      <button class="btn btn-outline" style="flex:.4" onclick="closeEditItemsModal()">Cancel</button>
+      <button class="btn btn-primary" style="flex:1" onclick="saveEditedItems()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ REFUND CONFIRM MODAL ════════ -->
+<div class="modal-bg" id="refund-confirm-modal">
+  <div style="background:#fff;border-radius:16px;padding:28px;width:540px;max-width:95vw;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div><div style="font-size:18px;font-weight:800">💰 Confirm Refund</div><div id="refund-modal-order" style="font-size:13px;color:var(--muted2);margin-top:2px"></div></div>
+      <button onclick="closeRefundModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted2)">✕</button>
+    </div>
+    <div id="refund-modal-body"></div>
+    <div style="display:flex;gap:10px;margin-top:20px">
+      <button class="btn btn-outline" style="flex:.4" onclick="closeRefundModal()">Cancel</button>
+      <button class="btn btn-primary" style="flex:1" onclick="confirmRefundAction()">Process Refund</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ TRACK MODAL ════════ -->
+<div class="modal-bg" id="track-modal">
+  <div style="background:#fff;border-radius:16px;padding:28px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div style="font-size:18px;font-weight:800">📦 Tracking Details</div>
+      <button onclick="document.getElementById('track-modal').classList.remove('open')" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted2)">✕</button>
+    </div>
+    <div id="track-modal-body"></div>
+  </div>
+</div>
+
+<script>
+// ════════ MANUAL REQUEST ════════
+if (typeof BACKEND === 'undefined') var BACKEND = '';
+let mrOrderData = null;
+let mrSelectedItems = {}; // { line_item_id: { action, qty, reason } }
+
+function openManualRequestModal() {
+  mrOrderData = null; mrSelectedItems = {};
+  document.getElementById('mr-order-num').value = '';
+  document.getElementById('mr-order-info').textContent = '';
+  document.getElementById('mr-items-section').style.display = 'none';
+  document.getElementById('mr-error').style.display = 'none';
+  document.getElementById('mr-submit-btn').disabled = true;
+  document.getElementById('manual-req-modal').style.display = 'flex';
+}
+function closeManualReqModal() {
+  document.getElementById('manual-req-modal').style.display = 'none';
+}
+
+let mrSearchTimer = null;
+function mrSearchOrder() {
+  clearTimeout(mrSearchTimer);
+  mrSearchTimer = setTimeout(async () => {
+    const num = document.getElementById('mr-order-num').value.trim().replace(/^#+/,'');
+    if (!num) return;
+    document.getElementById('mr-order-info').textContent = '⏳ Looking up...';
+    try {
+      const res = await fetch(BACKEND+'/api/orders/'+num+'/details').then(r=>r.json());
+      if (res.error || !res.id) {
+        // Try by order number from loaded orders
+        mrOrderData = ALL_ORDERS.find(o=>String(o.order_number)===String(num)||String(o.id)===String(num)) || null;
+        if (!mrOrderData) { document.getElementById('mr-order-info').textContent = '❌ Order not found'; return; }
+        res.line_items = mrOrderData.line_items;
+        res.id = mrOrderData.id;
+        res.order_number = mrOrderData.order_number;
+        res.customer_name = mrOrderData.customer_name;
+      }
+      mrOrderData = res;
+      document.getElementById('mr-order-info').innerHTML = `<span style="color:var(--green);font-weight:600">✓ Order #${res.order_number} — ${esc(res.customer_name||'Customer')}</span>`;
+      renderMrItems(res.line_items||[]);
+      document.getElementById('mr-items-section').style.display = 'block';
+    } catch(e) { document.getElementById('mr-order-info').textContent = '❌ Error: '+e.message; }
+  }, 500);
+}
+
+function renderMrItems(items) {
+  const html = items.map(li => `
+    <div style="display:flex;gap:10px;align-items:center;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px">
+      <input type="checkbox" id="mr-chk-${li.id}" onchange="mrToggleItem('${li.id}')" style="width:16px;height:16px;flex-shrink:0">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600">${esc(li.title)}${li.variant_title?' — '+esc(li.variant_title):''}</div>
+        <div style="font-size:12px;color:var(--muted2)">₹${li.price} × ${li.quantity}</div>
+      </div>
+      <div id="mr-item-opts-${li.id}" style="display:none;gap:6px;align-items:center">
+        <select onchange="mrSetAction('${li.id}',this.value)" style="border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px">
+          <option value="exchange">Exchange</option>
+          <option value="return">Return</option>
+        </select>
+        <input type="number" min="1" max="${li.quantity}" value="1" onchange="mrSetQty('${li.id}',this.value)" style="width:50px;border:1px solid var(--border);border-radius:6px;padding:4px;font-size:12px">
+      </div>
+    </div>`).join('');
+  document.getElementById('mr-items-list').innerHTML = html;
+}
+
+function mrToggleItem(id) {
+  const chk = document.getElementById('mr-chk-'+id);
+  const opts = document.getElementById('mr-item-opts-'+id);
+  if (chk.checked) {
+    mrSelectedItems[id] = { action:'exchange', qty:1 };
+    opts.style.display = 'flex';
+  } else {
+    delete mrSelectedItems[id];
+    opts.style.display = 'none';
+  }
+  document.getElementById('mr-submit-btn').disabled = Object.keys(mrSelectedItems).length === 0;
+}
+function mrSetAction(id, val) { if (mrSelectedItems[id]) mrSelectedItems[id].action = val; }
+function mrSetQty(id, val)    { if (mrSelectedItems[id]) mrSelectedItems[id].qty = parseInt(val)||1; }
+
+async function submitManualRequest() {
+  if (!mrOrderData || !Object.keys(mrSelectedItems).length) return;
+  const btn = document.getElementById('mr-submit-btn');
+  btn.disabled = true; btn.textContent = 'Submitting...';
+
+  const allItems = mrOrderData.line_items || [];
+  const items = Object.entries(mrSelectedItems).map(([id, opts]) => {
+    const li = allItems.find(l=>String(l.id)===String(id));
+    return { id, title:li?.title||'Item', variant_title:li?.variant_title||'',
+      variant_id:li?.variant_id||null, price:li?.price||'0',
+      original_price:li?.original_price||li?.price||'0',
+      discount_allocated:li?.discount_allocated||'0',
+      action:opts.action, qty:opts.qty, reason:'Manual request' };
+  });
+
+  const refund_method = document.getElementById('mr-refund-method').value;
+  const note = document.getElementById('mr-note').value;
+
+  try {
+    const res = await fetch(BACKEND+'/api/returns/manual', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ order_id:mrOrderData.id, order_number:mrOrderData.order_number, items, refund_method, customer_note:note })
+    }).then(r=>r.json());
+
+    if (res.success) {
+      showToast('✅ Request created: '+res.req_id, 'success');
+      closeManualReqModal();
+      loadOrders();
+    } else {
+      document.getElementById('mr-error').textContent = res.error||'Failed';
+      document.getElementById('mr-error').style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Submit Request';
+    }
+  } catch(e) {
+    document.getElementById('mr-error').textContent = e.message;
+    document.getElementById('mr-error').style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Submit Request';
+  }
+}
+
+// ════════ EDIT LINE ITEMS ════════
+let editItemsReqId = null;
+let editItemsData  = [];
+
+function openEditItemsModal(req_id, items) {
+  editItemsReqId = req_id;
+  editItemsData  = JSON.parse(JSON.stringify(items||[]));
+  renderEditItems();
+  document.getElementById('edit-items-modal').style.display = 'flex';
+}
+function closeEditItemsModal() {
+  document.getElementById('edit-items-modal').style.display = 'none';
+}
+
+function renderEditItems() {
+  const html = editItemsData.map((item, i) => `
+    <div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div style="font-size:13px;font-weight:600">${esc(item.title||'Item')}${item.variant_title?' — '+esc(item.variant_title):''}</div>
+        <button onclick="removeEditItem(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">✕</button>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:11px;color:var(--muted2);margin-bottom:3px">ACTION</div>
+          <select onchange="editItemsData[${i}].action=this.value" style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px">
+            <option value="exchange" ${item.action==='exchange'?'selected':''}>Exchange</option>
+            <option value="return" ${item.action==='return'?'selected':''}>Return</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted2);margin-bottom:3px">QTY</div>
+          <input type="number" min="1" value="${item.qty||1}" onchange="editItemsData[${i}].qty=parseInt(this.value)||1" style="width:60px;border:1px solid var(--border);border-radius:6px;padding:5px;font-size:12px">
+        </div>
+        <div style="flex:1">
+          <div style="font-size:11px;color:var(--muted2);margin-bottom:3px">REASON</div>
+          <input value="${esc(item.reason||'')}" onchange="editItemsData[${i}].reason=this.value" style="width:100%;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px" placeholder="Reason">
+        </div>
+      </div>
+    </div>`).join('');
+  document.getElementById('edit-items-list').innerHTML = html || '<div style="color:var(--muted2);text-align:center;padding:20px">No items — add one below</div>';
+}
+
+function removeEditItem(i) {
+  editItemsData.splice(i, 1);
+  renderEditItems();
+}
+
+function addManualLineItem() {
+  editItemsData.push({ id:'manual_'+Date.now(), title:'Custom Item', variant_title:'', price:'0', action:'return', qty:1, reason:'' });
+  renderEditItems();
+}
+
+async function saveEditedItems() {
+  if (!editItemsReqId) return;
+  try {
+    const res = await fetch(BACKEND+'/api/returns/'+editItemsReqId+'/items', {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ items:editItemsData })
+    }).then(r=>r.json());
+    if (res.success) {
+      showToast('✅ Items updated','success');
+      closeEditItemsModal();
+      loadOrders();
+    } else { showToast('Error: '+(res.error||'Failed'),'error'); }
+  } catch(e) { showToast('Error: '+e.message,'error'); }
+}
+</script>
+
+</body>
+</html>
