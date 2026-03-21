@@ -1246,6 +1246,27 @@ function renderDetailPanel(o){
     </div>`;
   }
 
+  // ── NON-SERVICEABLE PINCODE BANNER ──
+  const awbStatusRaw = latestReqObj?.awb_status || '';
+  const isNonServiceable = awbStatusRaw.toLowerCase().includes('non-serviceable') || awbStatusRaw.toLowerCase().includes('non serviceable');
+  if(isNonServiceable && !latestReqObj?.awb){
+    const badPin = (awbStatusRaw.match(/\d{6}/)||[])[0]||'';
+    const addr = o._addr || o.requests?.[0]?.address || {};
+    L+=`<div style="background:#FEF2F2;border:1.5px solid #FECACA;border-radius:10px;padding:14px 16px;margin-bottom:12px">
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span style="font-size:20px;flex-shrink:0">📍</span>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700;color:#DC2626;margin-bottom:3px">Pincode Not Serviceable for Pickup</div>
+          <div style="font-size:12px;color:#991B1B;line-height:1.6;margin-bottom:10px">Pincode <strong>${badPin||addr.zip||'—'}</strong> is not serviceable by Delhivery for reverse pickup. Ask the customer to update their address to a nearby serviceable pincode, then regenerate the pickup.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-sm" style="background:#DC2626;color:#fff;font-size:12px" onclick="createDelhiveryPickup('${esc(o.id)}')">🔄 Retry with Updated Address</button>
+            <button class="btn btn-sm" style="font-size:12px" onclick="document.querySelector('.dp-sub-link[onclick*=editAddr]')?.click()">✏️ Edit Address</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+
   // ── PRICE DIFFERENCE BANNER (exchange) ──
   if(isExchange&&!isPending){
     const exchItems=reqItemsList.filter(i=>i.action==='exchange');
