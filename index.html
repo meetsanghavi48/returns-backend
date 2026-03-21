@@ -1268,14 +1268,14 @@ function renderDetailPanel(o){
   }
 
   // ── PRICE DIFFERENCE BANNER (exchange) ──
+  // Use stored price_diff (new item catalog price − original item catalog price).
+  // Never use the discounted order value — that would show the full item price as a "diff".
   if(isExchange&&!isPending){
     const exchItems=reqItemsList.filter(i=>i.action==='exchange');
-    const retItems=reqItemsList.filter(i=>i.action==='return');
-    const retTotal=retItems.reduce((s,i)=>s+parseFloat(i.price||0)*(parseInt(i.qty)||1),0);
-    const exchTotal=exchItems.reduce((s,i)=>s+parseFloat(i.price||0)*(parseInt(i.qty)||1),0);
-    const diff=retTotal-exchTotal;
+    // Sum price_diff from each exchange item (positive = customer pays more, negative = refund)
+    const diff=exchItems.reduce((s,i)=>s+parseFloat(i.price_diff||0)*(parseInt(i.qty)||1),0);
     if(Math.abs(diff)>0.5)L+=`<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:12px 16px;margin-bottom:12px;font-size:13px;color:var(--blue)">
-      ℹ️ There is a price difference of <strong>₹${Math.abs(diff).toFixed(2)}</strong> in this exchange request.${diff>0?' You can <a onclick="doRefund(\''+esc(o.id)+'\',null)" style="cursor:pointer;font-weight:700;color:var(--blue)">refund</a> the difference amount to customer if required.':''}
+      ℹ️ There is a price difference of <strong>₹${Math.abs(diff).toFixed(2)}</strong> in this exchange request.${diff<0?' You can <a onclick="doRefund(\''+esc(o.id)+'\',null)" style="cursor:pointer;font-weight:700;color:var(--blue)">refund</a> the difference to the customer if required.':''}
     </div>`;
   }
 
