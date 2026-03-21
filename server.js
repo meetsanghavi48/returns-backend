@@ -271,13 +271,8 @@ async function createDelhiveryPickup(request) {
 
       await updateOrderTags(request.order_id, ['pickup-scheduled'], []);
 
-      // Immediately create exchange order for exchange/mixed requests
-      if (request.request_type === 'exchange' || request.request_type === 'mixed') {
-        if (!request.exchange_order_id) {
-          const latestReq = (await supabase.from('requests').select('*').eq('req_id', request.req_id).single()).data || request;
-          if (!latestReq.exchange_order_id) await createExchangeOrder(latestReq);
-        }
-      }
+      // Exchange order is created ONLY after pickup scan (when Delhivery confirms pickup)
+      // NOT here — creating AWB does not mean item has been picked up yet
 
       // Append AWB to order note
       try {
@@ -1426,8 +1421,13 @@ app.post('/api/shopify/exchange/:order_id', async (req,res)=>{
   try {
     // Guard: prevent duplicate exchange orders
     if (req_id) {
-      const { data:existReq } = await supabase.from('requests').select('exchange_order_id').eq('req_id',req_id).single();
+      const { data:existReq } = await supabase.from('requests').select('exchange_order_id,status,awb').eq('req_id',req_id).single();
       if (existReq?.exchange_order_id) return res.status(400).json({ error:`Exchange order already exists: ${existReq.exchange_order_id}` });
+      // Block: exchange order must not be created before item is picked up
+      const allowedStatuses = ['picked_up','delivered','refunded','exchange_fulfilled'];
+      if (existReq && !allowedStatuses.includes(existReq.status)) {
+        return res.status(400).json({ error:`Cannot create exchange order yet — item has not been picked up. Current status: ${existReq.status}. Exchange order will be auto-created once Delhivery picks up the return.` });
+      }
     }
     const orig=await shopifyREST('GET',`orders/${order_id}.json?fields=id,email,shipping_address,billing_address,customer`);
     const o=orig?.order; if(!o)return res.status(400).json({ error:'Order not found' });

@@ -1444,10 +1444,18 @@ function renderDetailPanel(o){
       const hasExOrd=(o.requests||[]).some(r=>r.exchange_order_id);
       const activeReq=(o.requests||[]).filter(r=>!['archived','rejected','deleted'].includes(r.status)).slice(-1)[0];
       const hasVariants=(activeReq?.items||[]).some(i=>i.action==='exchange'&&i.exchange_variant_id);
-      const canCreate=!isExFulfilled&&!hasExOrd;
+      const isPickedUp=['picked_up','delivered','refunded','exchange_fulfilled'].includes(activeReq?.status||'');
+      const canCreate=!isExFulfilled&&!hasExOrd&&isPickedUp;
+      const exchSubtitle = isExFulfilled||hasExOrd
+        ? 'Exchange order already created'
+        : !hasVariants
+          ? '⚠️ No variant selected — customer must resubmit with size/product choice'
+          : !isPickedUp
+            ? '⏳ Auto-creates when Delhivery picks up the return'
+            : 'Ready — item has been picked up';
       actions.push(`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0">
         <div><div style="font-weight:700;font-size:13px">${isExFulfilled||hasExOrd?'✓ ':''}🛍️ Create Exchange Order</div>
-        <div style="font-size:12px;color:var(--muted)">${isExFulfilled||hasExOrd?'Exchange order already created':hasVariants?'Create new Shopify draft order':'⚠️ No variant selected — customer must resubmit with size/product choice'}</div></div>
+        <div style="font-size:12px;color:var(--muted)">${exchSubtitle}</div></div>
         ${canCreate&&hasVariants?`<button class="btn btn-sm" style="background:var(--blue);color:#fff" onclick="createExchangeOrder('${esc(o.id)}')">Create Order</button>`:''}
       </div>`);
     }
