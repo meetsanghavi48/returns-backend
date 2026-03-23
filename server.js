@@ -1,10 +1,11 @@
 'use strict';
-const express  = require('express');
-const cors     = require('cors');
-const fetch    = require('node-fetch');
-const path     = require('path');
-const fs       = require('fs');
-const crypto   = require('crypto');
+const express    = require('express');
+const cors       = require('cors');
+const fetch      = require('node-fetch');
+const path       = require('path');
+const fs         = require('fs');
+const crypto     = require('crypto');
+const nodemailer = require('nodemailer');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
@@ -64,6 +65,213 @@ const EASEBUZZ_MID  = process.env.EASEBUZZ_MID  || '';
 const EASEBUZZ_ENV  = process.env.EASEBUZZ_ENV  || 'prod';
 const EASEBUZZ_BASE = EASEBUZZ_ENV === 'test' ? 'https://testpay.easebuzz.in' : 'https://pay.easebuzz.in';
 
+// ══════════════════════════════════════════
+// EMAIL — Gmail SMTP
+// ══════════════════════════════════════════
+const GMAIL_USER     = process.env.GMAIL_USER         || '';
+const GMAIL_PASS     = process.env.GMAIL_APP_PASSWORD || '';
+const SUPPORT_EMAIL  = 'storeblakc@gmail.com';
+
+let _mailer = null;
+function getMailer() {
+  if (!_mailer && GMAIL_USER && GMAIL_PASS) {
+    _mailer = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: GMAIL_USER, pass: GMAIL_PASS }
+    });
+  }
+  return _mailer;
+}
+
+async function sendEmail(to, subject, html) {
+  if (!to || !to.includes('@')) return;
+  const mailer = getMailer();
+  if (!mailer) { console.log('[Email] Not configured, skipping:', subject); return; }
+  try {
+    await mailer.sendMail({ from:`BLAKC Returns <${GMAIL_USER}>`, replyTo:SUPPORT_EMAIL, to, subject, html });
+    console.log(`[Email] ✅ "${subject}" → ${to}`);
+  } catch(e) { console.error('[Email] ❌', e.message); }
+}
+
+function emailBase(content) {
+  const yr = new Date().getFullYear();
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#F3F4F6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif">
+<div style="max-width:560px;margin:0 auto;padding:32px 16px">
+  <div style="background:#000;border-radius:14px 14px 0 0;padding:22px 32px;text-align:center">
+    <div style="color:#fff;font-size:20px;font-weight:800;letter-spacing:3px">BLAKC</div>
+    <div style="color:#777;font-size:10px;letter-spacing:1.5px;margin-top:3px;text-transform:uppercase">Exchange &amp; Returns</div>
+  </div>
+  <div style="background:#fff;padding:32px;border-radius:0 0 14px 14px;border:1px solid #E5E7EB;border-top:none">
+    ${content}
+    <div style="border-top:1px solid #F3F4F6;margin:28px 0 20px"></div>
+    <div style="text-align:center;color:#9CA3AF;font-size:11px;line-height:1.8">
+      For any queries, reply to this email or write to
+      <a href="mailto:${SUPPORT_EMAIL}" style="color:#374151;font-weight:600">${SUPPORT_EMAIL}</a><br>
+      &copy; ${yr} BLAKC &middot; <a href="https://blakc.store" style="color:#9CA3AF">blakc.store</a>
+    </div>
+  </div>
+</div>
+</body></html>`;
+}
+
+// ── Email: 1. Request Received ──
+function emailRequestReceived({ name, orderNumber, reqId, items, refundMethod }) {
+  const itemRows = (items||[]).map(i=>`
+    <tr>
+      <td style="padding:8px 0;border-bottom:1px solid #F3F4F6;font-size:13px;color:#111">${i.title||''}${i.variant_title?' — '+i.variant_title:''}</td>
+      <td style="padding:8px 0;border-bottom:1px solid #F3F4F6;font-size:13px;color:#6B7280;text-align:right;white-space:nowrap">${i.action==='exchange'?'Exchange':'Return'} × ${i.qty||1}</td>
+    </tr>`).join('');
+  const refundLabel = refundMethod==='store_credit' ? 'Store Credit (Gift Card)' : refundMethod==='original' ? 'Original Payment Method' : 'Store Credit';
+  return emailBase(`
+    <div style="margin-bottom:6px">
+      <span style="background:#F0FDF4;color:#15803D;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;letter-spacing:.5px">✓ REQUEST RECEIVED</span>
+    </div>
+    <h2 style="font-size:20px;font-weight:800;color:#111;margin:14px 0 6px">Hi ${name||'there'},</h2>
+    <p style="font-size:14px;color:#4B5563;line-height:1.6;margin:0 0 24px">We've received your return/exchange request for order <strong>#${orderNumber}</strong>. Our team will review it and schedule a pickup shortly.</p>
+    <div style="background:#F9FAFB;border-radius:10px;padding:20px;margin-bottom:24px">
+      <div style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px">Request Details</div>
+      <table style="width:100%;border-collapse:collapse">
+        ${itemRows}
+      </table>
+      <div style="display:flex;justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1px solid #E5E7EB">
+        <span style="font-size:12px;color:#6B7280">Request ID</span>
+        <span style="font-size:12px;font-weight:700;color:#111">${reqId}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:8px">
+        <span style="font-size:12px;color:#6B7280">Refund Method</span>
+        <span style="font-size:12px;font-weight:600;color:#111">${refundLabel}</span>
+      </div>
+    </div>
+    <p style="font-size:13px;color:#6B7280;line-height:1.6;margin:0">You'll receive another email once your pickup is scheduled. Keep your item packed and ready.</p>`);
+}
+
+// ── Email: 2. Pickup Booked ──
+function emailPickupBooked({ name, orderNumber, reqId, awb }) {
+  return emailBase(`
+    <div style="margin-bottom:6px">
+      <span style="background:#EFF6FF;color:#1D4ED8;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;letter-spacing:.5px">🚚 PICKUP BOOKED</span>
+    </div>
+    <h2 style="font-size:20px;font-weight:800;color:#111;margin:14px 0 6px">Pickup Scheduled — #${orderNumber}</h2>
+    <p style="font-size:14px;color:#4B5563;line-height:1.6;margin:0 0 24px">Hi ${name||'there'}, your pickup has been scheduled with Delhivery. Please keep your item ready and packed.</p>
+    <div style="background:#F9FAFB;border-radius:10px;padding:20px;margin-bottom:24px">
+      <div style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:1px;text-transform:uppercase;margin-bottom:14px">Tracking Info</div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:12px;color:#6B7280">Tracking Number</span>
+        <a href="https://www.delhivery.com/track/package/${awb}" style="font-size:13px;font-weight:800;color:#1D4ED8;text-decoration:none">${awb}</a>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:12px;color:#6B7280">Courier Partner</span>
+        <span style="font-size:12px;font-weight:600;color:#111">Delhivery</span>
+      </div>
+      <div style="display:flex;justify-content:space-between">
+        <span style="font-size:12px;color:#6B7280">Request ID</span>
+        <span style="font-size:12px;font-weight:600;color:#111">${reqId}</span>
+      </div>
+    </div>
+    <a href="https://www.delhivery.com/track/package/${awb}" style="display:block;text-align:center;background:#000;color:#fff;text-decoration:none;font-size:13px;font-weight:700;padding:14px;border-radius:10px;margin-bottom:20px;letter-spacing:.3px">Track My Pickup →</a>
+    <p style="font-size:13px;color:#6B7280;line-height:1.6;margin:0">The delivery executive will arrive at your address. Please hand over the packed item when they arrive.</p>`);
+}
+
+// ── Email: 3. In Transit ──
+function emailInTransit({ name, orderNumber, reqId, requestType, exchangeOrderName }) {
+  const isExchange = requestType === 'exchange' || requestType === 'mixed';
+  const exchangeNote = isExchange && exchangeOrderName
+    ? `<div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:16px;margin:20px 0">
+        <div style="font-size:12px;font-weight:700;color:#15803D;margin-bottom:4px">🎉 Exchange Order Created</div>
+        <div style="font-size:13px;color:#166534">Your new item exchange order <strong>${exchangeOrderName}</strong> has been created and will be dispatched once we receive your return.</div>
+       </div>`
+    : isExchange
+    ? `<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;padding:16px;margin:20px 0">
+        <div style="font-size:13px;color:#92400E">Your exchange order will be created and dispatched as soon as we receive your returned item at our warehouse.</div>
+       </div>`
+    : `<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;padding:16px;margin:20px 0">
+        <div style="font-size:13px;color:#92400E">Your refund will be processed as soon as your item is delivered to our warehouse.</div>
+       </div>`;
+  return emailBase(`
+    <div style="margin-bottom:6px">
+      <span style="background:#F5F3FF;color:#6D28D9;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;letter-spacing:.5px">📦 WE HAVE YOUR PACKAGE</span>
+    </div>
+    <h2 style="font-size:20px;font-weight:800;color:#111;margin:14px 0 6px">Package Picked Up — #${orderNumber}</h2>
+    <p style="font-size:14px;color:#4B5563;line-height:1.6;margin:0 0 4px">Hi ${name||'there'}, Delhivery has picked up your package. It is now in transit to our warehouse.</p>
+    ${exchangeNote}
+    <div style="background:#F9FAFB;border-radius:10px;padding:16px;margin-top:4px">
+      <div style="display:flex;justify-content:space-between">
+        <span style="font-size:12px;color:#6B7280">Request ID</span>
+        <span style="font-size:12px;font-weight:600;color:#111">${reqId}</span>
+      </div>
+    </div>`);
+}
+
+// ── Email: 4. Delivered to Warehouse ──
+function emailDelivered({ name, orderNumber, reqId, requestType, refundMethod, giftCardCode, refundAmount }) {
+  const isExchange = requestType === 'exchange' || requestType === 'mixed';
+  const isStoreCredit = refundMethod === 'store_credit';
+  let refundBlock = '';
+  if (!isExchange) {
+    if (isStoreCredit && giftCardCode) {
+      refundBlock = `
+        <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:20px;margin:20px 0;text-align:center">
+          <div style="font-size:12px;font-weight:700;color:#15803D;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">🎁 Your Store Credit Code</div>
+          <div style="font-size:22px;font-weight:900;color:#111;letter-spacing:3px;font-family:monospace;background:#fff;border:1.5px dashed #86EFAC;border-radius:8px;padding:12px 20px;display:inline-block">${giftCardCode}</div>
+          <div style="font-size:12px;color:#4B5563;margin-top:10px">₹${refundAmount} credit — use at <a href="https://blakc.store" style="color:#15803D">blakc.store</a></div>
+        </div>`;
+    } else {
+      refundBlock = `
+        <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:16px;margin:20px 0">
+          <div style="font-size:13px;color:#166534;line-height:1.6">Your refund will be processed by tomorrow and will reflect in your source account within <strong>5 working days</strong>.</div>
+        </div>`;
+    }
+  } else {
+    refundBlock = `
+      <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:16px;margin:20px 0">
+        <div style="font-size:13px;color:#1E40AF;line-height:1.6">Your exchange order is being dispatched. You'll receive a shipping confirmation once it's on its way.</div>
+      </div>`;
+  }
+  return emailBase(`
+    <div style="margin-bottom:6px">
+      <span style="background:#F0FDF4;color:#15803D;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;letter-spacing:.5px">✅ RECEIVED AT WAREHOUSE</span>
+    </div>
+    <h2 style="font-size:20px;font-weight:800;color:#111;margin:14px 0 6px">We've Received Your Item — #${orderNumber}</h2>
+    <p style="font-size:14px;color:#4B5563;line-height:1.6;margin:0 0 4px">Hi ${name||'there'}, your returned item has been delivered to our warehouse and is being inspected.</p>
+    ${refundBlock}
+    <div style="background:#F9FAFB;border-radius:10px;padding:16px">
+      <div style="display:flex;justify-content:space-between">
+        <span style="font-size:12px;color:#6B7280">Request ID</span>
+        <span style="font-size:12px;font-weight:600;color:#111">${reqId}</span>
+      </div>
+    </div>`);
+}
+
+// ── Email: 5. Refund Processed ──
+function emailRefundProcessed({ name, orderNumber, reqId, amount, method }) {
+  const isStoreCredit = method === 'store_credit';
+  return emailBase(`
+    <div style="margin-bottom:6px">
+      <span style="background:#F0FDF4;color:#15803D;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;letter-spacing:.5px">💰 REFUND PROCESSED</span>
+    </div>
+    <h2 style="font-size:20px;font-weight:800;color:#111;margin:14px 0 6px">Refund of ₹${parseFloat(amount||0).toFixed(0)} Initiated</h2>
+    <p style="font-size:14px;color:#4B5563;line-height:1.6;margin:0 0 24px">Hi ${name||'there'}, your refund for order <strong>#${orderNumber}</strong> has been processed successfully.</p>
+    <div style="background:#F9FAFB;border-radius:10px;padding:20px;margin-bottom:24px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:12px;color:#6B7280">Refund Amount</span>
+        <span style="font-size:16px;font-weight:900;color:#15803D">₹${parseFloat(amount||0).toFixed(0)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:12px;color:#6B7280">Refund Method</span>
+        <span style="font-size:12px;font-weight:600;color:#111">${isStoreCredit ? 'Store Credit (Gift Card)' : 'Original Payment Method'}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between">
+        <span style="font-size:12px;color:#6B7280">Request ID</span>
+        <span style="font-size:12px;font-weight:600;color:#111">${reqId}</span>
+      </div>
+    </div>
+    ${isStoreCredit
+      ? `<p style="font-size:13px;color:#6B7280;line-height:1.6;margin:0">Your store credit gift card has been issued. Use it on your next order at <a href="https://blakc.store" style="color:#374151;font-weight:600">blakc.store</a>.</p>`
+      : `<p style="font-size:13px;color:#6B7280;line-height:1.6;margin:0">The amount will reflect in your source account within <strong>5 working days</strong> depending on your bank.</p>`
+    }`);
+}
+
 function ebHash(p) {
   const str = [p.key,p.txnid,p.amount,p.productinfo,p.firstname,p.email,
     p.udf1||'',p.udf2||'',p.udf3||'',p.udf4||'',p.udf5||'',
@@ -77,11 +285,12 @@ function ebVerify(p) {
   return crypto.createHash('sha512').update(str).digest('hex');
 }
 
-let RETURN_WINDOW_DAYS = parseInt(process.env.RETURN_WINDOW_DAYS) || 30;
-const STORE_CREDIT_BONUS = 0; // No bonus — store credit = exact refund amount
+let RETURN_WINDOW_DAYS   = parseInt(process.env.RETURN_WINDOW_DAYS) || 10;
+let EXCHANGE_WINDOW_DAYS = parseInt(process.env.EXCHANGE_WINDOW_DAYS) || 10;
+const STORE_CREDIT_BONUS = 0;
 let RESTOCKING_FEE_PCT   = parseFloat(process.env.RESTOCKING_FEE_PCT) || 0;
-const RETURN_SHIPPING_FEE = parseFloat(process.env.RETURN_SHIPPING_FEE) || 100; // ₹100 deducted for original payment
-let WAREHOUSE_CONFIG   = {
+const RETURN_SHIPPING_FEE = parseFloat(process.env.RETURN_SHIPPING_FEE) || 100;
+let WAREHOUSE_CONFIG = {
   name:    process.env.WAREHOUSE_NAME    || 'Blakc',
   address: process.env.WAREHOUSE_ADDRESS || '',
   city:    process.env.WAREHOUSE_CITY    || '',
@@ -89,6 +298,20 @@ let WAREHOUSE_CONFIG   = {
   pincode: process.env.WAREHOUSE_PINCODE || '',
   phone:   process.env.WAREHOUSE_PHONE   || ''
 };
+
+// Load persisted settings from Supabase on startup (overrides env defaults)
+async function loadPersistedSettings() {
+  try {
+    const { data } = await supabase.from('settings').select('value').eq('key','app_settings').single();
+    if (!data?.value) return;
+    const s = data.value;
+    if (s.return_window_days   != null) RETURN_WINDOW_DAYS   = parseInt(s.return_window_days);
+    if (s.exchange_window_days != null) EXCHANGE_WINDOW_DAYS = parseInt(s.exchange_window_days);
+    if (s.restocking_fee_pct   != null) RESTOCKING_FEE_PCT   = parseFloat(s.restocking_fee_pct);
+    if (s.warehouse)                    WAREHOUSE_CONFIG      = { ...WAREHOUSE_CONFIG, ...s.warehouse };
+    console.log(`[Settings] Loaded from DB — ReturnWindow:${RETURN_WINDOW_DAYS}d ExchangeWindow:${EXCHANGE_WINDOW_DAYS}d`);
+  } catch(e) { console.log('[Settings] Using defaults:', e.message); }
+}
 
 console.log(`[Boot] Token:${!!ACCESS_TOKEN} Shop:${SHOP_DOMAIN||'none'}`);
 
@@ -268,6 +491,13 @@ async function createDelhiveryPickup(request) {
         status: 'pickup_scheduled',
         pickup_created_at: new Date().toISOString()
       }).eq('req_id', request.req_id);
+
+      // Email 2: Pickup booked
+      if (request.customer_email) {
+        sendEmail(request.customer_email, `Pickup Scheduled — Order #${request.order_number}`,
+          emailPickupBooked({ name:(request.customer_name||'').split(' ')[0], orderNumber:request.order_number, reqId:request.req_id, awb:waybill }))
+          .catch(()=>{});
+      }
 
       await updateOrderTags(request.order_id, ['pickup-scheduled'], []);
 
@@ -1017,12 +1247,15 @@ app.post('/api/returns/request', async (req,res)=>{
     }
   }
   try {
-    const fresh=await shopifyREST('GET',`orders/${order_id}.json?fields=created_at,tags,note,payment_gateway,customer,line_items,shipping_address`);
+    const fresh=await shopifyREST('GET',`orders/${order_id}.json?fields=created_at,tags,note,payment_gateway,customer,line_items,shipping_address,email,phone`);
     const fo=fresh?.order||{};
     const days_since_order=fo.created_at?Math.floor((Date.now()-new Date(fo.created_at))/(1000*60*60*24)):0;
     const is_cod=(()=>{ const gw=(fo.payment_gateway||'').toLowerCase(); return gw.includes('cod')||gw.includes('cash on delivery')||gw==='cash_on_delivery'; })();
     const existTags=(fo.tags||'').split(',').map(t=>t.trim()).filter(Boolean);
     const existNote=fo.note||'';
+    const sa=fo.shipping_address||{};
+    const customer_name  = fo.customer ? `${fo.customer.first_name||''} ${fo.customer.last_name||''}`.trim() : sa.name||'Customer';
+    const customer_email = fo.email||fo.customer?.email||'';
 
     // ── CHECK: Existing request with no AWB yet (combine into one) ──
     const { data:existingReqs } = await supabase.from('requests')
@@ -1108,11 +1341,16 @@ app.post('/api/returns/request', async (req,res)=>{
     const upd=await shopifyREST('PUT',`orders/${order_id}.json`,{ order:{ id:order_id,tags:newTags.join(', '),note:newNote } });
     if (!upd.order) return res.status(400).json({ error:'Failed to update order',detail:upd });
 
-    const requestRecord={ req_id, req_num:reqNum, order_id:String(order_id), order_number:String(order_number), items:finalItems, refund_method, shipping_preference:'pickup', status:'pending', request_type, total_price, address:finalAddress, is_cod, days_since_order, submitted_at:new Date().toISOString() };
+    const requestRecord={ req_id, req_num:reqNum, order_id:String(order_id), order_number:String(order_number), items:finalItems, refund_method, shipping_preference:'pickup', status:'pending', request_type, total_price, address:finalAddress, is_cod, days_since_order, customer_name, customer_email, submitted_at:new Date().toISOString() };
     const { error:ie } = await supabase.from('requests').insert(requestRecord);
     if (ie) console.error('[Insert]', ie.message);
 
     await auditLog(order_id, req_id, 'request_submitted', 'customer', `${request_type}|${finalItems.length}items`);
+
+    // Email 1: Request received
+    sendEmail(customer_email, `Return Request Received — Order #${order_number}`,
+      emailRequestReceived({ name:customer_name.split(' ')[0], orderNumber:order_number, reqId:req_id, items:finalItems, refundMethod:refund_method }))
+      .catch(()=>{});
 
     // Auto-approve synchronously
     await autoApproveRequest(req_id, order_id, request_type);
@@ -1585,15 +1823,16 @@ app.get('/api/audit', async (req,res)=>{
 // ══════════════════════════════════════════
 // SETTINGS
 // ══════════════════════════════════════════
-app.get('/api/settings', (_req,res)=>res.json({ return_window_days:RETURN_WINDOW_DAYS,restocking_fee_pct:RESTOCKING_FEE_PCT,warehouse:WAREHOUSE_CONFIG,delhivery:{ configured:!!DELHIVERY_TOKEN,warehouse:DELHIVERY_WAREHOUSE,mode:'production' } }));
+app.get('/api/settings', (_req,res)=>res.json({ return_window_days:RETURN_WINDOW_DAYS, exchange_window_days:EXCHANGE_WINDOW_DAYS, restocking_fee_pct:RESTOCKING_FEE_PCT, warehouse:WAREHOUSE_CONFIG, delhivery:{ configured:!!DELHIVERY_TOKEN, warehouse:DELHIVERY_WAREHOUSE, mode:'production' } }));
 app.post('/api/settings', async (req,res)=>{
-  const { return_window_days,store_credit_bonus,restocking_fee_pct,warehouse }=req.body;
-  if (return_window_days!==undefined)RETURN_WINDOW_DAYS=parseInt(return_window_days);
-  // store_credit_bonus removed
-  if (restocking_fee_pct!==undefined)RESTOCKING_FEE_PCT=parseFloat(restocking_fee_pct);
-  if (warehouse)WAREHOUSE_CONFIG={...WAREHOUSE_CONFIG,...warehouse};
-  await supabase.from('settings').upsert({ key:'app_settings',value:{ return_window_days:RETURN_WINDOW_DAYS,store_credit_bonus:STORE_CREDIT_BONUS,restocking_fee_pct:RESTOCKING_FEE_PCT,warehouse:WAREHOUSE_CONFIG } });
-  res.json({ success:true });
+  const { return_window_days, exchange_window_days, restocking_fee_pct, warehouse } = req.body;
+  if (return_window_days   != null) RETURN_WINDOW_DAYS   = parseInt(return_window_days);
+  if (exchange_window_days != null) EXCHANGE_WINDOW_DAYS = parseInt(exchange_window_days);
+  if (restocking_fee_pct   != null) RESTOCKING_FEE_PCT   = parseFloat(restocking_fee_pct);
+  if (warehouse) WAREHOUSE_CONFIG = { ...WAREHOUSE_CONFIG, ...warehouse };
+  await supabase.from('settings').upsert({ key:'app_settings', value:{ return_window_days:RETURN_WINDOW_DAYS, exchange_window_days:EXCHANGE_WINDOW_DAYS, restocking_fee_pct:RESTOCKING_FEE_PCT, warehouse:WAREHOUSE_CONFIG } });
+  console.log(`[Settings] Saved — ReturnWindow:${RETURN_WINDOW_DAYS}d ExchangeWindow:${EXCHANGE_WINDOW_DAYS}d`);
+  res.json({ success:true, return_window_days:RETURN_WINDOW_DAYS, exchange_window_days:EXCHANGE_WINDOW_DAYS });
 });
 
 app.get('/api/delhivery/config',  (_req,res)=>res.json({ configured:!!DELHIVERY_TOKEN,warehouse:DELHIVERY_WAREHOUSE,mode:'production' }));
@@ -1730,16 +1969,25 @@ async function pollTracking() {
             // StatusType 'PU' covers all pickup scan events from Delhivery
             const isPickup = statusType==='PU' || statusCode==='EOD-77' || statusCode==='X-UCI-PU' || statusCode==='PKT-AR';
             if (isPickup && !['picked_up','delivered','refunded','exchange_fulfilled','archived'].includes(request.status)) {
+              // Email 3: In transit — sent after exchange order is created (a few lines below)
               await updateOrderTags(request.order_id,['pickup-scan'],['pickup-scheduled']);
               await supabase.from('requests').update({ status:'picked_up' }).eq('req_id',request.req_id);
               await auditLog(request.order_id,request.req_id,'carrier_pickup','poll',`AWB ${waybill} code:${statusCode}`);
               // Create exchange order on pickup for exchange/mixed — keep status as picked_up
               // (exchange_fulfilled is only set on warehouse delivery, so the delivery block still runs)
+              let pickedUpExchName = null;
               if (request.request_type==='exchange'||request.request_type==='mixed') {
                 const latestReq = (await supabase.from('requests').select('*').eq('req_id',request.req_id).single()).data||request;
                 if (!latestReq.exchange_order_id) {
                   await createExchangeOrder(latestReq);
                 }
+                pickedUpExchName = latestReq.exchange_order_name || null;
+              }
+              // Email 3: In transit
+              if (request.customer_email) {
+                sendEmail(request.customer_email, `We've Picked Up Your Package — Order #${request.order_number}`,
+                  emailInTransit({ name:(request.customer_name||'').split(' ')[0], orderNumber:request.order_number, reqId:request.req_id, requestType:request.request_type, exchangeOrderName:pickedUpExchName }))
+                  .catch(()=>{});
               }
             }
 
@@ -1762,22 +2010,41 @@ async function pollTracking() {
               await auditLog(request.order_id, request.req_id, 'carrier_delivered', 'poll', `AWB ${waybill} code:${statusCode}`);
 
               const latestReq = (await supabase.from('requests').select('*').eq('req_id',request.req_id).single()).data || request;
+              const custEmail  = latestReq.customer_email || '';
+              const custFirst  = (latestReq.customer_name||'').split(' ')[0] || '';
+
+              // Email 4: Delivered to warehouse
+              if (custEmail) {
+                sendEmail(custEmail, `We've Received Your Item — Order #${latestReq.order_number}`,
+                  emailDelivered({ name:custFirst, orderNumber:latestReq.order_number, reqId:latestReq.req_id, requestType:latestReq.request_type, refundMethod:latestReq.refund_method }))
+                  .catch(()=>{});
+              }
 
               if (latestReq.request_type==='return') {
-                try { await processRefund(latestReq); } catch(refErr) { console.error('[Poll refund]',refErr.message); }
+                let refundResult = null;
+                try { refundResult = await processRefund(latestReq); } catch(refErr) { console.error('[Poll refund]',refErr.message); }
                 await supabase.from('requests').update({ status:'refunded' }).eq('req_id',request.req_id);
-                // Always push return-refunded tag — even if processRefund API call failed
                 await updateOrderTags(request.order_id,['return-refunded'],['return-approved','return-requested','return-received','pickup-scan']);
+                // Email 5: Refund processed
+                if (custEmail && refundResult) {
+                  sendEmail(custEmail, `Refund Processed — Order #${latestReq.order_number}`,
+                    emailRefundProcessed({ name:custFirst, orderNumber:latestReq.order_number, reqId:latestReq.req_id, amount:refundResult.amount, method:refundResult.method }))
+                    .catch(()=>{});
+                }
               } else if (latestReq.request_type==='exchange') {
                 await supabase.from('requests').update({ status:'exchange_fulfilled' }).eq('req_id',request.req_id);
                 await updateOrderTags(request.order_id,['exchange-fulfilled'],['exchange-approved','exchange-requested','pickup-scan']);
               } else if (latestReq.request_type==='mixed') {
-                // Exchange order should already exist (created on pickup), create if somehow missing
                 if (!latestReq.exchange_order_id) await createExchangeOrder(latestReq);
-                // Process balance refund for the return items in a mixed request
-                try { await processRefund(latestReq); } catch(refErr) { console.error('[Poll mixed refund]',refErr.message); }
+                let refundResult = null;
+                try { refundResult = await processRefund(latestReq); } catch(refErr) { console.error('[Poll mixed refund]',refErr.message); }
                 await supabase.from('requests').update({ status:'exchange_fulfilled' }).eq('req_id',request.req_id);
                 await updateOrderTags(request.order_id,['exchange-fulfilled'],['mixed-approved','mixed-requested','pickup-scan']);
+                if (custEmail && refundResult) {
+                  sendEmail(custEmail, `Refund Processed — Order #${latestReq.order_number}`,
+                    emailRefundProcessed({ name:custFirst, orderNumber:latestReq.order_number, reqId:latestReq.req_id, amount:refundResult.amount, method:refundResult.method }))
+                    .catch(()=>{});
+                }
               }
 
               // Archive immediately on warehouse delivery
@@ -1957,4 +2224,6 @@ app.get('/api/payments/status/:txnid', async (req,res)=>{
 });
 
 const PORT=process.env.PORT||3000;
-app.listen(PORT,()=>console.log(`[Server] ✅ Returns Manager v4 on :${PORT} | Auth:${!!ACCESS_TOKEN} | Shop:${SHOP_DOMAIN||'none'}`));
+loadPersistedSettings().then(()=>{
+  app.listen(PORT,()=>console.log(`[Server] ✅ Returns Manager v4 on :${PORT} | Auth:${!!ACCESS_TOKEN} | Shop:${SHOP_DOMAIN||'none'} | ReturnWindow:${RETURN_WINDOW_DAYS}d`));
+});

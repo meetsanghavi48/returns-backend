@@ -1870,6 +1870,7 @@ async function loadSettings(){
   try{
     const s=await fetch(BACKEND+'/api/settings').then(r=>r.json());
     if(s.return_window_days)document.getElementById('set-window').value=s.return_window_days;
+    if(s.exchange_window_days)document.getElementById('set-exch-window').value=s.exchange_window_days;
     
     if(s.restocking_fee_pct!==undefined)document.getElementById('set-restock').value=s.restocking_fee_pct;
     if(s.warehouse){
@@ -1894,7 +1895,7 @@ async function loadSettings(){
 async function saveSettings(){
   const body={
     return_window_days:parseInt(document.getElementById('set-window').value),
-    // store_credit_bonus removed,
+    exchange_window_days:parseInt(document.getElementById('set-exch-window').value),
     restocking_fee_pct:parseFloat(document.getElementById('set-restock').value),
     warehouse:{name:document.getElementById('set-wh-name').value,address:document.getElementById('set-wh-addr').value,city:document.getElementById('set-wh-city').value,state:document.getElementById('set-wh-state').value,pincode:document.getElementById('set-wh-pin').value,phone:document.getElementById('set-wh-phone').value}
   };
