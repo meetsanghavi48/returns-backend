@@ -603,29 +603,27 @@ async function processRefund(request) {
       return null;
     }
 
-    // 2. Check Shopify — compare already-refunded amount vs expected
-    const fo = await shopifyREST('GET',`orders/${request.order_id}.json?fields=line_items,financial_status,refunds`);
-    const existingRefunds = fo?.order?.refunds || [];
-    // Sum all previous refund transactions for this order
-    const alreadyRefunded = existingRefunds.reduce((sum, r) => {
-      const txAmt = (r.transactions||[]).reduce((s,t)=> s + parseFloat(t.amount||0), 0);
-      return sum + txAmt;
-    }, 0);
-    // Expected refund = sum of return item prices
-    const expectedAmt = returnItems.reduce((s,i)=> s + parseFloat(i.price||0)*(parseInt(i.qty)||1), 0);
-    const afterFees = Math.max(0, expectedAmt - (RETURN_SHIPPING_FEE||0));
-    if (alreadyRefunded > 0 && Math.abs(alreadyRefunded - afterFees) < 2) {
-      console.log(`[Refund] SKIP — already refunded on Shopify: ₹${alreadyRefunded} ≈ expected ₹${afterFees} for ${request.req_id}`);
-      // Mark as refunded in our DB so we don't re-check next time
-      await supabase.from('requests').update({ status:'refunded', refund_amount:alreadyRefunded }).eq('req_id',request.req_id);
-      return null;
-    }
-
+    // 2. Check Shopify — use refundable_quantity on each line item
+    // If all return items have refundable_quantity = 0, they're already fully refunded
+    const fo = await shopifyREST('GET',`orders/${request.order_id}.json?fields=line_items,financial_status`);
     const lines = fo?.order?.line_items||[];
     if (!lines.length) return null;
 
     const returnIds = returnItems.map(i=>String(i.id)).filter(Boolean);
     const useLines  = returnIds.length ? lines.filter(li=>returnIds.includes(String(li.id))) : lines;
+
+    // Shopify refundable_quantity check — if every return line item has 0 refundable quantity, already refunded
+    const allAlreadyRefunded = useLines.length > 0 && useLines.every(li => {
+      const reqItem = returnItems.find(i=>String(i.id)===String(li.id));
+      const wantQty = parseInt(reqItem?.qty) || li.quantity;
+      const refundable = parseInt(li.refundable_quantity ?? li.quantity);
+      return refundable < wantQty; // less than what we want to refund = partially or fully done
+    });
+    if (allAlreadyRefunded) {
+      console.log(`[Refund] SKIP — Shopify refundable_quantity=0 for all return items in ${request.req_id}`);
+      await supabase.from('requests').update({ status:'refunded' }).eq('req_id',request.req_id);
+      return null;
+    }
 
     // Fetch primary location for restocking (Shopify requires location_id with restock_type:'return')
     let locationId = null;
