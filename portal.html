@@ -979,8 +979,10 @@ function renderOrder() {
       .flatMap(r => (r.items||[]).map(it => String(it.id)))
   );
   // Keep absolute line_items indices so buildQueue can do o.line_items[idx] correctly
-  const eligibleItems = (o.line_items||[]).reduce((acc,li,i)=>{ if(!li.non_returnable&&!alreadyReqIds.has(String(li.id)))acc.push({item:li,idx:i}); return acc; },[]);
-  const nonRetItems   = (o.line_items||[]).filter(li => li.non_returnable);
+  const NON_RETURNABLE_KEYWORDS = ['watch','wallet'];
+  const isNonReturnable = (li) => li.non_returnable || NON_RETURNABLE_KEYWORDS.some(kw => (li.title||'').toLowerCase().includes(kw));
+  const eligibleItems = (o.line_items||[]).reduce((acc,li,i)=>{ if(!isNonReturnable(li)&&!alreadyReqIds.has(String(li.id)))acc.push({item:li,idx:i}); return acc; },[]);
+  const nonRetItems   = (o.line_items||[]).filter(li => isNonReturnable(li));
   const alreadyItems  = (o.line_items||[]).filter(li => alreadyReqIds.has(String(li.id)));
 
   // Purge any S.checked entries that are no longer eligible (e.g. already requested in a previous session)
