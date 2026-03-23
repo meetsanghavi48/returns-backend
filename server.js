@@ -68,7 +68,7 @@ const EASEBUZZ_BASE = EASEBUZZ_ENV === 'test' ? 'https://testpay.easebuzz.in' : 
 // ══════════════════════════════════════════
 // EMAIL — Gmail SMTP
 // ══════════════════════════════════════════
-const GMAIL_USER     = process.env.GMAIL_USER         || '';
+const GMAIL_USER     = process.env.GMAIL_USER         || 'storeblakc@gmail.com';
 const GMAIL_PASS     = process.env.GMAIL_APP_PASSWORD || '';
 const SUPPORT_EMAIL  = 'storeblakc@gmail.com';
 
@@ -595,7 +595,32 @@ async function processRefund(request) {
     const returnItems = (request.items||[]).filter(i=>i.action==='return');
     if (!returnItems.length) return null;
 
-    const fo    = await shopifyREST('GET',`orders/${request.order_id}.json?fields=line_items,financial_status`);
+    // ── DOUBLE-REFUND GUARD ──
+    // 1. Check our DB — if already refunded, skip
+    const { data:dbReq } = await supabase.from('requests').select('status,refund_id,refund_amount').eq('req_id',request.req_id).single();
+    if (dbReq?.status === 'refunded' || dbReq?.refund_id) {
+      console.log(`[Refund] SKIP — already refunded (DB): ${request.req_id} refund_id:${dbReq.refund_id} amount:${dbReq.refund_amount}`);
+      return null;
+    }
+
+    // 2. Check Shopify — compare already-refunded amount vs expected
+    const fo = await shopifyREST('GET',`orders/${request.order_id}.json?fields=line_items,financial_status,refunds`);
+    const existingRefunds = fo?.order?.refunds || [];
+    // Sum all previous refund transactions for this order
+    const alreadyRefunded = existingRefunds.reduce((sum, r) => {
+      const txAmt = (r.transactions||[]).reduce((s,t)=> s + parseFloat(t.amount||0), 0);
+      return sum + txAmt;
+    }, 0);
+    // Expected refund = sum of return item prices
+    const expectedAmt = returnItems.reduce((s,i)=> s + parseFloat(i.price||0)*(parseInt(i.qty)||1), 0);
+    const afterFees = Math.max(0, expectedAmt - (RETURN_SHIPPING_FEE||0));
+    if (alreadyRefunded > 0 && Math.abs(alreadyRefunded - afterFees) < 2) {
+      console.log(`[Refund] SKIP — already refunded on Shopify: ₹${alreadyRefunded} ≈ expected ₹${afterFees} for ${request.req_id}`);
+      // Mark as refunded in our DB so we don't re-check next time
+      await supabase.from('requests').update({ status:'refunded', refund_amount:alreadyRefunded }).eq('req_id',request.req_id);
+      return null;
+    }
+
     const lines = fo?.order?.line_items||[];
     if (!lines.length) return null;
 
