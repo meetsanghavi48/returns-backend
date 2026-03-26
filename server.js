@@ -1253,22 +1253,8 @@ app.post('/api/returns/request', async (req,res)=>{
   const { order_id, order_number, items, refund_method, customer_note, address, shipping_preference, payment_txnid, payment_status } = req.body;
   if (!order_id||!items?.length) return res.status(400).json({ error:'Missing required fields' });
 
-  // Block exchange requests that have a price difference but no confirmed payment
-  const totalPriceDiff = (items||[]).reduce((sum,i)=>{
-    const diff = parseFloat(i.price_diff||0);
-    return sum + (diff > 0 ? diff : 0);
-  }, 0);
-  if (totalPriceDiff > 0.5 && payment_status !== 'paid') {
-    // Verify payment actually exists in DB
-    if (payment_txnid) {
-      const { data:pmnt } = await supabase.from('payments').select('status').eq('txnid',payment_txnid).single();
-      if (!pmnt || pmnt.status !== 'paid') {
-        return res.status(402).json({ error:`Payment of ₹${Math.round(totalPriceDiff)} required to complete this exchange.`, payment_required:true });
-      }
-    } else {
-      return res.status(402).json({ error:`Payment of ₹${Math.round(totalPriceDiff)} required to complete this exchange.`, payment_required:true });
-    }
-  }
+  // Payment enforcement removed — handled client-side via Easebuzz portal flow
+  // Re-enable once Easebuzz is confirmed live and payments table exists in Supabase
   try {
     const fresh=await shopifyREST('GET',`orders/${order_id}.json?fields=created_at,tags,note,payment_gateway,customer,line_items,shipping_address,email,phone`);
     const fo=fresh?.order||{};
