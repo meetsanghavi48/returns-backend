@@ -20,6 +20,12 @@ create table if not exists requests (
   is_cod                boolean default false,
   days_since_order      integer default 0,
 
+  -- Customer info
+  customer_name         text,
+  customer_email        text,
+  customer_phone        text,
+  customer_id           text,
+
   -- AWB / Tracking
   awb                   text,
   awb_status            text,
