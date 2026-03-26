@@ -724,16 +724,26 @@ async function loadOrders() {
   try {
     const wrap = document.getElementById('ret-table-wrap');
     if (wrap) wrap.innerHTML = '<div class="empty"><div class="empty-ico">⏳</div><div class="empty-title">Loading…</div></div>';
-    const data = await fetch(BACKEND+'/api/orders').then(r=>r.json());
-    if (data.error) { showError('Failed to load', data.error); return; }
+    const resp = await fetch(BACKEND+'/api/orders');
+    const data = await resp.json().catch(()=>({error:'Server returned non-JSON (status '+resp.status+')'}));
+    if (data.error) {
+      console.error('[loadOrders] API error:', data.error);
+      showError('Failed to load orders', data.error);
+      if (wrap) wrap.innerHTML = '<div class="empty"><div class="empty-ico">⚠️</div><div class="empty-title">Load failed</div><div class="empty-sub" style="font-size:12px;color:#ef4444">'+esc(data.error)+'</div></div>';
+      return;
+    }
     ALL_ORDERS = data.orders || [];
+    console.log('[loadOrders] Loaded', ALL_ORDERS.length, 'orders,', ALL_ORDERS.filter(o=>o.return_status).length, 'with requests');
     updateStats();
     switchTab(CURRENT_TAB);
     renderExchanges();
     renderAllOrders();
     const shopEl = document.getElementById('shop-name');
     if (shopEl && data.shop) shopEl.textContent = data.shop;
-  } catch(e) { showError('Connection error', e.message); }
+  } catch(e) {
+    console.error('[loadOrders] Exception:', e.message);
+    showError('Connection error', e.message);
+  }
 }
 
 function syncOrders() { loadOrders(); showToast('Syncing…','ok'); }
