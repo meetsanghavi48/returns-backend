@@ -731,13 +731,99 @@ async function archiveRequest(req_id, order_id) {
 // ══════════════════════════════════════════
 // STATIC FRONTEND
 // ══════════════════════════════════════════
-app.get('/dashboard', (_req,res)=>{ const f=path.join(__dirname,'index.html'); fs.existsSync(f)?res.sendFile(f):res.send('<h2>Upload index.html</h2>'); });
+// ══════════════════════════════════════════
+// ADMIN AUTH  (dashboard only — portal is public)
+// ══════════════════════════════════════════
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'blakc2024';
+const AUTH_SECRET    = process.env.AUTH_SECRET    || crypto.randomBytes(32).toString('hex');
+
+function signToken(val) {
+  return val + '.' + crypto.createHmac('sha256', AUTH_SECRET).update(val).digest('hex');
+}
+function verifyToken(token) {
+  if (!token) return false;
+  const [val, sig] = token.split('.');
+  if (!val || !sig) return false;
+  const expected = crypto.createHmac('sha256', AUTH_SECRET).update(val).digest('hex');
+  return crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected)) && val === 'admin';
+}
+function parseCookies(req) {
+  const list = {};
+  (req.headers.cookie || '').split(';').forEach(c => {
+    const [k, ...v] = c.trim().split('=');
+    if (k) list[k.trim()] = decodeURIComponent(v.join('='));
+  });
+  return list;
+}
+function requireAdmin(req, res, next) {
+  const token = parseCookies(req)['_blakc_admin'];
+  if (verifyToken(token)) return next();
+  res.redirect('/admin/login?next=' + encodeURIComponent(req.url));
+}
+
+// Login page
+app.get('/admin/login', (req, res) => {
+  const err = req.query.err ? '<p style="color:#ef4444;font-size:13px;margin-bottom:12px">Incorrect password. Try again.</p>' : '';
+  res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BLAKC Admin Login</title>
+  <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,sans-serif;background:#0a0a0a;display:flex;align-items:center;justify-content:center;min-height:100vh}
+  .card{background:#fff;border-radius:16px;padding:40px 36px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+  .logo{font-size:24px;font-weight:900;letter-spacing:2px;color:#0a0a0a;text-align:center;margin-bottom:6px}
+  .sub{font-size:12px;color:#9ca3af;text-align:center;margin-bottom:28px;text-transform:uppercase;letter-spacing:1px}
+  label{font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:6px}
+  input{width:100%;padding:11px 14px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;transition:.15s}
+  input:focus{border-color:#0a0a0a}
+  button{width:100%;padding:12px;background:#0a0a0a;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-top:16px;transition:.15s}
+  button:hover{background:#1f2937}</style></head>
+  <body><div class="card">
+    <div class="logo">BLAKC</div>
+    <div class="sub">Returns Manager</div>
+    ${err}
+    <form method="POST" action="/admin/login">
+      <input type="hidden" name="next" value="${req.query.next||'/dashboard'}">
+      <label>Password</label>
+      <input type="password" name="password" autofocus placeholder="Enter admin password">
+      <button type="submit">Sign In →</button>
+    </form>
+  </div></body></html>`);
+});
+
+app.use(express.urlencoded({ extended: false }));
+
+app.post('/admin/login', (req, res) => {
+  const { password, next } = req.body;
+  if (password === ADMIN_PASSWORD) {
+    const token = signToken('admin');
+    res.setHeader('Set-Cookie', `_blakc_admin=${encodeURIComponent(token)};Path=/;HttpOnly;SameSite=Strict;Max-Age=86400`);
+    res.redirect(next || '/dashboard');
+  } else {
+    res.redirect('/admin/login?err=1&next=' + encodeURIComponent(next||'/dashboard'));
+  }
+});
+
+app.get('/admin/logout', (_req, res) => {
+  res.setHeader('Set-Cookie', '_blakc_admin=;Path=/;HttpOnly;Max-Age=0');
+  res.redirect('/admin/login');
+});
+
+// Protected dashboard — portal stays public (customers use it)
+app.get('/dashboard', requireAdmin, (_req,res)=>{ const f=path.join(__dirname,'index.html'); fs.existsSync(f)?res.sendFile(f):res.send('<h2>Upload index.html</h2>'); });
 app.get('/portal',    (_req,res)=>{ const f=path.join(__dirname,'portal.html'); fs.existsSync(f)?res.sendFile(f):res.send('<h2>Upload portal.html</h2>'); });
 app.get('/',          (_req,res)=>res.redirect('/dashboard'));
 
 // ══════════════════════════════════════════
 // AUTH
 // ══════════════════════════════════════════
+// Public API routes (portal-facing — no admin auth needed)
+const PUBLIC_API = ['/api/lookup','/api/returns/request','/api/portal/','/api/payments/'];
+app.use('/api', (req, res, next) => {
+  const isPublic = PUBLIC_API.some(p => req.path.startsWith(p.replace('/api','')));
+  if (isPublic) return next();
+  const token = parseCookies(req)['_blakc_admin'];
+  if (verifyToken(token)) return next();
+  res.status(401).json({ error:'Unauthorized' });
+});
+
 app.get('/api/status', (_req,res)=>res.json({ connected:!!ACCESS_TOKEN, shop:SHOP_DOMAIN||null, return_window:RETURN_WINDOW_DAYS, store_credit_bonus:STORE_CREDIT_BONUS }));
 
 // ── DEBUG LOOKUP (remove after testing) ──
