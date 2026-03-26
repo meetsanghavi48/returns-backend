@@ -973,6 +973,109 @@ app.get('/api/debug/trigger-pickup/:req_id', async (req,res)=>{
     });
   } catch(e) { res.status(500).json({ error:e.message }); }
 });
+// ══════════════════════════════════════════
+// MIGRATION: backfill requests from Shopify notes → Supabase
+// GET /api/migrate/from-notes  — safe to run multiple times (skips existing req_ids)
+// ══════════════════════════════════════════
+app.get('/api/migrate/from-notes', async (_req, res) => {
+  try {
+    // Load all existing req_ids from Supabase so we skip them
+    const { data: existing } = await supabase.from('requests').select('req_id');
+    const existingIds = new Set((existing||[]).map(r => r.req_id));
+
+    // Fetch all orders with return-related tags (paginate through all pages)
+    const returnTags = ['return-requested','exchange-requested','mixed-requested','return-approved','exchange-approved','return-refunded','exchange-fulfilled','pickup-scheduled'];
+    let allOrders = [];
+    for (const tag of returnTags) {
+      let pageInfo = null; let hasNext = true;
+      while (hasNext) {
+        const afterClause = pageInfo ? `,after:${JSON.stringify(pageInfo)}` : '';
+        const gql = await graphql(`{orders(first:50,query:"tag:${tag}"${afterClause}){edges{cursor node{id name tags note email phone createdAt customer{id displayName email phone} shippingAddress{name address1 address2 city province zip country phone} lineItems(first:20){edges{node{id title quantity originalUnitPriceSet{shopMoney{amount}} discountedUnitPriceSet{shopMoney{amount}} variant{id} product{id}}}}}} pageInfo{hasNextPage endCursor}}}`);
+        const edges = gql?.data?.orders?.edges || [];
+        edges.forEach(e => { if (!allOrders.find(o => o.id === e.node.id)) allOrders.push(e.node); });
+        hasNext = gql?.data?.orders?.pageInfo?.hasNextPage || false;
+        pageInfo = gql?.data?.orders?.pageInfo?.endCursor || null;
+      }
+    }
+
+    console.log(`[Migrate] Found ${allOrders.length} orders with return tags`);
+
+    // Parse note blocks and insert missing ones
+    const NOTE_RE = /---([A-Z0-9_]+)---\s*\nType:(\w+)\s*\nItems:\s*\n([\s\S]*?)\nRefund:(\w+)(?:\nNote:(.*?))?\nDate:([\d\-T:.Z]+)\s*\n---END---/g;
+    const inserted = [], skipped = [], errors = [];
+
+    for (const o of allOrders) {
+      if (!o.note) continue;
+      const note = o.note;
+      const oid = gidToId(o.id);
+      const allTags = Array.isArray(o.tags) ? o.tags : (o.tags||'').split(',').map(t=>t.trim()).filter(Boolean);
+
+      // Determine status from tags
+      const has = t => allTags.includes(t);
+      const status = has('return-refunded')?'refunded':has('exchange-fulfilled')?'exchange_fulfilled':has('pickup-scan')?'picked_up':has('pickup-scheduled')?'pickup_scheduled':has('return-approved')||has('exchange-approved')||has('mixed-approved')?'approved':'pending';
+      const request_type = has('exchange-requested')||has('exchange-approved')||has('exchange-fulfilled')?'exchange':has('mixed-requested')||has('mixed-approved')?'mixed':'return';
+
+      // Find AWB from note
+      const awbMatch = note.match(/DELHIVERY AWB:\s*([\w\-]+)/);
+      const awb = awbMatch ? awbMatch[1] : null;
+
+      let match;
+      NOTE_RE.lastIndex = 0;
+      while ((match = NOTE_RE.exec(note)) !== null) {
+        const [, req_id, type, itemsRaw, refund_method, customer_note_raw, submitted_at] = match;
+        if (existingIds.has(req_id)) { skipped.push(req_id); continue; }
+
+        // Parse items from the pipe-separated line format
+        const items = itemsRaw.split('|').map(s => s.trim()).filter(Boolean).map(s => {
+          const actionMatch = s.match(/^\[(\w+)\]/);
+          const action = actionMatch ? actionMatch[1].toLowerCase() : 'return';
+          const rest = s.replace(/^\[\w+\]\s*/, '');
+          const titleMatch = rest.match(/^(.+?)\s*-\s*(\S+)\s+x(\d+)/);
+          const exchMatch = rest.match(/ExchVarID:(\d+)/);
+          return {
+            title: titleMatch ? titleMatch[1].trim() : rest,
+            variant_title: titleMatch ? titleMatch[2] : null,
+            qty: titleMatch ? parseInt(titleMatch[3]) : 1,
+            action,
+            exchange_variant_id: exchMatch ? exchMatch[1] : null,
+            price: '0', original_price: '0', discount_allocated: '0'
+          };
+        });
+
+        // Build req_num from req_id (e.g. 916907_RET001 → 1)
+        const numMatch = req_id.match(/(\d+)$/);
+        const req_num = numMatch ? parseInt(numMatch[1]) : null;
+        const order_number = String(o.name||'').replace('#','');
+
+        const sa = o.shippingAddress;
+        const address = sa ? { name:sa.name||'', address1:sa.address1||'', address2:sa.address2||'', city:sa.city||'', province:sa.province||'', zip:sa.zip||'', country:sa.country||'India', phone:sa.phone||'' } : null;
+
+        const record = {
+          req_id, req_num, order_id: String(oid), order_number,
+          items, refund_method: refund_method || 'store_credit',
+          status, request_type,
+          shipping_preference: 'pickup',
+          total_price: 0, is_cod: false, days_since_order: 0,
+          address,
+          customer_name:  o.customer?.displayName || sa?.name || '',
+          customer_email: o.customer?.email || o.email || '',
+          customer_phone: o.customer?.phone || o.phone || sa?.phone || '',
+          customer_id:    o.customer ? gidToId(o.customer.id) : null,
+          awb: awb || null,
+          submitted_at: submitted_at || new Date().toISOString(),
+          created_at: submitted_at || new Date().toISOString()
+        };
+
+        const { error: ie } = await supabase.from('requests').insert(record);
+        if (ie) { console.error('[Migrate] Insert error:', req_id, ie.message); errors.push({req_id, error: ie.message}); }
+        else { inserted.push(req_id); existingIds.add(req_id); console.log('[Migrate] Inserted:', req_id); }
+      }
+    }
+
+    res.json({ success: true, scanned: allOrders.length, inserted: inserted.length, skipped: skipped.length, errors: errors.length, inserted_ids: inserted, error_details: errors });
+  } catch(e) { console.error('[Migrate]', e.message); res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/debug/trigger-pickup/:req_id', async (req,res)=>{
   try {
     const { data:request } = await supabase.from('requests').select('*').eq('req_id',req.params.req_id).single();
