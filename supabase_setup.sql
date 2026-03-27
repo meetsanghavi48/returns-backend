@@ -51,7 +51,10 @@ create table if not exists requests (
   approved_at           timestamptz,
   pickup_created_at     timestamptz,
   archived_at           timestamptz,
-  created_at            timestamptz default now()
+  created_at            timestamptz default now(),
+
+  -- Human-readable request ID (RET001, EXC001, MIX001 — global sequential)
+  request_id            text
 );
 
 -- Index for fast lookups

@@ -453,7 +453,7 @@ async function createDelhiveryPickup(request) {
     const totalWeight = Math.max(0.5, totalQty * 0.5);
     const totalAmount = items.reduce((s,i)=>s+parseFloat(i.price||0)*(parseInt(i.qty)||1),0);
     const productsDesc = items.map(i=>`${i.title} x${parseInt(i.qty)||1}`).join(', ').slice(0,200) || 'Return Shipment';
-    const rvpId = `#9${request.order_number}_${(request.req_id||"").replace(/^[^_]+_/,"")}`;
+    const rvpId = `${request.order_number}_${(request.req_id||"").replace(/^[^_]+_/,"")}`;
 
     const payload = {
       pickup_location: { name: DELHIVERY_WAREHOUSE },
@@ -975,6 +975,42 @@ app.get('/api/debug/trigger-pickup/:req_id', async (req,res)=>{
     });
   } catch(e) { res.status(500).json({ error:e.message }); }
 });
+
+// Helper: generate next global request_id (RET001, EXC001, MIX001...)
+async function nextRequestId(request_type) {
+  const prefix = request_type==='exchange'?'EXC':request_type==='mixed'?'MIX':'RET';
+  const { count } = await supabase.from('requests').select('req_id',{count:'exact',head:true}).like('request_id', prefix+'%');
+  return `${prefix}${String((count||0)+1).padStart(3,'0')}`;
+}
+
+// ══════════════════════════════════════════
+// MIGRATION: add request_id column + backfill
+// GET /api/migrate/request-ids — safe to run multiple times
+// ══════════════════════════════════════════
+app.get('/api/migrate/request-ids', async (_req, res) => {
+  try {
+    const { data: all } = await supabase.from('requests').select('req_id,request_id,request_type,created_at').order('created_at',{ascending:true});
+    if (!all?.length) return res.json({ updated:0 });
+
+    // Counters per type
+    let retN=0, excN=0, mixN=0;
+    const updates = [];
+    for (const r of all) {
+      if (r.request_id) continue; // already set
+      let rid;
+      if (r.request_type === 'exchange')     { excN++; rid = `EXC${String(excN).padStart(3,'0')}`; }
+      else if (r.request_type === 'mixed')   { mixN++; rid = `MIX${String(mixN).padStart(3,'0')}`; }
+      else                                   { retN++; rid = `RET${String(retN).padStart(3,'0')}`; }
+      updates.push({ req_id: r.req_id, request_id: rid });
+    }
+
+    for (const u of updates) {
+      await supabase.from('requests').update({ request_id: u.request_id }).eq('req_id', u.req_id);
+    }
+    res.json({ updated: updates.length, total: all.length, sample: updates.slice(0,5) });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ══════════════════════════════════════════
 // MIGRATION: backfill requests from Shopify notes → Supabase
 // GET /api/migrate/from-notes  — safe to run multiple times (skips existing req_ids)
@@ -1615,7 +1651,8 @@ app.post('/api/returns/request', async (req,res)=>{
     const upd=await shopifyREST('PUT',`orders/${order_id}.json`,{ order:{ id:order_id,tags:newTags.join(', '),note:newNote } });
     if (!upd.order) return res.status(400).json({ error:'Failed to update order',detail:upd });
 
-    const requestRecord={ req_id, req_num:reqNum, order_id:String(order_id), order_number:String(order_number), items:finalItems, refund_method, shipping_preference:'pickup', status:'pending', request_type, total_price, address:finalAddress, is_cod, days_since_order, customer_name, customer_email, submitted_at:new Date().toISOString() };
+    const request_id = await nextRequestId(request_type);
+    const requestRecord={ req_id, req_num:reqNum, request_id, order_id:String(order_id), order_number:String(order_number), items:finalItems, refund_method, shipping_preference:'pickup', status:'pending', request_type, total_price, address:finalAddress, is_cod, days_since_order, customer_name, customer_email, submitted_at:new Date().toISOString() };
     const { error:ie } = await supabase.from('requests').insert(requestRecord);
     if (ie) console.error('[Insert]', ie.message);
 
@@ -1668,7 +1705,8 @@ app.post('/api/returns/manual', async (req,res)=>{
     const newTags=[...new Set([...existTags,baseTag])];
     await shopifyREST('PUT',`orders/${order_id}.json`,{ order:{ id:order_id,tags:newTags.join(', '),note:(existNote+noteBlock).slice(0,5000) }});
 
-    const requestRecord={ req_id, req_num:reqNum, order_id:String(order_id), order_number:String(order_number), items, refund_method, shipping_preference:'pickup', status:'pending', request_type, total_price, address:finalAddress, is_cod, submitted_at:new Date().toISOString() };
+    const request_id_manual = await nextRequestId(request_type);
+    const requestRecord={ req_id, req_num:reqNum, request_id:request_id_manual, order_id:String(order_id), order_number:String(order_number), items, refund_method, shipping_preference:'pickup', status:'pending', request_type, total_price, address:finalAddress, is_cod, submitted_at:new Date().toISOString() };
     await supabase.from('requests').insert(requestRecord);
     await auditLog(order_id, req_id, 'manual_request', 'merchant', `${request_type}|${items.length}items`);
 
@@ -1789,6 +1827,33 @@ app.post('/api/returns/:req_id/archive', async (req,res)=>{
     const { data:r }=await supabase.from('requests').select('order_id').eq('req_id',req.params.req_id).single();
     await archiveRequest(req.params.req_id, r?.order_id||'');
     res.json({ success:true });
+  } catch(e) { res.status(500).json({ error:e.message }); }
+});
+
+// Lookup order by order number (for admin manual request modal)
+app.get('/api/orders/lookup', async (req,res)=>{
+  const { order_number } = req.query;
+  if (!order_number) return res.status(400).json({ error:'Missing order_number' });
+  try {
+    const clean = String(order_number).replace(/^#+/,'').trim();
+    // Try by name (order number)
+    for (const nameVal of [`%23${clean}`, clean]) {
+      const d = await shopifyREST('GET', `orders.json?name=${nameVal}&status=any&fields=id,order_number,email,phone,customer,shipping_address,line_items,payment_gateway,financial_status`);
+      if (d.orders?.length) {
+        const o = d.orders[0];
+        const sa = o.shipping_address || {};
+        return res.json({
+          id: o.id,
+          order_number: String(o.order_number||clean),
+          customer_name: o.customer ? `${o.customer.first_name||''} ${o.customer.last_name||''}`.trim() : sa.name||'',
+          customer_email: o.email||o.customer?.email||'',
+          customer_phone: o.phone||o.customer?.phone||sa.phone||'',
+          payment_gateway: o.payment_gateway||'',
+          line_items: (o.line_items||[]).map(li=>({ id:li.id, title:li.title, variant_title:li.variant_title||'', variant_id:li.variant_id||null, product_id:li.product_id||null, quantity:li.quantity, price:li.price, original_price:li.price, discount_allocated:'0', image_url:null }))
+        });
+      }
+    }
+    res.status(404).json({ error:'Order not found' });
   } catch(e) { res.status(500).json({ error:e.message }); }
 });
 

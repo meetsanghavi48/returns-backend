@@ -280,7 +280,6 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
 
   <div class="sb-group">Returns</div>
   <a class="sb-item active" id="nav-returns" onclick="showPage('returns')"><span class="icon">📋</span> Requests <span class="sb-badge" id="badge-ret">0</span></a>
-  <a class="sb-item" id="nav-allorders" onclick="showPage('allorders')"><span class="icon">📦</span> All Orders</a>
 
   <div class="sb-group">Insights</div>
   <a class="sb-item" id="nav-analytics" onclick="showPage('analytics')"><span class="icon">📊</span> Analytics</a>
@@ -311,7 +310,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
     <div class="tb-title" id="topbar-title">Requests</div>
     <div class="tb-search">
       <span style="color:var(--muted2);font-size:13px">🔍</span>
-      <input id="global-search" placeholder="Search orders, products…" oninput="handleSearch(this.value)">
+      <input id="global-search" placeholder="Search by order, name, email, phone, AWB, pincode…" oninput="handleSearch(this.value)">
     </div>
     <div style="display:flex;gap:8px;margin-left:8px">
       <button class="btn btn-outline" onclick="syncOrders()">↺ Sync</button>
@@ -386,18 +385,6 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
     <div class="tbl-wrap">
       <div class="tbl-head"><span class="tbl-title">Exchange Requests</span></div>
       <div id="exc-table-wrap"><div class="empty"><div class="empty-ico">🔄</div><div class="empty-title">Loading…</div></div></div>
-    </div>
-  </div>
-
-  <!-- ═══ ALL ORDERS ═══ -->
-  <div class="pg-wrap pg-hidden" id="pg-allorders">
-    <div class="tbl-wrap">
-      <div class="tbl-head">
-        <span class="tbl-title">All Orders</span>
-        <div class="tbl-search"><span style="color:var(--muted2)">🔍</span><input id="ao-inp" placeholder="Search…" oninput="filterAllOrders(this.value)"></div>
-        <span id="ao-count" style="margin-left:auto;font-size:12px;color:var(--muted)"></span>
-      </div>
-      <div id="ao-table-wrap"><div class="empty"><div class="empty-ico">📦</div><div class="empty-title">Loading orders…</div></div></div>
     </div>
   </div>
 
@@ -738,7 +725,6 @@ async function loadOrders() {
     updateStats();
     switchTab(CURRENT_TAB);
     renderExchanges();
-    renderAllOrders();
     const shopEl = document.getElementById('shop-name');
     if (shopEl && data.shop) shopEl.textContent = data.shop;
   } catch(e) {
@@ -800,12 +786,20 @@ function switchTab(status, el) {
 function filterTable(q) { switchTab(CURRENT_TAB); }
 
 function handleSearch(q) {
-  var lq = q.toLowerCase();
+  var lq = q.trim().toLowerCase();
+  if (!lq) { switchTab(CURRENT_TAB); return; }
   FILTERED = ALL_ORDERS.filter(function(o){
-    return o.return_status!=null&&(
+    if (!o.return_status) return false;
+    var latestReq = (o.requests&&o.requests.length) ? o.requests[o.requests.length-1] : null;
+    var awb = (latestReq&&latestReq.awb)||'';
+    var zip = (o.address&&o.address.zip)||'';
+    return (
       String(o.order_number).indexOf(lq)!==-1||
       (o.customer_name||'').toLowerCase().indexOf(lq)!==-1||
-      (o.customer_email||'').toLowerCase().indexOf(lq)!==-1
+      (o.customer_email||'').toLowerCase().indexOf(lq)!==-1||
+      (o.customer_phone||'').replace(/\D/g,'').indexOf(lq.replace(/\D/g,''))!==-1||
+      awb.toLowerCase().indexOf(lq)!==-1||
+      zip.indexOf(lq)!==-1
     );
   });
   renderRetTable();
@@ -925,32 +919,6 @@ function renderExchanges() {
   }).join('');
   wrap.innerHTML='<table class="ret-tbl"><thead><tr><th>Order</th><th>Customer</th><th>Type</th><th>Status</th><th>Exchange Items</th><th>Exchange Order</th><th>Date</th></tr></thead><tbody>'+rows+'</tbody></table>';
 }
-
-// ═══════════════════════════════════════════
-// ALL ORDERS
-// ═══════════════════════════════════════════
-function renderAllOrders() {
-  var wrap = document.getElementById('ao-table-wrap');
-  if(!wrap) return;
-  var q = ((document.getElementById('ao-inp')||{}).value||'').toLowerCase();
-  var orders = q ? ALL_ORDERS.filter(function(o){ return String(o.order_number).indexOf(q)!==-1||(o.customer_name||'').toLowerCase().indexOf(q)!==-1; }) : ALL_ORDERS;
-  var cnt = document.getElementById('ao-count'); if(cnt) cnt.textContent=orders.length+' orders';
-  if(!orders.length){ wrap.innerHTML='<div class="empty"><div class="empty-ico">📦</div><div class="empty-title">No orders</div></div>'; return; }
-  var rows = orders.map(function(o){
-    var idE = esc(o.id);
-    return '<tr data-id="'+idE+'" onclick="openDetail(this.dataset.id)" style="cursor:pointer">'+
-      '<td><span style="font-weight:700;color:var(--blue)">#'+esc(o.order_number)+'</span></td>'+
-      '<td>'+esc(o.customer_name||'Guest')+'</td>'+
-      '<td><span class="pill '+(o.fulfillment_status||'unfulfilled')+'">'+cap(o.fulfillment_status||'Unfulfilled')+'</span></td>'+
-      '<td style="font-size:12px;color:var(--muted)">'+esc(o.financial_status||'—')+'</td>'+
-      '<td style="font-weight:600">₹'+parseFloat(o.total_price||0).toLocaleString('en-IN',{maximumFractionDigits:2})+'</td>'+
-      '<td>'+(o.return_status?'<span class="pill '+esc(o.return_status)+'">'+cap(o.return_status)+'</span>':'<span style="color:var(--muted2)">—</span>')+'</td>'+
-      '<td style="font-size:12px;color:var(--muted)">'+new Date(o.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})+'</td>'+
-    '</tr>';
-  }).join('');
-  wrap.innerHTML='<table class="ret-tbl"><thead><tr><th>Order</th><th>Customer</th><th>Fulfillment</th><th>Payment</th><th>Total</th><th>Return Status</th><th>Date</th></tr></thead><tbody>'+rows+'</tbody></table>';
-}
-function filterAllOrders(){ renderAllOrders(); }
 
 // ═══════════════════════════════════════════
 // BULK ACTIONS
@@ -1928,7 +1896,7 @@ async function saveConfig2(){
 }
 
 // ── PAGE NAV ──
-const PAGE_TITLES={returns:'Requests',exchanges:'Exchanges',allorders:'All Orders',analytics:'Analytics',audit:'Audit Trail',rules:'Rules Engine',logistics:'Logistics',settings:'Settings',notifications:'Notifications'};
+const PAGE_TITLES={returns:'Requests',exchanges:'Exchanges',analytics:'Analytics',audit:'Audit Trail',rules:'Rules Engine',logistics:'Logistics',settings:'Settings',notifications:'Notifications'};
 function showPage(p){
   currentPage=p;
   document.querySelectorAll('.pg-wrap').forEach(el=>el.classList.add('pg-hidden'));
@@ -2165,36 +2133,45 @@ function toggleManualAwb(orderId) {
 </script>
 
 <!-- ════════ MANUAL REQUEST MODAL ════════ -->
-<div class="modal-bg" id="manual-req-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center">
-  <div style="background:#fff;border-radius:16px;padding:28px;width:560px;max-width:95vw;max-height:90vh;overflow-y:auto">
+<div class="modal-bg" id="manual-req-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:28px;width:620px;max-width:96vw;max-height:92vh;overflow-y:auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <div style="font-size:18px;font-weight:800">+ New Return Request</div>
+      <div style="font-size:18px;font-weight:800">+ New Request</div>
       <button onclick="closeManualReqModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted2)">✕</button>
     </div>
+
+    <!-- Order lookup -->
     <div style="margin-bottom:16px">
       <label class="form-label">Order Number</label>
       <input class="form-inp" id="mr-order-num" placeholder="e.g. 916808" oninput="mrSearchOrder()">
-      <div id="mr-order-info" style="margin-top:8px;font-size:13px;color:var(--muted2)"></div>
+      <div id="mr-order-info" style="margin-top:6px;font-size:13px"></div>
     </div>
+
+    <!-- Items section -->
     <div id="mr-items-section" style="display:none">
-      <div style="font-size:13px;font-weight:700;margin-bottom:8px">Select Items</div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--muted2);text-transform:uppercase;letter-spacing:.4px">Select Items</div>
       <div id="mr-items-list"></div>
-      <div style="margin-top:16px">
-        <label class="form-label">Refund Method</label>
-        <select class="form-inp" id="mr-refund-method">
-          <option value="store_credit">Store Credit</option>
-          <option value="original">Original Payment</option>
-        </select>
+
+      <div style="margin-top:16px;display:flex;gap:12px">
+        <div style="flex:1">
+          <label class="form-label">Refund Method</label>
+          <select class="form-inp" id="mr-refund-method">
+            <option value="store_credit">🎁 Store Credit</option>
+            <option value="original">💳 Original Payment</option>
+          </select>
+        </div>
       </div>
+
       <div style="margin-top:12px">
         <label class="form-label">Note (optional)</label>
         <textarea class="form-inp" id="mr-note" rows="2" placeholder="Internal note..."></textarea>
       </div>
     </div>
+
     <div id="mr-error" style="color:var(--red);font-size:13px;margin-top:8px;display:none"></div>
     <div style="display:flex;gap:10px;margin-top:20px">
       <button class="btn btn-outline" style="flex:.4" onclick="closeManualReqModal()">Cancel</button>
-      <button class="btn btn-primary" style="flex:1" id="mr-submit-btn" onclick="submitManualRequest()" disabled>Submit Request</button>
+      <button class="btn btn-primary" style="flex:1" id="mr-submit-btn" onclick="submitManualRequest()" disabled>Create Request →</button>
     </div>
   </div>
 </div>
@@ -2247,12 +2224,13 @@ function toggleManualAwb(orderId) {
 // ════════ MANUAL REQUEST ════════
 if (typeof BACKEND === 'undefined') var BACKEND = '';
 let mrOrderData = null;
-let mrSelectedItems = {}; // { line_item_id: { action, qty, reason } }
+let mrSelectedItems = {}; // { line_item_id: { action, qty, exchange_product_id, exchange_variant_id, exchange_product_title, exchange_variant_title } }
+let mrAllProducts = [];
 
 function openManualRequestModal() {
-  mrOrderData = null; mrSelectedItems = {};
+  mrOrderData = null; mrSelectedItems = {}; mrAllProducts = [];
   document.getElementById('mr-order-num').value = '';
-  document.getElementById('mr-order-info').textContent = '';
+  document.getElementById('mr-order-info').innerHTML = '';
   document.getElementById('mr-items-section').style.display = 'none';
   document.getElementById('mr-error').style.display = 'none';
   document.getElementById('mr-submit-btn').disabled = true;
@@ -2262,46 +2240,79 @@ function closeManualReqModal() {
   document.getElementById('manual-req-modal').style.display = 'none';
 }
 
+async function mrLoadProducts() {
+  if (mrAllProducts.length) return;
+  try {
+    const res = await fetch(BACKEND+'/api/products/all').then(r=>r.json());
+    mrAllProducts = res.products || [];
+  } catch(e) { mrAllProducts = []; }
+}
+
 let mrSearchTimer = null;
 function mrSearchOrder() {
   clearTimeout(mrSearchTimer);
   mrSearchTimer = setTimeout(async () => {
     const num = document.getElementById('mr-order-num').value.trim().replace(/^#+/,'');
-    if (!num) return;
-    document.getElementById('mr-order-info').textContent = '⏳ Looking up...';
+    if (num.length < 3) return;
+    document.getElementById('mr-order-info').innerHTML = '<span style="color:var(--muted2)">⏳ Looking up...</span>';
     try {
-      const res = await fetch(BACKEND+'/api/orders/'+num+'/details').then(r=>r.json());
-      if (res.error || !res.id) {
-        // Try by order number from loaded orders
-        mrOrderData = ALL_ORDERS.find(o=>String(o.order_number)===String(num)||String(o.id)===String(num)) || null;
-        if (!mrOrderData) { document.getElementById('mr-order-info').textContent = '❌ Order not found'; return; }
-        res.line_items = mrOrderData.line_items;
-        res.id = mrOrderData.id;
-        res.order_number = mrOrderData.order_number;
-        res.customer_name = mrOrderData.customer_name;
+      let found = ALL_ORDERS.find(o => String(o.order_number) === String(num) || String(o.id) === String(num));
+      if (found) {
+        mrOrderData = { id: found.id, order_number: found.order_number, customer_name: found.customer_name, line_items: found.line_items };
+      } else {
+        const res = await fetch(BACKEND+'/api/orders/lookup?order_number='+encodeURIComponent(num)).then(r=>r.json());
+        if (res.error || !res.id) { document.getElementById('mr-order-info').innerHTML = '<span style="color:var(--red)">❌ Order not found</span>'; return; }
+        mrOrderData = res;
       }
-      mrOrderData = res;
-      document.getElementById('mr-order-info').innerHTML = `<span style="color:var(--green);font-weight:600">✓ Order #${res.order_number} — ${esc(res.customer_name||'Customer')}</span>`;
-      renderMrItems(res.line_items||[]);
+      document.getElementById('mr-order-info').innerHTML = `<span style="color:var(--green);font-weight:600">✓ Order #${mrOrderData.order_number} — ${esc(mrOrderData.customer_name||'Customer')}</span>`;
+      await mrLoadProducts();
+      renderMrItems(mrOrderData.line_items || []);
       document.getElementById('mr-items-section').style.display = 'block';
-    } catch(e) { document.getElementById('mr-order-info').textContent = '❌ Error: '+e.message; }
+      document.getElementById('mr-submit-btn').disabled = true;
+    } catch(e) { document.getElementById('mr-order-info').innerHTML = '<span style="color:var(--red)">❌ ' + e.message + '</span>'; }
   }, 500);
 }
 
 function renderMrItems(items) {
   const html = items.map(li => `
-    <div style="display:flex;gap:10px;align-items:center;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px">
-      <input type="checkbox" id="mr-chk-${li.id}" onchange="mrToggleItem('${li.id}')" style="width:16px;height:16px;flex-shrink:0">
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:600">${esc(li.title)}${li.variant_title?' — '+esc(li.variant_title):''}</div>
-        <div style="font-size:12px;color:var(--muted2)">₹${li.price} × ${li.quantity}</div>
+    <div id="mr-item-wrap-${li.id}" style="border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;transition:border-color .15s">
+      <div style="display:flex;align-items:center;gap:10px">
+        <input type="checkbox" id="mr-chk-${li.id}" onchange="mrToggleItem('${li.id}')" style="width:16px;height:16px;flex-shrink:0;cursor:pointer">
+        ${li.image_url ? `<img src="${esc(li.image_url)}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;flex-shrink:0">` : '<div style="width:40px;height:40px;background:#f3f4f6;border-radius:6px;flex-shrink:0"></div>'}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(li.title)}${li.variant_title ? ' — ' + esc(li.variant_title) : ''}</div>
+          <div style="font-size:12px;color:var(--muted2)">₹${li.price} × ${li.quantity}</div>
+        </div>
       </div>
-      <div id="mr-item-opts-${li.id}" style="display:none;gap:6px;align-items:center">
-        <select onchange="mrSetAction('${li.id}',this.value)" style="border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px">
-          <option value="exchange">Exchange</option>
-          <option value="return">Return</option>
-        </select>
-        <input type="number" min="1" max="${li.quantity}" value="1" onchange="mrSetQty('${li.id}',this.value)" style="width:50px;border:1px solid var(--border);border-radius:6px;padding:4px;font-size:12px">
+      <div id="mr-item-opts-${li.id}" style="display:none;margin-top:10px">
+        <!-- Action pills -->
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+          <button id="mr-pill-return-${li.id}" onclick="mrSetAction('${li.id}','return')" style="padding:5px 14px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text)">↩ Return</button>
+          <button id="mr-pill-exchange-${li.id}" onclick="mrSetAction('${li.id}','exchange')" style="padding:5px 14px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text)">🔄 Exchange</button>
+        </div>
+        <!-- Exchange product picker (shown only for exchange) -->
+        <div id="mr-exc-${li.id}" style="display:none">
+          <div style="font-size:11px;font-weight:700;color:var(--muted2);text-transform:uppercase;margin-bottom:6px">Exchange For</div>
+          <select class="form-inp" style="margin-bottom:8px" onchange="mrSelectProduct('${li.id}',this.value)">
+            <option value="">— Select product —</option>
+            ${mrAllProducts.map(p => `<option value="${p.id}">${esc(p.title)}</option>`).join('')}
+          </select>
+          <select class="form-inp" id="mr-variant-sel-${li.id}" style="display:none" onchange="mrSelectVariant('${li.id}',this.value)">
+            <option value="">— Select size/variant —</option>
+          </select>
+        </div>
+        <!-- Reason -->
+        <div style="margin-top:8px">
+          <select class="form-inp" style="font-size:12px" onchange="mrSetReason('${li.id}',this.value)">
+            <option value="">Select reason...</option>
+            <option value="Size Issue">Size Issue</option>
+            <option value="Fabric Quality">Fabric Quality</option>
+            <option value="Wrong Item">Wrong Item</option>
+            <option value="Damaged">Damaged</option>
+            <option value="Not as Described">Not as Described</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
       </div>
     </div>`).join('');
   document.getElementById('mr-items-list').innerHTML = html;
@@ -2310,31 +2321,102 @@ function renderMrItems(items) {
 function mrToggleItem(id) {
   const chk = document.getElementById('mr-chk-'+id);
   const opts = document.getElementById('mr-item-opts-'+id);
+  const wrap = document.getElementById('mr-item-wrap-'+id);
   if (chk.checked) {
-    mrSelectedItems[id] = { action:'exchange', qty:1 };
-    opts.style.display = 'flex';
+    mrSelectedItems[id] = { action: 'return', qty: 1 };
+    opts.style.display = 'block';
+    wrap.style.borderColor = 'var(--primary)';
+    // Highlight return pill by default
+    mrHighlightPill(id, 'return');
   } else {
     delete mrSelectedItems[id];
     opts.style.display = 'none';
+    wrap.style.borderColor = 'var(--border)';
   }
-  document.getElementById('mr-submit-btn').disabled = Object.keys(mrSelectedItems).length === 0;
+  mrUpdateSubmit();
 }
-function mrSetAction(id, val) { if (mrSelectedItems[id]) mrSelectedItems[id].action = val; }
-function mrSetQty(id, val)    { if (mrSelectedItems[id]) mrSelectedItems[id].qty = parseInt(val)||1; }
+
+function mrHighlightPill(id, action) {
+  const retPill = document.getElementById('mr-pill-return-'+id);
+  const excPill = document.getElementById('mr-pill-exchange-'+id);
+  if (!retPill || !excPill) return;
+  if (action === 'return') {
+    retPill.style.background = '#000'; retPill.style.color = '#fff'; retPill.style.borderColor = '#000';
+    excPill.style.background = '#fff'; excPill.style.color = 'var(--text)'; excPill.style.borderColor = 'var(--border)';
+  } else {
+    excPill.style.background = '#2563EB'; excPill.style.color = '#fff'; excPill.style.borderColor = '#2563EB';
+    retPill.style.background = '#fff'; retPill.style.color = 'var(--text)'; retPill.style.borderColor = 'var(--border)';
+  }
+}
+
+function mrSetAction(id, action) {
+  if (!mrSelectedItems[id]) return;
+  mrSelectedItems[id].action = action;
+  mrHighlightPill(id, action);
+  const excDiv = document.getElementById('mr-exc-'+id);
+  if (excDiv) excDiv.style.display = action === 'exchange' ? 'block' : 'none';
+  mrUpdateSubmit();
+}
+
+function mrSelectProduct(itemId, productId) {
+  if (!mrSelectedItems[itemId]) return;
+  const prod = mrAllProducts.find(p => String(p.id) === String(productId));
+  if (!prod) { mrSelectedItems[itemId].exchange_product_id = null; mrSelectedItems[itemId].exchange_product_title = null; mrUpdateSubmit(); return; }
+  mrSelectedItems[itemId].exchange_product_id = prod.id;
+  mrSelectedItems[itemId].exchange_product_title = prod.title;
+  mrSelectedItems[itemId].exchange_variant_id = null;
+  mrSelectedItems[itemId].exchange_variant_title = null;
+  // Populate variant dropdown
+  const varSel = document.getElementById('mr-variant-sel-'+itemId);
+  if (varSel) {
+    varSel.innerHTML = '<option value="">— Select size/variant —</option>' +
+      (prod.variants||[]).map(v => `<option value="${v.id}">${esc(v.title)} — ₹${v.price}</option>`).join('');
+    varSel.style.display = 'block';
+  }
+  mrUpdateSubmit();
+}
+
+function mrSelectVariant(itemId, variantId) {
+  if (!mrSelectedItems[itemId]) return;
+  const prod = mrAllProducts.find(p => String(p.id) === String(mrSelectedItems[itemId].exchange_product_id));
+  const variant = (prod?.variants||[]).find(v => String(v.id) === String(variantId));
+  mrSelectedItems[itemId].exchange_variant_id = variantId || null;
+  mrSelectedItems[itemId].exchange_variant_title = variant?.title || null;
+  mrUpdateSubmit();
+}
+
+function mrSetReason(id, val) { if (mrSelectedItems[id]) mrSelectedItems[id].reason = val; }
+
+function mrUpdateSubmit() {
+  const items = Object.entries(mrSelectedItems);
+  if (!items.length) { document.getElementById('mr-submit-btn').disabled = true; return; }
+  // Exchange items must have a product+variant selected
+  const allValid = items.every(([id, opts]) => {
+    if (opts.action !== 'exchange') return true;
+    return opts.exchange_product_id && opts.exchange_variant_id;
+  });
+  document.getElementById('mr-submit-btn').disabled = !allValid;
+}
 
 async function submitManualRequest() {
   if (!mrOrderData || !Object.keys(mrSelectedItems).length) return;
   const btn = document.getElementById('mr-submit-btn');
-  btn.disabled = true; btn.textContent = 'Submitting...';
+  btn.disabled = true; btn.textContent = 'Creating...';
 
   const allItems = mrOrderData.line_items || [];
   const items = Object.entries(mrSelectedItems).map(([id, opts]) => {
-    const li = allItems.find(l=>String(l.id)===String(id));
-    return { id, title:li?.title||'Item', variant_title:li?.variant_title||'',
-      variant_id:li?.variant_id||null, price:li?.price||'0',
-      original_price:li?.original_price||li?.price||'0',
-      discount_allocated:li?.discount_allocated||'0',
-      action:opts.action, qty:opts.qty, reason:'Manual request' };
+    const li = allItems.find(l => String(l.id) === String(id));
+    return {
+      id, title: li?.title || 'Item', variant_title: li?.variant_title || '',
+      variant_id: li?.variant_id || null, product_id: li?.product_id || null,
+      price: li?.price || '0', original_price: li?.original_price || li?.price || '0',
+      discount_allocated: li?.discount_allocated || '0',
+      action: opts.action, qty: opts.qty || 1, reason: opts.reason || '',
+      exchange_product_id: opts.exchange_product_id || null,
+      exchange_variant_id: opts.exchange_variant_id || null,
+      exchange_product_title: opts.exchange_product_title || null,
+      exchange_variant_title: opts.exchange_variant_title || null,
+    };
   });
 
   const refund_method = document.getElementById('mr-refund-method').value;
@@ -2342,23 +2424,25 @@ async function submitManualRequest() {
 
   try {
     const res = await fetch(BACKEND+'/api/returns/manual', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ order_id:mrOrderData.id, order_number:mrOrderData.order_number, items, refund_method, customer_note:note })
-    }).then(r=>r.json());
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order_id: mrOrderData.id, order_number: mrOrderData.order_number, items, refund_method, customer_note: note })
+    }).then(r => r.json());
 
     if (res.success) {
-      showToast('✅ Request created: '+res.req_id, 'success');
+      showToast('✅ Request created: ' + res.req_id, 'success');
       closeManualReqModal();
       loadOrders();
     } else {
-      document.getElementById('mr-error').textContent = res.error||'Failed';
-      document.getElementById('mr-error').style.display = 'block';
-      btn.disabled = false; btn.textContent = 'Submit Request';
+      const errEl = document.getElementById('mr-error');
+      errEl.textContent = res.error || 'Failed to create request';
+      errEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Create Request →';
     }
   } catch(e) {
-    document.getElementById('mr-error').textContent = e.message;
-    document.getElementById('mr-error').style.display = 'block';
-    btn.disabled = false; btn.textContent = 'Submit Request';
+    const errEl = document.getElementById('mr-error');
+    errEl.textContent = 'Error: ' + e.message;
+    errEl.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Create Request →';
   }
 }
 
