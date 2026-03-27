@@ -1,4 +1,5 @@
 'use strict';
+require('dotenv').config();
 const express    = require('express');
 const cors       = require('cors');
 const fetch      = require('node-fetch');
@@ -1651,10 +1652,9 @@ app.post('/api/returns/request', async (req,res)=>{
     const upd=await shopifyREST('PUT',`orders/${order_id}.json`,{ order:{ id:order_id,tags:newTags.join(', '),note:newNote } });
     if (!upd.order) return res.status(400).json({ error:'Failed to update order',detail:upd });
 
-    const request_id = await nextRequestId(request_type);
-    const requestRecord={ req_id, req_num:reqNum, request_id, order_id:String(order_id), order_number:String(order_number), items:finalItems, refund_method, shipping_preference:'pickup', status:'pending', request_type, total_price, address:finalAddress, is_cod, days_since_order, customer_name, customer_email, submitted_at:new Date().toISOString() };
+    const requestRecord={ req_id, req_num:reqNum, order_id:String(order_id), order_number:String(order_number), items:finalItems, refund_method, shipping_preference:'pickup', status:'pending', request_type, total_price, address:finalAddress, is_cod, days_since_order, customer_name, customer_email, submitted_at:new Date().toISOString() };
     const { error:ie } = await supabase.from('requests').insert(requestRecord);
-    if (ie) console.error('[Insert]', ie.message);
+    if (ie) { console.error('[Insert]', ie.message); return res.status(500).json({ error:'Failed to save request: '+ie.message }); }
 
     await auditLog(order_id, req_id, 'request_submitted', 'customer', `${request_type}|${finalItems.length}items`);
 
@@ -1705,9 +1705,9 @@ app.post('/api/returns/manual', async (req,res)=>{
     const newTags=[...new Set([...existTags,baseTag])];
     await shopifyREST('PUT',`orders/${order_id}.json`,{ order:{ id:order_id,tags:newTags.join(', '),note:(existNote+noteBlock).slice(0,5000) }});
 
-    const request_id_manual = await nextRequestId(request_type);
-    const requestRecord={ req_id, req_num:reqNum, request_id:request_id_manual, order_id:String(order_id), order_number:String(order_number), items, refund_method, shipping_preference:'pickup', status:'pending', request_type, total_price, address:finalAddress, is_cod, submitted_at:new Date().toISOString() };
-    await supabase.from('requests').insert(requestRecord);
+    const requestRecord={ req_id, req_num:reqNum, order_id:String(order_id), order_number:String(order_number), items, refund_method, shipping_preference:'pickup', status:'pending', request_type, total_price, address:finalAddress, is_cod, submitted_at:new Date().toISOString() };
+    const { error:me } = await supabase.from('requests').insert(requestRecord);
+    if (me) return res.status(500).json({ error:'Failed to save: '+me.message });
     await auditLog(order_id, req_id, 'manual_request', 'merchant', `${request_type}|${items.length}items`);
 
     // Auto-approve immediately for manual requests
@@ -1838,13 +1838,15 @@ app.get('/api/orders/lookup', async (req,res)=>{
     const clean = String(order_number).replace(/^#+/,'').trim();
     // Try by name (order number)
     for (const nameVal of [`%23${clean}`, clean]) {
-      const d = await shopifyREST('GET', `orders.json?name=${nameVal}&status=any&fields=id,order_number,email,phone,customer,shipping_address,line_items,payment_gateway,financial_status`);
+      const d = await shopifyREST('GET', `orders.json?name=${nameVal}&status=any&fields=id,name,order_number,email,phone,customer,shipping_address,line_items,payment_gateway,financial_status`);
       if (d.orders?.length) {
         const o = d.orders[0];
         const sa = o.shipping_address || {};
+        // Use `name` (#916640) over `order_number` (16640) — name includes store prefix
+        const displayNum = String(o.name||o.order_number||clean).replace(/^#+/,'');
         return res.json({
           id: o.id,
-          order_number: String(o.order_number||clean),
+          order_number: displayNum,
           customer_name: o.customer ? `${o.customer.first_name||''} ${o.customer.last_name||''}`.trim() : sa.name||'',
           customer_email: o.email||o.customer?.email||'',
           customer_phone: o.phone||o.customer?.phone||sa.phone||'',
