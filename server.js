@@ -1,5 +1,5 @@
 'use strict';
-try { require('dotenv').config(); } catch(e) {}
+if (!process.env.SUPABASE_URL) { try { require('dotenv').config(); } catch(e) {} }
 const express    = require('express');
 const cors       = require('cors');
 const fetch      = require('node-fetch');
