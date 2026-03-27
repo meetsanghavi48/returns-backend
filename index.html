@@ -783,11 +783,19 @@ function switchTab(status, el) {
   renderRetTable();
 }
 
-function filterTable(q) { switchTab(CURRENT_TAB); }
+function filterTable(q) {
+  if (q && q.trim()) { handleSearch(q); }
+  else { FILTERED = null; switchTab(CURRENT_TAB); }
+}
 
 function handleSearch(q) {
   var lq = q.trim().toLowerCase();
-  if (!lq) { switchTab(CURRENT_TAB); return; }
+  if (!lq) { FILTERED = null; switchTab(CURRENT_TAB); return; }
+  // Switch to All tab so results aren't filtered by current tab status
+  CURRENT_TAB = 'all';
+  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+  var allBtn = document.querySelector('.tab-btn[onclick*="\'all\'"]');
+  if (allBtn) allBtn.classList.add('active');
   FILTERED = ALL_ORDERS.filter(function(o){
     if (!o.return_status) return false;
     var latestReq = (o.requests&&o.requests.length) ? o.requests[o.requests.length-1] : null;
