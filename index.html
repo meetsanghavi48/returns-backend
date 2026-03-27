@@ -1331,9 +1331,12 @@ function renderDetailPanel(o){
     let itemsHTML='';
 
     // Exchange items → side-by-side layout
+    const reqIdForEdit = latestReqObj?.req_id||'';
+    const reqItemsForEdit = latestReqObj?.items||[];
+
     if(exchItems.length){
       itemsHTML+=`<div style="margin-bottom:${retOnlyItems.length?'14px':'0'}">
-        ${exchItems.length>1||retOnlyItems.length?`<div style="font-size:11px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Exchange Items</div>`:''}
+        ${exchItems.length>1||retOnlyItems.length?`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px">Exchange Items</div><button onclick="openEditExchangeModal('${esc(reqIdForEdit)}',${JSON.stringify(reqItemsForEdit).replace(/"/g,'&quot;')})" style="font-size:11px;background:none;border:1px solid var(--border);border-radius:5px;padding:2px 8px;cursor:pointer;color:var(--muted)">✏️ Edit Exchange</button></div>`:''}
         ${exchItems.map((item,idx)=>{
           const price=parseFloat(item.price||0);
           const qty=parseInt(item.qty||item.quantity||1);
@@ -1381,7 +1384,7 @@ function renderDetailPanel(o){
 
     // Return items → normal list
     if(retOnlyItems.length){
-      if(exchItems.length) itemsHTML+=`<div style="border-top:1px solid var(--border);padding-top:12px;margin-top:2px"><div style="font-size:11px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Return Items</div></div>`;
+      if(exchItems.length) itemsHTML+=`<div style="border-top:1px solid var(--border);padding-top:12px;margin-top:2px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px">Return Items</div><button onclick="openEditItemsModal('${esc(reqIdForEdit)}',${JSON.stringify(reqItemsForEdit).replace(/"/g,'&quot;')})" style="font-size:11px;background:none;border:1px solid var(--border);border-radius:5px;padding:2px 8px;cursor:pointer;color:var(--muted)">✏️ Edit Items</button></div></div>`;
       itemsHTML+=retOnlyItems.map((item,idx)=>{
         const price=parseFloat(item.price||0);
         const qty=parseInt(item.qty||item.quantity||1);
@@ -2221,6 +2224,22 @@ function toggleManualAwb(orderId) {
   </div>
 </div>
 
+<!-- ════════ EDIT EXCHANGE MODAL ════════ -->
+<div class="modal-bg" id="edit-exchange-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:28px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div style="font-size:18px;font-weight:800">🔄 Edit Exchange Items</div>
+      <button onclick="closeEditExchangeModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted2)">✕</button>
+    </div>
+    <div id="ee-items-list"></div>
+    <div id="ee-error" style="color:var(--red);font-size:13px;margin-top:8px;display:none"></div>
+    <div style="display:flex;gap:10px;margin-top:20px">
+      <button class="btn btn-outline" style="flex:.4" onclick="closeEditExchangeModal()">Cancel</button>
+      <button class="btn btn-primary" style="flex:1" onclick="saveEditExchange()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
 <!-- ════════ EDIT LINE ITEMS MODAL ════════ -->
 <div class="modal-bg" id="edit-items-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center">
   <div style="background:#fff;border-radius:16px;padding:28px;width:560px;max-width:95vw;max-height:90vh;overflow-y:auto">
@@ -2542,6 +2561,107 @@ async function saveEditRequest() {
   } catch(e) {
     document.getElementById('er-error').textContent = 'Error: '+e.message;
     document.getElementById('er-error').style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Save Changes';
+  }
+}
+
+// ════════ EDIT EXCHANGE ════════
+let eeReqId = null;
+let eeItems = [];
+let eeProducts = [];
+
+async function openEditExchangeModal(req_id, items) {
+  eeReqId = req_id;
+  eeItems = JSON.parse(JSON.stringify(items || []));
+  document.getElementById('ee-error').style.display = 'none';
+  document.getElementById('ee-items-list').innerHTML = '<div style="color:var(--muted2);font-size:13px">Loading products…</div>';
+  document.getElementById('edit-exchange-modal').style.display = 'flex';
+  // Load products
+  if (!eeProducts.length) {
+    const res = await fetch(BACKEND+'/api/products/all').then(r=>r.json()).catch(()=>({products:[]}));
+    eeProducts = res.products || [];
+  }
+  renderEeItems();
+}
+function closeEditExchangeModal() {
+  document.getElementById('edit-exchange-modal').style.display = 'none';
+  eeReqId = null;
+}
+
+function renderEeItems() {
+  const exchItems = eeItems.filter(i => i.action === 'exchange');
+  if (!exchItems.length) {
+    document.getElementById('ee-items-list').innerHTML = '<div style="color:var(--muted2)">No exchange items found.</div>';
+    return;
+  }
+  const html = exchItems.map((item, idx) => {
+    const realIdx = eeItems.indexOf(item);
+    const curProdId = item.exchange_product_id || '';
+    const curVarId  = item.exchange_variant_id  || '';
+    const curProd   = eeProducts.find(p => String(p.id) === String(curProdId));
+    const varOptions = (curProd?.variants || []).map(v =>
+      `<option value="${esc(v.id)}" ${String(v.id)===String(curVarId)?'selected':''}>${esc(v.title)} — ₹${v.price}</option>`
+    ).join('');
+    return `<div style="border:1.5px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px">Item ${idx+1}: ${esc(item.title||'')}${item.variant_title?' — '+esc(item.variant_title):''}</div>
+      <label class="form-label">Exchange For — Product</label>
+      <select class="form-inp" style="margin-bottom:8px" onchange="eeSelectProduct(${realIdx},this.value)">
+        <option value="">— Select product —</option>
+        ${eeProducts.map(p=>`<option value="${p.id}" ${String(p.id)===String(curProdId)?'selected':''}>${esc(p.title)}</option>`).join('')}
+      </select>
+      <label class="form-label">Size / Variant</label>
+      <select class="form-inp" id="ee-var-${realIdx}" ${curProd?'':'style="display:none"'} onchange="eeSelectVariant(${realIdx},this.value)">
+        <option value="">— Select size —</option>
+        ${varOptions}
+      </select>
+    </div>`;
+  }).join('');
+  document.getElementById('ee-items-list').innerHTML = html;
+}
+
+function eeSelectProduct(idx, productId) {
+  const prod = eeProducts.find(p => String(p.id) === String(productId));
+  eeItems[idx].exchange_product_id    = prod ? prod.id    : null;
+  eeItems[idx].exchange_product_title = prod ? prod.title : null;
+  eeItems[idx].exchange_variant_id    = null;
+  eeItems[idx].exchange_variant_title = null;
+  const varSel = document.getElementById('ee-var-'+idx);
+  if (varSel && prod) {
+    varSel.innerHTML = '<option value="">— Select size —</option>' +
+      (prod.variants||[]).map(v=>`<option value="${v.id}">${esc(v.title)} — ₹${v.price}</option>`).join('');
+    varSel.style.display = '';
+  } else if (varSel) { varSel.style.display = 'none'; }
+}
+
+function eeSelectVariant(idx, variantId) {
+  const prod = eeProducts.find(p => String(p.id) === String(eeItems[idx].exchange_product_id));
+  const variant = (prod?.variants||[]).find(v => String(v.id) === String(variantId));
+  eeItems[idx].exchange_variant_id    = variantId || null;
+  eeItems[idx].exchange_variant_title = variant?.title || null;
+}
+
+async function saveEditExchange() {
+  if (!eeReqId) return;
+  const btn = document.querySelector('#edit-exchange-modal .btn-primary');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const res = await fetch(BACKEND+'/api/returns/'+eeReqId+'/items', {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ items: eeItems })
+    }).then(r=>r.json());
+    if (res.success) {
+      showToast('✅ Exchange updated', 'success');
+      closeEditExchangeModal();
+      const cur = document.querySelector('.ret-row.selected');
+      if (cur) openDetail(cur.dataset.id);
+    } else {
+      document.getElementById('ee-error').textContent = res.error || 'Failed';
+      document.getElementById('ee-error').style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Save Changes';
+    }
+  } catch(e) {
+    document.getElementById('ee-error').textContent = 'Error: '+e.message;
+    document.getElementById('ee-error').style.display = 'block';
     btn.disabled = false; btn.textContent = 'Save Changes';
   }
 }
