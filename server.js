@@ -290,6 +290,8 @@ let EXCHANGE_WINDOW_DAYS = parseInt(process.env.EXCHANGE_WINDOW_DAYS) || 10;
 const STORE_CREDIT_BONUS = 0;
 let RESTOCKING_FEE_PCT   = parseFloat(process.env.RESTOCKING_FEE_PCT) || 0;
 const RETURN_SHIPPING_FEE = parseFloat(process.env.RETURN_SHIPPING_FEE) || 100;
+const NON_RETURNABLE_KEYWORDS = ['watch','wallet'];
+const isNonReturnable = (title='') => NON_RETURNABLE_KEYWORDS.some(kw => title.toLowerCase().includes(kw));
 let WAREHOUSE_CONFIG = {
   name:    process.env.WAREHOUSE_NAME    || 'Blakc',
   address: process.env.WAREHOUSE_ADDRESS || '',
@@ -686,7 +688,7 @@ async function processRefund(request) {
       // Also call Shopify refund to restock inventory (no transaction = no payment reversal)
       try {
         await shopifyREST('POST',`orders/${request.order_id}/refunds.json`,{
-          refund:{ notify:true, note:`Store credit issued — ${request.req_id}`, refund_line_items:rli.map(r=>({...r,location_id:locationId||undefined})), transactions:[] }
+          refund:{ notify:false, note:`Store credit issued — ${request.req_id}`, refund_line_items:rli.map(r=>({...r,location_id:locationId||undefined})), transactions:[] }
         });
       } catch(e) { console.error('[Refund restock]', e.message); }
 
@@ -815,7 +817,7 @@ app.get('/',          (_req,res)=>res.redirect('/dashboard'));
 // AUTH
 // ══════════════════════════════════════════
 // Public API routes (portal-facing — no admin auth needed)
-const PUBLIC_API = ['/api/lookup','/api/returns/request','/api/portal/','/api/payments/'];
+const PUBLIC_API = ['/api/lookup','/api/returns/request','/api/portal/','/api/payments/','/api/status'];
 app.use('/api', (req, res, next) => {
   const isPublic = PUBLIC_API.some(p => req.path.startsWith(p.replace('/api','')));
   if (isPublic) return next();
@@ -1004,10 +1006,13 @@ app.get('/api/migrate/from-notes', async (_req, res) => {
     const NOTE_RE = /---([A-Z0-9_]+)---\s*\nType:(\w+)\s*\nItems:\s*\n([\s\S]*?)\nRefund:(\w+)(?:\nNote:(.*?))?\nDate:([\d\-T:.Z]+)\s*\n---END---/g;
     const inserted = [], skipped = [], errors = [];
 
+    const MIGRATE_SKIP_ORDERS = ['917030','916834','EXC16862']; // test/invalid orders to exclude
     for (const o of allOrders) {
       if (!o.note) continue;
       const note = o.note;
       const oid = gidToId(o.id);
+      const orderNum = String(o.name||'').replace('#','');
+      if (MIGRATE_SKIP_ORDERS.includes(orderNum)) { console.log('[Migrate] Skipping test order #'+orderNum); continue; }
       const allTags = Array.isArray(o.tags) ? o.tags : (o.tags||'').split(',').map(t=>t.trim()).filter(Boolean);
 
       // Determine status from tags
@@ -1074,6 +1079,64 @@ app.get('/api/migrate/from-notes', async (_req, res) => {
 
     res.json({ success: true, scanned: allOrders.length, inserted: inserted.length, skipped: skipped.length, errors: errors.length, inserted_ids: inserted, error_details: errors });
   } catch(e) { console.error('[Migrate]', e.message); res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/migrate/preview — dry-run: shows what WOULD be migrated without inserting
+app.get('/api/migrate/preview', async (_req, res) => {
+  try {
+    const { data: existing } = await supabase.from('requests').select('req_id,order_id');
+    const existingIds = new Set((existing||[]).map(r => r.req_id));
+    const existingOrderIds = new Set((existing||[]).map(r => r.order_id));
+
+    const returnTags = ['return-requested','exchange-requested','mixed-requested','return-approved','exchange-approved','return-refunded','exchange-fulfilled','pickup-scheduled'];
+    let allOrders = [];
+    for (const tag of returnTags) {
+      let pageInfo = null; let hasNext = true;
+      while (hasNext) {
+        const afterClause = pageInfo ? `,after:${JSON.stringify(pageInfo)}` : '';
+        const gql = await graphql(`{orders(first:50,query:"tag:${tag}"${afterClause}){edges{cursor node{id name tags note}} pageInfo{hasNextPage endCursor}}}`);
+        const edges = gql?.data?.orders?.edges || [];
+        edges.forEach(e => { if (!allOrders.find(o => o.id === e.node.id)) allOrders.push(e.node); });
+        hasNext = gql?.data?.orders?.pageInfo?.hasNextPage || false;
+        pageInfo = gql?.data?.orders?.pageInfo?.endCursor || null;
+      }
+    }
+
+    const NOTE_RE = /---([A-Z0-9_]+)---\s*\nType:(\w+)\s*\nItems:\s*\n([\s\S]*?)\nRefund:(\w+)(?:\nNote:(.*?))?\nDate:([\d\-T:.Z]+)\s*\n---END---/g;
+    const toInsert = [], alreadyIn = [];
+
+    const MIGRATE_SKIP_ORDERS_P = ['917030','916834','EXC16862']; // test/invalid orders to exclude
+    for (const o of allOrders) {
+      if (!o.note) continue;
+      const orderNumP = String(o.name||'').replace('#','');
+      if (MIGRATE_SKIP_ORDERS_P.includes(orderNumP)) continue;
+      const oid = gidToId(o.id);
+      const allTags = Array.isArray(o.tags) ? o.tags : (o.tags||'').split(',').map(t=>t.trim()).filter(Boolean);
+      const has = t => allTags.includes(t);
+      const status = has('return-refunded')?'refunded':has('exchange-fulfilled')?'exchange_fulfilled':has('pickup-scan')?'picked_up':has('pickup-scheduled')?'pickup_scheduled':has('return-approved')||has('exchange-approved')||has('mixed-approved')?'approved':'pending';
+      const awbMatch = o.note.match(/DELHIVERY AWB:\s*([\w\-]+)/);
+
+      NOTE_RE.lastIndex = 0;
+      let match;
+      while ((match = NOTE_RE.exec(o.note)) !== null) {
+        const [, req_id, type] = match;
+        const entry = { req_id, order_number: String(o.name||'').replace('#',''), order_id: String(oid), status, type, awb: awbMatch?awbMatch[1]:null };
+        if (existingIds.has(req_id)) alreadyIn.push(entry);
+        else toInsert.push(entry);
+      }
+    }
+
+    // Orders in Supabase with no AWB and status=approved
+    const { data: needsPickup } = await supabase.from('requests').select('req_id,order_id,order_number,status,awb,request_type').eq('status','approved').is('awb',null);
+
+    res.json({
+      scanned_orders: allOrders.length,
+      will_insert: toInsert.length,
+      already_in_supabase: alreadyIn.length,
+      to_insert: toInsert,
+      approved_no_awb: (needsPickup||[]).map(r=>({ req_id:r.req_id, order_number:r.order_number, type:r.request_type }))
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/debug/trigger-pickup/:req_id', async (req,res)=>{
@@ -1408,6 +1471,7 @@ app.get('/api/lookup', async (req,res)=>{
       note:o.note, return_deadline:deadline,
       within_window:daysDiff<=RETURN_WINDOW_DAYS,
       days_remaining:Math.max(0,RETURN_WINDOW_DAYS-Math.floor(daysDiff)),
+      return_window_days:RETURN_WINDOW_DAYS,
       address,
       customer_name:  o.customer?`${o.customer.first_name||''} ${o.customer.last_name||''}`.trim():sa?.name||'',
       customer_email: o.email||o.customer?.email||'',
@@ -1442,6 +1506,10 @@ app.post('/api/returns/request', async (req,res)=>{
   const { order_id, order_number, items, refund_method, customer_note, address, shipping_preference, payment_txnid, payment_status } = req.body;
   if (!order_id||!items?.length) return res.status(400).json({ error:'Missing required fields' });
 
+  // Block non-returnable items (watch, wallet) — server-side guard
+  const blockedItem = items.find(i => isNonReturnable(i.title||''));
+  if (blockedItem) return res.status(400).json({ error:`"${blockedItem.title}" cannot be returned or exchanged.` });
+
   // Payment enforcement removed — handled client-side via Easebuzz portal flow
   // Re-enable once Easebuzz is confirmed live and payments table exists in Supabase
   try {
@@ -1450,6 +1518,14 @@ app.post('/api/returns/request', async (req,res)=>{
     const days_since_order=fo.created_at?Math.floor((Date.now()-new Date(fo.created_at))/(1000*60*60*24)):0;
     const is_cod=(()=>{ const gw=(fo.payment_gateway||'').toLowerCase(); return gw.includes('cod')||gw.includes('cash on delivery')||gw==='cash_on_delivery'; })();
     const existTags=(fo.tags||'').split(',').map(t=>t.trim()).filter(Boolean);
+
+    // Block orders tagged Non_Returnable or Non_Exchangeable
+    const tagLower = existTags.map(t=>t.toLowerCase());
+    const hasNonReturnable   = tagLower.includes('non_returnable');
+    const hasNonExchangeable = tagLower.includes('non_exchangeable');
+    if (hasNonReturnable && hasNonExchangeable) return res.status(403).json({ error:'This order is not eligible for returns or exchanges.' });
+    if (hasNonReturnable)   { const hasReturn   = items.some(i=>i.action==='return');   if (hasReturn)   return res.status(403).json({ error:'This order is not eligible for returns.' }); }
+    if (hasNonExchangeable) { const hasExchange  = items.some(i=>i.action==='exchange'); if (hasExchange) return res.status(403).json({ error:'This order is not eligible for exchanges.' }); }
     const existNote=fo.note||'';
     const sa=fo.shipping_address||{};
     const customer_name  = fo.customer ? `${fo.customer.first_name||''} ${fo.customer.last_name||''}`.trim() : sa.name||'Customer';
@@ -1562,6 +1638,11 @@ app.post('/api/returns/request', async (req,res)=>{
 app.post('/api/returns/manual', async (req,res)=>{
   const { order_id, order_number, items, refund_method, customer_note, address } = req.body;
   if (!order_id||!items?.length) return res.status(400).json({ error:'Missing required fields' });
+
+  // Block non-returnable items (watch, wallet)
+  const blockedManual = items.find(i => isNonReturnable(i.title||''));
+  if (blockedManual) return res.status(400).json({ error:`"${blockedManual.title}" cannot be returned or exchanged.` });
+
   try {
     const returns=items.filter(i=>i.action==='return');
     const exchanges=items.filter(i=>i.action==='exchange');
@@ -1822,7 +1903,7 @@ app.post('/api/shopify/refund/:order_id', async (req,res)=>{
     let txns=calc?.refund?.transactions||[];
     if (parseFloat(RESTOCKING_FEE_PCT)>0)txns=txns.map(t=>({...t,amount:(parseFloat(t.amount||0)*(1-parseFloat(RESTOCKING_FEE_PCT)/100)).toFixed(2)}));
     if (RETURN_SHIPPING_FEE>0)txns=txns.map(t=>({...t,amount:Math.max(0,parseFloat(t.amount||0)-RETURN_SHIPPING_FEE).toFixed(2)}));
-    const result=await shopifyREST('POST',`orders/${order_id}/refunds.json`,{ refund:{ notify:true,note:note||'Return approved',refund_line_items:rli,transactions:refund_method==='store_credit'?[]:txns.map(t=>({ parent_id:t.parent_id,amount:t.amount,kind:'refund',gateway:t.gateway })) }});
+    const result=await shopifyREST('POST',`orders/${order_id}/refunds.json`,{ refund:{ notify:refund_method==='store_credit'?false:true,note:note||'Return approved',refund_line_items:rli,transactions:refund_method==='store_credit'?[]:txns.map(t=>({ parent_id:t.parent_id,amount:t.amount,kind:'refund',gateway:t.gateway })) }});
     if (result?.refund?.id) {
       const amount=result.refund.transactions?.[0]?.amount||'0';
       await updateOrderTags(order_id,['return-refunded'],[]);
@@ -2218,6 +2299,15 @@ async function pollTracking() {
                   .catch(()=>{});
               }
 
+              // Block refund if any item is non-returnable (watch/wallet)
+              const hasNonReturnable = (latestReq.items||[]).some(i => isNonReturnable(i.title||''));
+              if (hasNonReturnable) {
+                console.warn(`[Poll] BLOCKED refund for ${latestReq.req_id} — non-returnable item detected`);
+                await auditLog(latestReq.order_id, latestReq.req_id, 'refund_blocked', 'system', 'Non-returnable item (watch/wallet)');
+                await supabase.from('requests').update({ status:'archived' }).eq('req_id',latestReq.req_id);
+                continue;
+              }
+
               if (latestReq.request_type==='return') {
                 let refundResult = null;
                 try { refundResult = await processRefund(latestReq); } catch(refErr) { console.error('[Poll refund]',refErr.message); }
@@ -2268,6 +2358,11 @@ async function repairPendingRefunds() {
       .select('*').eq('status','archived').is('refund_id',null).eq('request_type','return');
     for (const req of stuck||[]) {
       try {
+        if ((req.items||[]).some(i => isNonReturnable(i.title||''))) {
+          console.warn(`[repair] BLOCKED non-returnable ${req.req_id}`);
+          await auditLog(req.order_id, req.req_id, 'refund_blocked', 'system', 'Non-returnable item (watch/wallet)');
+          continue;
+        }
         await processRefund(req);
         await supabase.from('requests').update({ status:'archived' }).eq('req_id',req.req_id);
         console.log(`[repair] ✅ Refunded+archived ${req.req_id}`);

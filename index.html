@@ -1238,7 +1238,7 @@ function renderDetailPanel(o){
   const subLinks=[];
   if(isArchived)subLinks.push(`<button class="dp-sub-link" onclick="unarchiveRequest('${esc(latestReqId||'')}')">Unarchive</button>`);
   else if(!isPending&&!isRejected)subLinks.push(`<button class="dp-sub-link" onclick="archiveRequest('${esc(latestReqId||'')}')">Archive</button>`);
-  if(isReturn&&!isRefunded&&!isRejected)subLinks.push(`<span class="dp-sub-divider"></span><button class="dp-sub-link" onclick="openRefundModal('${esc(o.id)}','${esc(latestReqId||'')}',${isCod})">Refund</button>`);
+  if(isReturn&&!isRefunded&&!isRejected&&!isArchived)subLinks.push(`<span class="dp-sub-divider"></span><button class="dp-sub-link" onclick="openRefundModal('${esc(o.id)}','${esc(latestReqId||'')}',${isCod})">Refund</button>`);
   if(awb)subLinks.push(`<span class="dp-sub-divider"></span><button class="dp-sub-link" onclick="createDelhiveryPickup('${esc(o.id)}')">Regenerate Pickup</button>`);
   subLinks.push(`<span class="dp-sub-divider"></span><button class="dp-sub-link danger" onclick="deleteRequest('${esc(latestReqId||'')}')">Delete</button>`);
   if(!isRejected&&!isExFulfilled&&!isRefunded)subLinks.push(`<span class="dp-sub-divider"></span><button class="dp-sub-link danger" onclick="rejectFinal('${esc(latestReqId||'')}')">Reject</button>`);

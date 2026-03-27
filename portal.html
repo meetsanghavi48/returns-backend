@@ -988,6 +988,9 @@ function renderOrder() {
   );
   // Keep absolute line_items indices so buildQueue can do o.line_items[idx] correctly
   const NON_RETURNABLE_KEYWORDS = ['watch','wallet'];
+  const orderTags = (o.tags||[]).map(t=>t.toLowerCase());
+  const orderBlocksReturn   = orderTags.includes('non_returnable');
+  const orderBlocksExchange = orderTags.includes('non_exchangeable');
   const isNonReturnable = (li) => li.non_returnable || NON_RETURNABLE_KEYWORDS.some(kw => (li.title||'').toLowerCase().includes(kw));
   const eligibleItems = (o.line_items||[]).reduce((acc,li,i)=>{ if(!isNonReturnable(li)&&!alreadyReqIds.has(String(li.id)))acc.push({item:li,idx:i}); return acc; },[]);
   const nonRetItems   = (o.line_items||[]).filter(li => isNonReturnable(li));
@@ -1006,7 +1009,7 @@ function renderOrder() {
     : `<div class="window-bar" style="border-color:#dc2626;background:#fef2f2">
         <span style="font-size:20px">\u26d4</span>
         <div><div style="font-size:13px;font-weight:600;color:#dc2626">Return window closed</div>
-        <div style="font-size:11px;color:var(--muted)">Your ${(window._returnWindowDays||30)}-day return window has expired</div></div>
+        <div style="font-size:11px;color:var(--muted)">Your ${(o.return_window_days||window._returnWindowDays||30)}-day return window has expired</div></div>
       </div>`;
 
   let itemsHTML = eligibleItems.map(({item, idx}) => {
@@ -1021,8 +1024,8 @@ function renderOrder() {
         ${item.variant_title?`<div class="item-variant">${escHtml(item.variant_title)}</div>`:''}
         <div class="item-price">₹${parseFloat(item.price||0).toFixed(2)} × ${item.quantity}${item.original_price&&parseFloat(item.original_price||0)>parseFloat(item.price||0)?` <span style="font-size:11px;color:var(--muted);text-decoration:line-through">₹${parseFloat(item.original_price).toFixed(2)}</span>`:''}</div>
         ${checked?`<div class="action-pills" onclick="event.stopPropagation()">
-          <span class="pill ${action==='exchange'?'active-exch':''}" onclick="setAction(${idx},'exchange')">\ud83d\udd04 Exchange</span>
-          <span class="pill ${action==='return'?'active-ret':''}" onclick="setAction(${idx},'return')">\u21a9 Return</span>
+          ${orderBlocksExchange?'':` <span class="pill ${action==='exchange'?'active-exch':''}" onclick="setAction(${idx},'exchange')">\ud83d\udd04 Exchange</span>`}
+          ${orderBlocksReturn ?'':` <span class="pill ${action==='return'?'active-ret':''}" onclick="setAction(${idx},'return')">\u21a9 Return</span>`}
         </div>`:''}
       </div>
     </div>`;
@@ -1054,6 +1057,25 @@ function renderOrder() {
   }
 
   const hasSelection = S.checked.size>0 && [...S.checked].every(i=>S.actions[i]);
+
+  // Order-level tag block — only show when window is still open (if closed, window-closed banner is enough)
+  if (o.within_window && (orderBlocksReturn || orderBlocksExchange)) {
+    const both = orderBlocksReturn && orderBlocksExchange;
+    const msg  = both ? 'Not eligible for return or exchange'
+                      : orderBlocksReturn ? 'Returns not allowed for this order'
+                      : 'Exchanges not allowed for this order';
+    const sub  = both ? 'This order is not eligible for returns or exchanges.'
+                      : orderBlocksReturn ? 'This order is not eligible for returns.'
+                      : 'This order is not eligible for exchanges.';
+    return `
+    <div class="logo">\u21a9 Returns Portal</div>
+    ${steps(1)}
+    <div class="window-bar" style="border-color:#dc2626;background:#fef2f2">
+      <span style="font-size:20px">\u26d4</span>
+      <div><div style="font-size:13px;font-weight:600;color:#dc2626">${msg}</div>
+      <div style="font-size:11px;color:var(--muted)">${sub} Contact support for help.</div></div>
+    </div>`;
+  }
 
   return `
   <div class="logo">\u21a9 Returns Portal</div>
