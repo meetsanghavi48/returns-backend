@@ -829,7 +829,7 @@ function renderRetTable() {
     var idE = esc(o.id);
     var rowStyle = 'cursor:pointer' + (isSelected ? ';background:#F0FDF4' : '');
     var awbHtml = awbVal
-      ? '<span style="font-size:11px;color:var(--blue);font-weight:600">AWB: '+esc(awbVal)+'</span>'
+      ? '<a href="https://www.delhivery.com/track/package/'+esc(awbVal)+'" target="_blank" style="font-size:11px;color:var(--blue);font-weight:600;text-decoration:none" onclick="event.stopPropagation()">AWB: '+esc(awbVal)+'</a>'
       : '<input id="manual-awb-'+idE+'" placeholder="AWB number" style="border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:12px;width:110px;font-family:var(--font)">'
         +'<button class="btn btn-sm" data-awb-id="'+idE+'" onclick="attachManualAWB(this.dataset.awbId)" style="background:var(--text);color:#fff;padding:3px 8px;font-size:11px;white-space:nowrap">Set AWB</button>';
     var approveBtn = isPending
@@ -1473,7 +1473,7 @@ function renderDetailPanel(o){
       const sc2=r.status==='approved'?'var(--primary)':r.status==='rejected'?'var(--red)':r.status==='refunded'?'#7C3AED':'var(--amber)';
       return `<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden">
         <div style="padding:8px 12px;background:#f9fafb;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-          <div><span style="font-size:12px;font-weight:700">${esc(r.req_id||'Request '+(i+1))}</span>${r.awb?`<span style="font-size:11px;color:var(--blue);margin-left:8px">AWB: <strong>${esc(r.awb)}</strong> <button onclick="trackAWB('${esc(r.awb)}')" style="background:none;border:none;color:var(--blue);cursor:pointer;font-size:11px;text-decoration:underline">Track</button></span>`:''}</div>
+          <div><span style="font-size:12px;font-weight:700">${esc(r.req_id||'Request '+(i+1))}</span>${r.awb?`<span style="font-size:11px;color:var(--blue);margin-left:8px">AWB: <a href="https://www.delhivery.com/track/package/${esc(r.awb)}" target="_blank" style="color:var(--blue);font-weight:700;text-decoration:none">${esc(r.awb)}</a></span>`:''}</div>
           <div style="display:flex;gap:6px;align-items:center">
             <span style="font-size:11px;font-weight:700;color:${sc2}">${cap(r.status||'pending')}</span>
             <button onclick="openEditItemsModal('${esc(r.req_id)}',${JSON.stringify(r.items||[]).replace(/"/g,'&quot;')})" style="font-size:11px;background:none;border:1px solid var(--border);border-radius:5px;padding:2px 8px;cursor:pointer;color:var(--muted)">✏️ Edit</button>
@@ -1505,20 +1505,23 @@ function renderDetailPanel(o){
   R+=sCard('Reason',reason?esc(reason):'<span style="color:var(--muted2)">Not specified</span>','');
 
   R+=`<div class="dp-card" style="margin-bottom:10px">
-    <div class="dp-sidebar-hd"><div class="dp-sidebar-title">Customer</div><button class="dp-edit-link" onclick="openEditRequestModal('${esc(latestReqObj?.req_id||'')}','${esc(o.customer_name||'')}','${esc(o.customer_email||'')}','${esc(o.customer_phone||'')}','${esc(latestReqObj?.refund_method||'store_credit')}','${esc(latestReqObj?.customer_note||'')}')">Edit</button></div>
+    <div class="dp-sidebar-hd"><div class="dp-sidebar-title">Customer</div><button class="dp-edit-link" onclick="openEditRequestModal('${esc(latestReqObj?.req_id||'')}','${esc(o.customer_name||'')}','${esc(o.customer_email||'')}','${esc(o.customer_phone||'')}','${esc(latestReqObj?.refund_method||'store_credit')}','${esc(latestReqObj?.customer_note||'')}','${esc(latestReqObj?.request_type||'')}')">Edit</button></div>
     <div><a id="dp-customer-name" href="#" style="font-size:13px;color:var(--blue);font-weight:600;text-decoration:none">${esc(o.customer_name||'—')}</a></div>
   </div>`;
 
   R+=`<div class="dp-card" style="margin-bottom:10px">
-    <div class="dp-sidebar-hd"><div class="dp-sidebar-title">Contact Information</div><button class="dp-edit-link" onclick="openEditRequestModal('${esc(latestReqObj?.req_id||'')}','${esc(o.customer_name||'')}','${esc(o.customer_email||'')}','${esc(o.customer_phone||'')}','${esc(latestReqObj?.refund_method||'store_credit')}','${esc(latestReqObj?.customer_note||'')}')">Edit</button></div>
+    <div class="dp-sidebar-hd"><div class="dp-sidebar-title">Contact Information</div><button class="dp-edit-link" onclick="openEditRequestModal('${esc(latestReqObj?.req_id||'')}','${esc(o.customer_name||'')}','${esc(o.customer_email||'')}','${esc(o.customer_phone||'')}','${esc(latestReqObj?.refund_method||'store_credit')}','${esc(latestReqObj?.customer_note||'')}','${esc(latestReqObj?.request_type||'')}')">Edit</button></div>
     <div id="dp-customer-email" style="font-size:13px;color:var(--text)${o.customer_email?'':'display:none'}">${o.customer_email?esc(o.customer_email):''}</div>
     <div id="dp-customer-phone" style="font-size:13px;color:var(--text)${o.customer_phone?'':'display:none'}">${o.customer_phone?esc(o.customer_phone):''}</div>
   </div>`;
 
-  const refundMap={'store_credit':'🎁 Store Credit','original':'Original Payment Mode','upsell':'🛍️ Shop with Credit','exchange':'🔄 Exchange'};
-  const refundLabel=refundMap[latestReqObj?.refund_method]||refundMap[parsed.refund]||latestReqObj?.refund_method||parsed.refund||'—';
-  const payGw=o.payment_gateway?`<div style="font-size:12px;color:var(--muted);margin-top:3px">Order was originally paid using ${cap((o.payment_gateway||'').replace(/_/g,' '))} payment gateway</div>`:'';
-  R+=sCard('Refund Mode',`${esc(refundLabel)}${payGw}`,'');
+  // Only show Refund Mode for return or mixed requests (not pure exchange)
+  if (latestReqObj?.request_type !== 'exchange') {
+    const refundMap={'store_credit':'🎁 Store Credit','original':'Original Payment Mode','upsell':'🛍️ Shop with Credit','exchange':'🔄 Exchange'};
+    const refundLabel=refundMap[latestReqObj?.refund_method]||refundMap[parsed.refund]||latestReqObj?.refund_method||parsed.refund||'—';
+    const payGw=o.payment_gateway?`<div style="font-size:12px;color:var(--muted);margin-top:3px">Order was originally paid using ${cap((o.payment_gateway||'').replace(/_/g,' '))} payment gateway</div>`:'';
+    R+=sCard('Refund Mode',`${esc(refundLabel)}${payGw}`,'');
+  }
 
   R+=`<div class="dp-card" style="margin-bottom:10px">
     <div class="dp-sidebar-hd"><div class="dp-sidebar-title">Customer's address</div><button class="dp-edit-link" onclick="openAddrModal('${esc(o.id)}')">Edit</button></div>
@@ -2491,7 +2494,7 @@ async function submitManualRequest() {
 // ════════ EDIT REQUEST ════════
 let erReqId = null;
 
-function openEditRequestModal(req_id, name, email, phone, refund_method, note) {
+function openEditRequestModal(req_id, name, email, phone, refund_method, note, request_type) {
   erReqId = req_id;
   document.getElementById('er-name').value   = name  || '';
   document.getElementById('er-email').value  = email || '';
@@ -2499,6 +2502,9 @@ function openEditRequestModal(req_id, name, email, phone, refund_method, note) {
   document.getElementById('er-refund').value = refund_method || 'store_credit';
   document.getElementById('er-note').value   = note  || '';
   document.getElementById('er-error').style.display = 'none';
+  // Hide refund method for pure exchange requests
+  const refundRow = document.getElementById('er-refund')?.closest('div');
+  if (refundRow) refundRow.style.display = request_type === 'exchange' ? 'none' : '';
   document.getElementById('edit-request-modal').style.display = 'flex';
 }
 function closeEditRequestModal() {
