@@ -1732,6 +1732,27 @@ app.put('/api/returns/:req_id/items', async (req,res)=>{
 });
 
 // ══════════════════════════════════════════
+// EDIT REQUEST (customer, refund method, note)
+// ══════════════════════════════════════════
+app.put('/api/requests/:req_id/edit', async (req,res)=>{
+  const { customer_name, customer_email, customer_phone, refund_method, customer_note } = req.body;
+  try {
+    const { data:r } = await supabase.from('requests').select('order_id,order_number').eq('req_id',req.params.req_id).single();
+    if (!r) return res.status(404).json({ error:'Request not found' });
+    const updates = {};
+    if (customer_name  !== undefined) updates.customer_name  = customer_name;
+    if (customer_email !== undefined) updates.customer_email = customer_email;
+    if (customer_phone !== undefined) updates.customer_phone = customer_phone;
+    if (refund_method  !== undefined) updates.refund_method  = refund_method;
+    if (customer_note  !== undefined) updates.customer_note  = customer_note;
+    if (!Object.keys(updates).length) return res.status(400).json({ error:'Nothing to update' });
+    await supabase.from('requests').update(updates).eq('req_id',req.params.req_id);
+    await auditLog(r.order_id, req.params.req_id, 'request_edited', 'merchant', Object.keys(updates).join(','));
+    res.json({ success:true });
+  } catch(e) { res.status(500).json({ error:e.message }); }
+});
+
+// ══════════════════════════════════════════
 // UTR NUMBER
 // ══════════════════════════════════════════
 app.post('/api/returns/:req_id/utr', async (req,res)=>{

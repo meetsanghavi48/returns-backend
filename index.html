@@ -1505,12 +1505,12 @@ function renderDetailPanel(o){
   R+=sCard('Reason',reason?esc(reason):'<span style="color:var(--muted2)">Not specified</span>','');
 
   R+=`<div class="dp-card" style="margin-bottom:10px">
-    <div class="dp-sidebar-hd"><div class="dp-sidebar-title">Customer</div><button class="dp-edit-link" onclick="">Edit</button></div>
+    <div class="dp-sidebar-hd"><div class="dp-sidebar-title">Customer</div><button class="dp-edit-link" onclick="openEditRequestModal('${esc(latestReqObj?.req_id||'')}','${esc(o.customer_name||'')}','${esc(o.customer_email||'')}','${esc(o.customer_phone||'')}','${esc(latestReqObj?.refund_method||'store_credit')}','${esc(latestReqObj?.customer_note||'')}')">Edit</button></div>
     <div><a id="dp-customer-name" href="#" style="font-size:13px;color:var(--blue);font-weight:600;text-decoration:none">${esc(o.customer_name||'—')}</a></div>
   </div>`;
 
   R+=`<div class="dp-card" style="margin-bottom:10px">
-    <div class="dp-sidebar-hd"><div class="dp-sidebar-title">Contact Information</div><button class="dp-edit-link" onclick="">Edit</button></div>
+    <div class="dp-sidebar-hd"><div class="dp-sidebar-title">Contact Information</div><button class="dp-edit-link" onclick="openEditRequestModal('${esc(latestReqObj?.req_id||'')}','${esc(o.customer_name||'')}','${esc(o.customer_email||'')}','${esc(o.customer_phone||'')}','${esc(latestReqObj?.refund_method||'store_credit')}','${esc(latestReqObj?.customer_note||'')}')">Edit</button></div>
     <div id="dp-customer-email" style="font-size:13px;color:var(--text)${o.customer_email?'':'display:none'}">${o.customer_email?esc(o.customer_email):''}</div>
     <div id="dp-customer-phone" style="font-size:13px;color:var(--text)${o.customer_phone?'':'display:none'}">${o.customer_phone?esc(o.customer_phone):''}</div>
   </div>`;
@@ -2176,6 +2176,48 @@ function toggleManualAwb(orderId) {
   </div>
 </div>
 
+<!-- ════════ EDIT REQUEST MODAL ════════ -->
+<div class="modal-bg" id="edit-request-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:28px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div style="font-size:18px;font-weight:800">✏️ Edit Request</div>
+      <button onclick="closeEditRequestModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted2)">✕</button>
+    </div>
+    <div style="display:grid;gap:12px">
+      <div>
+        <label class="form-label">Customer Name</label>
+        <input class="form-inp" id="er-name" placeholder="Full name">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <label class="form-label">Email</label>
+          <input class="form-inp" id="er-email" type="email" placeholder="email@example.com">
+        </div>
+        <div>
+          <label class="form-label">Phone</label>
+          <input class="form-inp" id="er-phone" placeholder="+91 XXXXX XXXXX">
+        </div>
+      </div>
+      <div>
+        <label class="form-label">Refund Method</label>
+        <select class="form-inp" id="er-refund">
+          <option value="store_credit">🎁 Store Credit</option>
+          <option value="original">💳 Original Payment</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Internal Note</label>
+        <textarea class="form-inp" id="er-note" rows="2" placeholder="Add a note..."></textarea>
+      </div>
+    </div>
+    <div id="er-error" style="color:var(--red);font-size:13px;margin-top:8px;display:none"></div>
+    <div style="display:flex;gap:10px;margin-top:20px">
+      <button class="btn btn-outline" style="flex:.4" onclick="closeEditRequestModal()">Cancel</button>
+      <button class="btn btn-primary" style="flex:1" onclick="saveEditRequest()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
 <!-- ════════ EDIT LINE ITEMS MODAL ════════ -->
 <div class="modal-bg" id="edit-items-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center">
   <div style="background:#fff;border-radius:16px;padding:28px;width:560px;max-width:95vw;max-height:90vh;overflow-y:auto">
@@ -2443,6 +2485,58 @@ async function submitManualRequest() {
     errEl.textContent = 'Error: ' + e.message;
     errEl.style.display = 'block';
     btn.disabled = false; btn.textContent = 'Create Request →';
+  }
+}
+
+// ════════ EDIT REQUEST ════════
+let erReqId = null;
+
+function openEditRequestModal(req_id, name, email, phone, refund_method, note) {
+  erReqId = req_id;
+  document.getElementById('er-name').value   = name  || '';
+  document.getElementById('er-email').value  = email || '';
+  document.getElementById('er-phone').value  = phone || '';
+  document.getElementById('er-refund').value = refund_method || 'store_credit';
+  document.getElementById('er-note').value   = note  || '';
+  document.getElementById('er-error').style.display = 'none';
+  document.getElementById('edit-request-modal').style.display = 'flex';
+}
+function closeEditRequestModal() {
+  document.getElementById('edit-request-modal').style.display = 'none';
+  erReqId = null;
+}
+
+async function saveEditRequest() {
+  if (!erReqId) return;
+  const btn = document.querySelector('#edit-request-modal .btn-primary');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  const body = {
+    customer_name:  document.getElementById('er-name').value.trim(),
+    customer_email: document.getElementById('er-email').value.trim(),
+    customer_phone: document.getElementById('er-phone').value.trim(),
+    refund_method:  document.getElementById('er-refund').value,
+    customer_note:  document.getElementById('er-note').value.trim(),
+  };
+  try {
+    const res = await fetch(BACKEND+'/api/requests/'+erReqId+'/edit', {
+      method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
+    }).then(r=>r.json());
+    if (res.success) {
+      showToast('✅ Request updated', 'success');
+      closeEditRequestModal();
+      // Refresh detail panel if open
+      const cur = document.querySelector('.ret-row.selected');
+      if (cur) openDetail(cur.dataset.id);
+      else loadOrders();
+    } else {
+      document.getElementById('er-error').textContent = res.error || 'Failed to save';
+      document.getElementById('er-error').style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Save Changes';
+    }
+  } catch(e) {
+    document.getElementById('er-error').textContent = 'Error: '+e.message;
+    document.getElementById('er-error').style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Save Changes';
   }
 }
 
