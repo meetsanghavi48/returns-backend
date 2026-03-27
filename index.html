@@ -800,7 +800,7 @@ function handleSearch(q) {
     if (!o.return_status) return false;
     var latestReq = (o.requests&&o.requests.length) ? o.requests[o.requests.length-1] : null;
     var awb = (latestReq&&latestReq.awb)||'';
-    var zip = (o.address&&o.address.zip)||'';
+    var zip = (o.shipping_address&&o.shipping_address.zip)||'';
     return (
       String(o.order_number).indexOf(lq)!==-1||
       (o.customer_name||'').toLowerCase().indexOf(lq)!==-1||
@@ -1203,23 +1203,23 @@ function renderDetailPanel(o){
   const pill=document.getElementById('dp-status-pill');
   if(pill){pill.className='pill '+(o.return_status||'');pill.textContent=cap(o.return_status||'—');}
 
-  // Top action (primary CTA)
-  const isStuck = isReturn && !isRefunded && !isRejected && !isPending; // approved/picked_up/delivered but not refunded
+  // Top action (primary CTA) + secondary actions — all in one bar
+  const isStuck = isReturn && !isRefunded && !isRejected && !isPending;
+  const secBtns=[];
+  if(isArchived)secBtns.push(`<button class="dp-sub-link" onclick="unarchiveRequest('${esc(latestReqId||'')}')">Unarchive</button>`);
+  else if(!isPending&&!isRejected)secBtns.push(`<button class="dp-sub-link" onclick="archiveRequest('${esc(latestReqId||'')}')">Archive</button>`);
+  if(isReturn&&!isRefunded&&!isRejected&&!isArchived)secBtns.push(`<button class="dp-sub-link" onclick="openRefundModal('${esc(o.id)}','${esc(latestReqId||'')}',${isCod})">Refund</button>`);
+  if(awb)secBtns.push(`<button class="dp-sub-link" onclick="createDelhiveryPickup('${esc(o.id)}')">Regen Pickup</button>`);
+  secBtns.push(`<button class="dp-sub-link danger" onclick="deleteRequest('${esc(latestReqId||'')}')">Delete</button>`);
+  if(!isRejected&&!isExFulfilled&&!isRefunded)secBtns.push(`<button class="dp-sub-link danger" onclick="rejectFinal('${esc(latestReqId||'')}')">Reject</button>`);
   document.getElementById('dp-top-actions').innerHTML=
     (isPending?`<button class="btn btn-sm btn-primary" onclick="approveReturn('${esc(o.id)}',null)">✓ Approve</button>`:'')+
     (isApproved&&!isRefunded?`<button class="btn btn-sm" style="background:var(--primary);color:#fff" onclick="markReceived('${esc(latestReqId||'')}')">Mark as received</button>`:'') +
-    (isStuck?`<button class="btn btn-sm" style="background:#16A34A;color:#fff;margin-left:6px" title="Mark item as physically received at warehouse, process refund, then archive" onclick="forceComplete('${esc(latestReqId||'')}')">✓ Mark Received & Refund</button>`:'');
-
-  // Sub-bar action links
-  const subLinks=[];
-  if(isArchived)subLinks.push(`<button class="dp-sub-link" onclick="unarchiveRequest('${esc(latestReqId||'')}')">Unarchive</button>`);
-  else if(!isPending&&!isRejected)subLinks.push(`<button class="dp-sub-link" onclick="archiveRequest('${esc(latestReqId||'')}')">Archive</button>`);
-  if(isReturn&&!isRefunded&&!isRejected&&!isArchived)subLinks.push(`<span class="dp-sub-divider"></span><button class="dp-sub-link" onclick="openRefundModal('${esc(o.id)}','${esc(latestReqId||'')}',${isCod})">Refund</button>`);
-  if(awb)subLinks.push(`<span class="dp-sub-divider"></span><button class="dp-sub-link" onclick="createDelhiveryPickup('${esc(o.id)}')">Regenerate Pickup</button>`);
-  subLinks.push(`<span class="dp-sub-divider"></span><button class="dp-sub-link danger" onclick="deleteRequest('${esc(latestReqId||'')}')">Delete</button>`);
-  if(!isRejected&&!isExFulfilled&&!isRefunded)subLinks.push(`<span class="dp-sub-divider"></span><button class="dp-sub-link danger" onclick="rejectFinal('${esc(latestReqId||'')}')">Reject</button>`);
+    (isStuck?`<button class="btn btn-sm" style="background:#16A34A;color:#fff" onclick="forceComplete('${esc(latestReqId||'')}')">✓ Mark Received & Refund</button>`:'') +
+    (secBtns.length?`<span class="dp-sub-divider" style="height:18px;margin:0 4px"></span>${secBtns.join('<span class="dp-sub-divider" style="height:14px;margin:0 1px"></span>')}`:'')+
+    `<button class="dp-sub-link" onclick="openEditRequestModal('${esc(latestReqId||'')}','${esc(o.customer_name||'')}','${esc(o.customer_email||'')}','${esc(o.customer_phone||'')}','${esc(latestReqObj?.refund_method||'')}','${esc(latestReqObj?.customer_note||'')}','${esc(o.request_type||'')}')">✏️ Edit</button>`;
   const subBar=document.getElementById('dp-sub-bar');
-  if(subBar)subBar.innerHTML=subLinks.join('');
+  if(subBar)subBar.innerHTML='';
 
   const card=(h,mb='12px')=>`<div class="dp-card" style="margin-bottom:${mb}">${h}</div>`;
   let L='';
@@ -1344,7 +1344,7 @@ function renderDetailPanel(o){
 
     if(exchItems.length){
       itemsHTML+=`<div style="margin-bottom:${retOnlyItems.length?'14px':'0'}">
-        ${exchItems.length>1||retOnlyItems.length?`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px">Exchange Items</div><button onclick="openEditExchangeModal('${esc(reqIdForEdit)}',${JSON.stringify(reqItemsForEdit).replace(/"/g,'&quot;')})" style="font-size:11px;background:none;border:1px solid var(--border);border-radius:5px;padding:2px 8px;cursor:pointer;color:var(--muted)">✏️ Edit Exchange</button></div>`:''}
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px">Exchange Items</div><button onclick="openEditExchangeModal('${esc(reqIdForEdit)}',${JSON.stringify(reqItemsForEdit).replace(/"/g,'&quot;')})" style="font-size:11px;background:none;border:1px solid var(--border);border-radius:5px;padding:2px 8px;cursor:pointer;color:var(--muted)">✏️ Edit</button></div>
         ${exchItems.map((item,idx)=>{
           const price=parseFloat(item.price||0);
           const qty=parseInt(item.qty||item.quantity||1);
@@ -2294,7 +2294,6 @@ function toggleManualAwb(orderId) {
 
 <script>
 // ════════ MANUAL REQUEST ════════
-if (typeof BACKEND === 'undefined') var BACKEND = '';
 let mrOrderData = null;
 let mrSelectedItems = {}; // { line_item_id: { action, qty, exchange_product_id, exchange_variant_id, exchange_product_title, exchange_variant_title } }
 let mrAllProducts = [];

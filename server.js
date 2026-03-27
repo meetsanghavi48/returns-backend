@@ -1,5 +1,5 @@
 'use strict';
-require('dotenv').config();
+try { require('dotenv').config(); } catch(e) {}
 const express    = require('express');
 const cors       = require('cors');
 const fetch      = require('node-fetch');
@@ -2094,24 +2094,58 @@ app.post('/api/bulk/reject', async (req,res)=>{
 // ── DELETE REQUEST ──
 app.delete('/api/returns/:req_id', async (req,res)=>{
   const { req_id }=req.params;
-  const order_id = req.body?.order_id || null; // fallback if req_id not in DB
+  const order_id = req.body?.order_id || null;
   try {
     const TAGS_TO_REMOVE=['return-requested','return-approved','return-rejected','return-refunded','exchange-requested','exchange-approved','exchange-rejected','exchange-fulfilled','mixed-requested','mixed-approved','mixed-rejected','pickup-scheduled','pickup-scan','return-received','flagged-review','keep-it-rule','store-credit-issued','pickup-failed'];
+    const PICKUP_PENDING_STATUSES = ['pending','approved','pickup_scheduled'];
 
-    // Try Supabase first
-    const { data:request } = await supabase.from('requests').select('order_id,request_type').eq('req_id',req_id).single();
+    // Fetch full request so we can check AWB + status
+    const { data:request } = await supabase.from('requests').select('order_id,request_type,awb,awb_status,status').eq('req_id',req_id).single();
 
     const oid = request?.order_id || order_id;
     if (!oid) return res.status(404).json({ error:'No order ID found. Pass order_id in request body.' });
 
-    // Clear Shopify tags regardless of whether in DB
-    try { await updateOrderTags(oid,[],TAGS_TO_REMOVE); } catch(e){ console.error('[delete tags]',e.message); }
+    // Immediately mark as deleted in Supabase so scheduler won't pick it up
+    await supabase.from('requests').update({ status:'deleted' }).eq('req_id',req_id);
 
-    // Delete from Supabase if exists
-    if (request) await supabase.from('requests').delete().eq('req_id',req_id);
+    // Cancel Delhivery pickup if AWB exists and not yet physically picked up
+    const awb = request?.awb;
+    const canCancel = awb && PICKUP_PENDING_STATUSES.includes(request?.status||'');
+    if (canCancel) {
+      try {
+        const cancelResp = await delhiveryAPI('POST', '/api/p/edit', [{ waybill:awb, cancellation:true }], true);
+        console.log(`[delete] Delhivery cancel AWB ${awb}:`, JSON.stringify(cancelResp).slice(0,200));
+      } catch(e) { console.error('[delete] Delhivery cancel failed:', e.message); }
+    }
 
-    await auditLog(oid,req_id,'request_deleted',req.body?.actor||'merchant','Deleted — customer can resubmit');
-    res.json({ success:true });
+    // Clear Shopify tags + strip request block from note
+    try {
+      await updateOrderTags(oid,[],TAGS_TO_REMOVE);
+      // Also clean up the order note — remove the req_id block and its AWB line
+      const orderData = await shopifyREST('GET', `orders/${oid}.json?fields=note`);
+      const existNote = orderData?.order?.note || '';
+      if (existNote) {
+        const escapedId = req_id.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+        let cleanedNote = existNote
+          // Remove the note block: ---REQ_ID--- ... ---END---
+          .replace(new RegExp(`---${escapedId}(?:\\s*\\(MANUAL\\))?---[\\s\\S]*?---END---\\n?`, 'g'), '')
+          // Remove DELHIVERY AWB lines referencing this req_id
+          .replace(new RegExp(`DELHIVERY AWB:[^\\n]*REQ:\\s*${escapedId}[^\\n]*\\n?`, 'g'), '')
+          .trim();
+        if (cleanedNote !== existNote.trim()) {
+          await shopifyREST('PUT', `orders/${oid}.json`, { order:{ id:oid, note:cleanedNote } });
+          console.log(`[delete] Cleaned note for order ${oid}`);
+        }
+      }
+    } catch(e) { console.error('[delete tags/note]',e.message); }
+
+    // Delete from Supabase
+    const { error:delErr } = await supabase.from('requests').delete().eq('req_id',req_id);
+    if (delErr) console.error('[delete] Supabase delete error:', delErr.message);
+    else console.log(`[delete] Removed ${req_id} from Supabase`);
+
+    await auditLog(oid,req_id,'request_deleted',req.body?.actor||'merchant',`Deleted${canCancel?` — Delhivery pickup ${awb} cancelled`:''} — customer can resubmit`);
+    res.json({ success:true, delhivery_cancelled: !!canCancel });
   } catch(e){ res.status(500).json({ error:e.message }); }
 });
 
